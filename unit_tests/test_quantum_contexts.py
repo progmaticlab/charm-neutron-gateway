@@ -308,10 +308,12 @@ class TestMisc(CharmTestCase):
     def test_remap_plugin(self):
         self.get_os_codename_install_source.return_value = 'havana'
         self.assertEquals(quantum_contexts.remap_plugin('nvp'), 'nvp')
+        self.assertEquals(quantum_contexts.remap_plugin('nsx'), 'nvp')
 
     def test_remap_plugin_icehouse(self):
         self.get_os_codename_install_source.return_value = 'icehouse'
         self.assertEquals(quantum_contexts.remap_plugin('nvp'), 'nsx')
+        self.assertEquals(quantum_contexts.remap_plugin('nsx'), 'nsx')
 
     def test_remap_plugin_noop(self):
         self.get_os_codename_install_source.return_value = 'icehouse'

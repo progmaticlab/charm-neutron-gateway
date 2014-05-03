@@ -78,8 +78,9 @@ def remap_plugin(plugin):
     ''' Remaps plugin name for renames/switches in packaging '''
     release = get_os_codename_install_source(config('openstack-origin'))
     if plugin == 'nvp' and release >= 'icehouse':
-        # Remap nvp plugin to nsx for releases >= icehouse
         plugin = 'nsx'
+    elif plugin == 'nsx' and release < 'icehouse':
+        plugin = 'nvp'
     return plugin
 
 
