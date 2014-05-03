@@ -44,6 +44,8 @@ NEUTRON_ML2_PLUGIN = \
     "neutron.plugins.ml2.plugin.Ml2Plugin"
 NEUTRON_NVP_PLUGIN = \
     "neutron.plugins.nicira.nicira_nvp_plugin.NeutronPlugin.NvpPluginV2"
+NEUTRON_NSX_PLUGIN = "vmware"
+
 NEUTRON = 'neutron'
 QUANTUM = 'quantum'
 
@@ -57,6 +59,7 @@ def networking_name():
 
 OVS = 'ovs'
 NVP = 'nvp'
+NSX = 'nsx'
 
 CORE_PLUGIN = {
     QUANTUM: {
@@ -65,18 +68,29 @@ CORE_PLUGIN = {
     },
     NEUTRON: {
         OVS: NEUTRON_OVS_PLUGIN,
-        NVP: NEUTRON_NVP_PLUGIN
+        NVP: NEUTRON_NVP_PLUGIN,
+        NSX: NEUTRON_NSX_PLUGIN
     },
 }
 
 
+def remap_plugin(plugin):
+    ''' Remaps plugin name for renames/switches in packaging '''
+    release = get_os_codename_install_source(config('openstack-origin'))
+    if plugin == 'nvp' and release >= 'icehouse':
+        # Remap nvp plugin to nsx for releases >= icehouse
+        plugin = 'nsx'
+    return plugin
+
+
 def core_plugin():
+    plugin = remap_plugin(config('plugin'))
     if (get_os_codename_install_source(config('openstack-origin'))
             >= 'icehouse'
-            and config('plugin') == OVS):
+            and plugin == OVS):
         return NEUTRON_ML2_PLUGIN
     else:
-        return CORE_PLUGIN[networking_name()][config('plugin')]
+        return CORE_PLUGIN[networking_name()][plugin]
 
 
 class NetworkServiceContext(OSContextGenerator):

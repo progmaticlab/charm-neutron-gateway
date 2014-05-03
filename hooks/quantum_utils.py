@@ -37,13 +37,14 @@ from charmhelpers.contrib.openstack.context import (
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
 from quantum_contexts import (
-    CORE_PLUGIN, OVS, NVP,
+    CORE_PLUGIN, OVS, NVP, NSX,
     NEUTRON, QUANTUM,
     networking_name,
     QuantumGatewayContext,
     NetworkServiceContext,
     L3AgentContext,
     ExternalPortContext,
+    remap_plugin
 )
 
 from copy import deepcopy
@@ -71,9 +72,13 @@ NEUTRON_ML2_PLUGIN_CONF = \
     "/etc/neutron/plugins/ml2/ml2_conf.ini"
 NEUTRON_NVP_PLUGIN_CONF = \
     "/etc/neutron/plugins/nicira/nvp.ini"
+NEUTRON_NSX_PLUGIN_CONF = \
+    "/etc/neutron/plugins/vmware/nsx.ini"
+
 NEUTRON_PLUGIN_CONF = {
     OVS: NEUTRON_OVS_PLUGIN_CONF,
-    NVP: NEUTRON_NVP_PLUGIN_CONF
+    NVP: NEUTRON_NVP_PLUGIN_CONF,
+    NSX: NEUTRON_NSX_PLUGIN_CONF,
 }
 
 QUANTUM_GATEWAY_PKGS = {
@@ -116,6 +121,7 @@ NEUTRON_GATEWAY_PKGS = {
         "nova-api-metadata"
     ]
 }
+NEUTRON_GATEWAY_PKGS[NSX] = NEUTRON_GATEWAY_PKGS[NVP]
 
 GATEWAY_PKGS = {
     QUANTUM: QUANTUM_GATEWAY_PKGS,
@@ -138,9 +144,10 @@ def get_early_packages():
 
 def get_packages():
     '''Return a list of packages for install based on the configured plugin'''
-    packages = deepcopy(GATEWAY_PKGS[networking_name()][config('plugin')])
+    plugin = remap_plugin(config('plugin'))
+    packages = deepcopy(GATEWAY_PKGS[networking_name()][plugin])
     if (get_os_codename_install_source(config('openstack-origin'))
-            >= 'icehouse' and config('plugin') == 'ovs'):
+            >= 'icehouse' and plugin == 'ovs'):
         # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for icehouse
         packages.remove('neutron-l3-agent')
         packages.append('neutron-vpn-agent')
@@ -318,6 +325,7 @@ CONFIG_FILES = {
         OVS: QUANTUM_OVS_CONFIG_FILES,
     },
     NEUTRON: {
+        NSX: NEUTRON_NVP_CONFIG_FILES,
         NVP: NEUTRON_NVP_CONFIG_FILES,
         OVS: NEUTRON_OVS_CONFIG_FILES,
     },
@@ -330,7 +338,7 @@ def register_configs():
     configs = templating.OSConfigRenderer(templates_dir=TEMPLATES,
                                           openstack_release=release)
 
-    plugin = config('plugin')
+    plugin = remap_plugin(config('plugin'))
     name = networking_name()
     if plugin == 'ovs':
         # NOTE: deal with switch to ML2 plugin for >= icehouse
