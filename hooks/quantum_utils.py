@@ -305,7 +305,9 @@ NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 
 QUANTUM_NVP_CONFIG_FILES = {
     QUANTUM_CONF: {
-        'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR)],
+        'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
+                          QuantumGatewayContext(),
+                          SyslogContext()],
         'services': ['quantum-dhcp-agent', 'quantum-metadata-agent']
     },
 }
@@ -313,7 +315,9 @@ QUANTUM_NVP_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
 
 NEUTRON_NVP_CONFIG_FILES = {
     NEUTRON_CONF: {
-        'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR)],
+        'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
+                          QuantumGatewayContext(),
+                          SyslogContext()],
         'services': ['neutron-dhcp-agent', 'neutron-metadata-agent']
     },
 }
