@@ -58,12 +58,9 @@ QUANTUM_OVS_PLUGIN_CONF = \
     "/etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini"
 QUANTUM_NVP_PLUGIN_CONF = \
     "/etc/quantum/plugins/nicira/nvp.ini"
-QUANTUM_N1KV_PLUGIN_CONF = \
-    "/etc/quantum/plugins/cisco/cisco_plugins.ini"
 QUANTUM_PLUGIN_CONF = {
     OVS: QUANTUM_OVS_PLUGIN_CONF,
     NVP: QUANTUM_NVP_PLUGIN_CONF,
-    N1KV: QUANTUM_N1KV_PLUGIN_CONF
 }
 
 NEUTRON_CONF_DIR = '/etc/neutron'
@@ -97,16 +94,6 @@ QUANTUM_GATEWAY_PKGS = {
         'python-mysqldb',
         'python-psycopg2',
         "nova-api-metadata"
-    ],
-    N1KV: [
-        "neutron-plugin-cisco",
-        "openvswitch-switch",
-        "neutron-dhcp-agent",
-        "python-mysqldb",
-        "python-psycopg2",
-        "nova-api-metadata",
-        "neutron-common",
-        "quantum-l3-agent"
     ]
 }
 
@@ -343,22 +330,13 @@ NEUTRON_NVP_CONFIG_FILES = {
 }
 NEUTRON_NVP_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 
-QUANTUM_N1KV_CONFIG_FILES = {
-    QUANTUM_CONF: {
-        'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          QuantumGatewayContext(),
-                          SyslogContext()],
-        'services': ['quantum-dhcp-agent', 'quantum-metadata-agent']
-    },
-}
-QUANTUM_N1KV_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
-
 NEUTRON_N1KV_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
                           QuantumGatewayContext(),
                           SyslogContext()],
-        'services': ['neutron-dhcp-agent',
+        'services': ['neutron-l3-agent',
+                     'neutron-dhcp-agent',
                      'neutron-metadata-agent']
     },
     NEUTRON_L3_AGENT_CONF: {
@@ -374,7 +352,6 @@ CONFIG_FILES = {
     QUANTUM: {
         NVP: QUANTUM_NVP_CONFIG_FILES,
         OVS: QUANTUM_OVS_CONFIG_FILES,
-        N1KV: QUANTUM_N1KV_CONFIG_FILES,
     },
     NEUTRON: {
         NVP: NEUTRON_NVP_CONFIG_FILES,

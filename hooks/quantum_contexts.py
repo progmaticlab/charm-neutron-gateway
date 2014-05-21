@@ -38,8 +38,6 @@ QUANTUM_OVS_PLUGIN = \
     "quantum.plugins.openvswitch.ovs_quantum_plugin.OVSQuantumPluginV2"
 QUANTUM_NVP_PLUGIN = \
     "quantum.plugins.nicira.nicira_nvp_plugin.QuantumPlugin.NvpPluginV2"
-QUANTUM_N1KV_PLUGIN = \
-    "quantum.plugins.cisco.n1kv.n1kv_quantum_plugin.N1kvQuantumPluginV2"
 NEUTRON_OVS_PLUGIN = \
     "neutron.plugins.openvswitch.ovs_neutron_plugin.OVSNeutronPluginV2"
 NEUTRON_ML2_PLUGIN = \
@@ -67,7 +65,6 @@ CORE_PLUGIN = {
     QUANTUM: {
         OVS: QUANTUM_OVS_PLUGIN,
         NVP: QUANTUM_NVP_PLUGIN,
-        N1KV: QUANTUM_N1KV_PLUGIN
     },
     NEUTRON: {
         OVS: NEUTRON_OVS_PLUGIN,
