@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import uuid
 from base64 import b64decode
 
 from charmhelpers.core.hookenv import (
@@ -46,6 +47,8 @@ from quantum_utils import (
     reassign_agent_resources,
     stop_services
 )
+
+from charmhelpers.contrib.openstack import context
 
 hooks = Hooks()
 CONFIGS = register_configs()
@@ -174,6 +177,14 @@ def cluster_departed():
 @hooks.hook('stop')
 def stop():
     stop_services()
+
+@hooks.hook('neutron-plugin-relation-joined')
+def neutron_plugin_relation_joined(rid=None, remote_restart=False):
+    amqp_ctxt = context.AMQPContext()
+    rel_settings = amqp_ctxt()
+    if remote_restart:
+        rel_settings['restart_trigger'] = str(uuid.uuid4())
+    relation_set(relation_id=rid, **rel_settings)
 
 if __name__ == '__main__':
     try:

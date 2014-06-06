@@ -25,6 +25,9 @@ requires:
     interface: pgsql
   amqp:
     interface: rabbitmq
+  neutron-plugin:
+    interface: neutron-plugin
+    scope: container
 peers:
   cluster:
     interface: quantum-gateway-ha

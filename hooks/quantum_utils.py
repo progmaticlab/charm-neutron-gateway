@@ -7,7 +7,8 @@ from charmhelpers.core.hookenv import (
     log,
     config,
     relations_of_type,
-    unit_private_ip
+    unit_private_ip,
+    is_relation_made
 )
 from charmhelpers.fetch import (
     apt_upgrade,
@@ -339,6 +340,17 @@ def register_configs():
             drop_config = NEUTRON_OVS_PLUGIN_CONF
         if drop_config in CONFIG_FILES[name][plugin]:
             CONFIG_FILES[name][plugin].pop(drop_config)
+
+    # Hardcoded list of configs which are managed by plugin subordinate if
+    # available. Any new plugin conf should go into a subordinate list so
+    # this list should never change
+    if is_relation_made('neutron-plugin'):
+        drop_configs = [NEUTRON_ML2_PLUGIN_CONF, NEUTRON_OVS_PLUGIN_CONF,
+                        NEUTRON_CONF, NEUTRON_NVP_PLUGIN_CONF]
+        for l_plugin in NEUTRON_PLUGIN_CONF:
+            for drop_config in drop_configs:
+                if drop_config in CONFIG_FILES['neutron'][l_plugin]:
+                    CONFIG_FILES[name][l_plugin].pop(drop_config)
 
     for conf in CONFIG_FILES[name][plugin]:
         configs.register(conf,
