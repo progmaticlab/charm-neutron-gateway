@@ -245,8 +245,9 @@ class IdentityServiceContext(OSContextGenerator):
 class AMQPContext(OSContextGenerator):
     interfaces = ['amqp']
 
-    def __init__(self, ssl_dir=None):
+    def __init__(self, rel_name='amqp', ssl_dir=None):
         self.ssl_dir = ssl_dir
+        self.rel_name = rel_name
 
     def __call__(self):
         log('Generating template context for amqp')
@@ -259,7 +260,7 @@ class AMQPContext(OSContextGenerator):
                 'Missing required charm config options: %s.' % e)
             raise OSContextError
         ctxt = {}
-        for rid in relation_ids('amqp'):
+        for rid in relation_ids(self.rel_name):
             ha_vip_only = False
             for unit in related_units(rid):
                 if relation_get('clustered', rid=rid, unit=unit):
