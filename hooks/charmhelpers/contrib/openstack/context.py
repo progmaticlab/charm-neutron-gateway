@@ -245,16 +245,23 @@ class IdentityServiceContext(OSContextGenerator):
 class AMQPContext(OSContextGenerator):
     interfaces = ['amqp']
 
-    def __init__(self, rel_name='amqp', ssl_dir=None):
+    def __init__(self, rel_name='amqp', relation_prefix=None, ssl_dir=None):
         self.ssl_dir = ssl_dir
         self.rel_name = rel_name
+        self.relation_prefix = relation_prefix
 
     def __call__(self):
         log('Generating template context for amqp')
         conf = config()
+        user_setting = 'rabbit-user'
+        vhost_setting = 'rabbit-vhost'
+        if self.relation_prefix:
+            user_setting = self.relation_prefix + '-rabbit-user'
+            vhost_setting = self.relation_prefix + '-rabbit-vhost'
+
         try:
-            username = conf['rabbit-user']
-            vhost = conf['rabbit-vhost']
+            username = conf[user_setting]
+            vhost = conf[vhost_setting]
         except KeyError as e:
             log('Could not generate shared_db context. '
                 'Missing required charm config options: %s.' % e)

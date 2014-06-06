@@ -341,7 +341,7 @@ def register_configs():
             CONFIG_FILES[name][plugin].pop(drop_config)
 
     if is_relation_made('amqp-nova'):
-        amqp_nova_ctxt = context.AMQPContext(ssl_dir=NOVA_CONF_DIR, rel_name='amqp-nova')
+        amqp_nova_ctxt = context.AMQPContext(ssl_dir=NOVA_CONF_DIR, rel_name='amqp-nova', relation_prefix='nova')
     else:
         amqp_nova_ctxt = context.AMQPContext(ssl_dir=NOVA_CONF_DIR, rel_name='amqp')
     CONFIG_FILES[name][plugin][NOVA_CONF]['hook_contexts'].append(amqp_nova_ctxt)
