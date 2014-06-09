@@ -138,9 +138,10 @@ def amqp_joined(relation_id=None):
                  vhost=config('rabbit-vhost'))
 
 
+@hooks.hook('amqp-nova-relation-changed')
 @hooks.hook('amqp-nova-relation-departed')
 @restart_on_change(restart_map())
-def amqp_nova_departed():
+def amqp_nova_changed():
     if 'amqp-nova' not in CONFIGS.complete_contexts():
         log('amqp relation incomplete. Peer not ready?')
         return
