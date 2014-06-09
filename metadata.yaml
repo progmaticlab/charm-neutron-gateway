@@ -27,6 +27,9 @@ requires:
     interface: rabbitmq
   amqp-nova:
     interface: rabbitmq
+  neutron-plugin:
+    interface: neutron-plugin
+    scope: container
 peers:
   cluster:
     interface: quantum-gateway-ha
