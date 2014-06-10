@@ -350,7 +350,8 @@ def register_configs():
         # Files which are managed by the plugin
         ceded_list = ['NEUTRON_OVS_PLUGIN_CONF', 'NEUTRON_ML2_PLUGIN_CONF']
         for conf in ceded_list:
-            del CONFIG_FILES[name][plugin][conf]
+            if conf in CONFIG_FILES[name][plugin]:
+                del CONFIG_FILES[name][plugin][conf]
     for conf in CONFIG_FILES[name][plugin]:
         configs.register(conf,
                          CONFIG_FILES[name][plugin][conf]['hook_contexts'])
