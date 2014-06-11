@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from base64 import b64decode
-import uuid
+
 from charmhelpers.core.hookenv import (
     log, ERROR, WARNING,
     config,
@@ -44,8 +44,7 @@ from quantum_utils import (
     valid_plugin,
     configure_ovs,
     reassign_agent_resources,
-    stop_services,
-    NEUTRON_CONF,
+    stop_services
 )
 
 hooks = Hooks()
@@ -187,17 +186,6 @@ def cluster_departed():
     if eligible_leader(None):
         reassign_agent_resources()
         CONFIGS.write_all()
-
-@hooks.hook('neutron-plugin-relation-joined')
-def neutron_plugin_relation_joined(rid=None, remote_restart=False):
-    rel_settings = {}
-    rel_settings['restart_trigger'] = str(uuid.uuid4())
-    relation_set(relation_id=rid, **rel_settings)
-
-@restart_on_change(restart_map())
-@hooks.hook('neutron-plugin-relation-changed')
-def neutron_plugin_relation_changed():
-    CONFIGS.write(NEUTRON_CONF)
 
 
 @hooks.hook('cluster-relation-broken')

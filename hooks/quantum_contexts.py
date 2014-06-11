@@ -12,8 +12,7 @@ from charmhelpers.core.hookenv import (
     related_units,
     relation_get,
     unit_get,
-    cached,
-    is_relation_made,
+    cached
 )
 from charmhelpers.fetch import (
     apt_install,
@@ -155,8 +154,7 @@ class QuantumGatewayContext(OSContextGenerator):
             'plugin': config('plugin'),
             'debug': config('debug'),
             'verbose': config('verbose'),
-            'instance_mtu': config('instance-mtu'),
-            'neutron_plugin_present': is_relation_made('neutron-plugin'),
+            'instance_mtu': config('instance-mtu')
         }
         return ctxt
 

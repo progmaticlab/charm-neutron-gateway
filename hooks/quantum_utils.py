@@ -345,13 +345,6 @@ def register_configs():
     else:
         amqp_nova_ctxt = context.AMQPContext(ssl_dir=NOVA_CONF_DIR, rel_name='amqp')
     CONFIG_FILES[name][plugin][NOVA_CONF]['hook_contexts'].append(amqp_nova_ctxt)
-    if is_relation_made('neutron-plugin'):
-        CONFIG_FILES[name][plugin][NEUTRON_CONF]['hook_contexts'].append(context.SubordinateConfigContext(interface='neutron-plugin', service='neutron', config_file=NEUTRON_CONF))
-        # Files which are managed by the plugin
-        ceded_list = ['NEUTRON_OVS_PLUGIN_CONF', 'NEUTRON_ML2_PLUGIN_CONF']
-        for conf in ceded_list:
-            if conf in CONFIG_FILES[name][plugin]:
-                del CONFIG_FILES[name][plugin][conf]
     for conf in CONFIG_FILES[name][plugin]:
         configs.register(conf,
                          CONFIG_FILES[name][plugin][conf]['hook_contexts'])
