@@ -41,7 +41,8 @@ TO_PATCH = [
     'relations_of_type',
     'service_stop',
     'determine_dkms_package',
-    'service_restart'
+    'service_restart',
+    'remap_plugin'
 ]
 
 
@@ -61,6 +62,9 @@ class TestQuantumUtils(CharmTestCase):
         super(TestQuantumUtils, self).setUp(quantum_utils, TO_PATCH)
         self.networking_name.return_value = 'neutron'
         self.headers_package.return_value = 'linux-headers-2.6.18'
+        def noop(value):
+            return value
+        self.remap_plugin.side_effect = noop
 
     def tearDown(self):
         # Reset cached cache
@@ -70,6 +74,8 @@ class TestQuantumUtils(CharmTestCase):
         self.config.return_value = 'ovs'
         self.assertTrue(quantum_utils.valid_plugin())
         self.config.return_value = 'nvp'
+        self.assertTrue(quantum_utils.valid_plugin())
+        self.config.return_value = 'nsx'
         self.assertTrue(quantum_utils.valid_plugin())
 
     def test_invalid_plugin(self):
@@ -209,6 +215,20 @@ class TestQuantumUtils(CharmTestCase):
             configs.register.assert_any_call(
                 conf,
                 quantum_utils.CONFIG_FILES['neutron'][quantum_utils.NVP][conf]
+                                          ['hook_contexts']
+            )
+
+    def test_register_configs_nsx(self):
+        self.config.return_value = 'nsx'
+        configs = quantum_utils.register_configs()
+        confs = [quantum_utils.NEUTRON_DHCP_AGENT_CONF,
+                 quantum_utils.NEUTRON_METADATA_AGENT_CONF,
+                 quantum_utils.NOVA_CONF,
+                 quantum_utils.NEUTRON_CONF]
+        for conf in confs:
+            configs.register.assert_any_call(
+                conf,
+                quantum_utils.CONFIG_FILES['neutron'][quantum_utils.NSX][conf]
                                           ['hook_contexts']
             )
 
