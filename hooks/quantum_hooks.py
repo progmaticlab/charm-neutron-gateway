@@ -161,8 +161,9 @@ def nm_changed():
 @hooks.hook("cluster-relation-departed")
 @restart_on_change(restart_map())
 def cluster_departed():
-    if config('plugin') == 'nvp':
-        log('Unable to re-assign agent resources for failed nodes with nvp',
+    if config('plugin') in ['nvp', 'nsx']:
+        log('Unable to re-assign agent resources for'
+            ' failed nodes with nvp|nsx',
             level=WARNING)
         return
     if eligible_leader(None):
