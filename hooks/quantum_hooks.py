@@ -138,8 +138,8 @@ def amqp_joined(relation_id=None):
                  vhost=config('rabbit-vhost'))
 
 
-@hooks.hook('amqp-nova-relation-changed')
 @hooks.hook('amqp-nova-relation-departed')
+@hooks.hook('amqp-nova-relation-changed')
 @restart_on_change(restart_map())
 def amqp_nova_changed():
     if 'amqp-nova' not in CONFIGS.complete_contexts():
@@ -159,7 +159,6 @@ def amqp_departed():
 @hooks.hook('shared-db-relation-changed',
             'pgsql-db-relation-changed',
             'amqp-relation-changed',
-            'amqp-nova-relation-changed',
             'cluster-relation-changed',
             'cluster-relation-joined')
 @restart_on_change(restart_map())

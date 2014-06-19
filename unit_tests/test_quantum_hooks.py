@@ -93,6 +93,24 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.log.called)
         _exit.assert_called_with(1)
 
+    def test_config_changed(self):
+        def mock_relids(rel):
+            return ['relid']
+        self.openstack_upgrade_available.return_value = True
+        self.valid_plugin.return_value = True
+        self.relation_ids.side_effect = mock_relids
+        _db_joined = self.patch('db_joined')
+        _pgsql_db_joined = self.patch('pgsql_db_joined')
+        _amqp_joined = self.patch('amqp_joined')
+        _amqp_nova_joined = self.patch('amqp_nova_joined')
+        self._call_hook('config-changed')
+        self.assertTrue(self.do_openstack_upgrade.called)
+        self.assertTrue(self.configure_ovs.called)
+        self.assertTrue(_db_joined.called)
+        self.assertTrue(_pgsql_db_joined.called)
+        self.assertTrue(_amqp_joined.called)
+        self.assertTrue(_amqp_nova_joined.called)
+
     def test_config_changed_upgrade(self):
         self.openstack_upgrade_available.return_value = True
         self.valid_plugin.return_value = True
@@ -162,6 +180,35 @@ class TestQuantumHooks(CharmTestCase):
 
     def test_amqp_changed(self):
         self._call_hook('amqp-relation-changed')
+        self.assertTrue(self.CONFIGS.write_all.called)
+
+    def test_amqp_departed_no_rel(self):
+        self.CONFIGS.complete_contexts.return_value = []
+        self._call_hook('amqp-relation-departed')
+        self.assertFalse(self.CONFIGS.write_all.called)
+
+    def test_amqp_departed(self):
+        self.CONFIGS.complete_contexts.return_value = ['amqp']
+        self._call_hook('amqp-relation-departed')
+        self.assertTrue(self.CONFIGS.write_all.called)
+
+
+    def test_amqp_nova_joined(self):
+        self._call_hook('amqp-nova-relation-joined')
+        self.relation_set.assert_called_with(
+            username='nova',
+            vhost='openstack',
+            relation_id=None
+        )
+
+    def test_amqp_nova_changed_no_rel(self):
+        self.CONFIGS.complete_contexts.return_value = []
+        self._call_hook('amqp-nova-relation-changed')
+        self.assertFalse(self.CONFIGS.write_all.called)
+
+    def test_amqp_nova_changed(self):
+        self.CONFIGS.complete_contexts.return_value = ['amqp-nova']
+        self._call_hook('amqp-nova-relation-changed')
         self.assertTrue(self.CONFIGS.write_all.called)
 
     def test_shared_db_changed(self):
