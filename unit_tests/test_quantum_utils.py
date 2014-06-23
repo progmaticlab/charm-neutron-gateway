@@ -42,6 +42,7 @@ TO_PATCH = [
     'service_stop',
     'determine_dkms_package',
     'service_restart',
+    'remap_plugin',
     'is_relation_made',
 ]
 
