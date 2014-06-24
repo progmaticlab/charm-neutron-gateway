@@ -50,6 +50,14 @@ options:
     type: string
     description: RabbitMQ Virtual Host
     default: openstack
+  nova-rabbit-user:
+    type: string
+    description: RabbitMQ Nova user
+    default: nova
+  nova-rabbit-vhost:
+    type: string
+    description: RabbitMQ Nova Virtual Host
+    default: openstack
   debug:
     default: False
     type: boolean

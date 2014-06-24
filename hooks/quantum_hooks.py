@@ -83,6 +83,8 @@ def config_changed():
         pgsql_db_joined(relation_id=r_id)
     for r_id in relation_ids('amqp'):
         amqp_joined(relation_id=r_id)
+    for r_id in relation_ids('amqp-nova'):
+        amqp_nova_joined(relation_id=r_id)
     if valid_plugin():
         CONFIGS.write_all()
         configure_ovs()
@@ -123,11 +125,28 @@ def pgsql_db_joined(relation_id=None):
                  relation_id=relation_id)
 
 
+@hooks.hook('amqp-nova-relation-joined')
+def amqp_nova_joined(relation_id=None):
+    relation_set(relation_id=relation_id,
+                 username=config('nova-rabbit-user'),
+                 vhost=config('nova-rabbit-vhost'))
+
+
 @hooks.hook('amqp-relation-joined')
 def amqp_joined(relation_id=None):
     relation_set(relation_id=relation_id,
                  username=config('rabbit-user'),
                  vhost=config('rabbit-vhost'))
+
+
+@hooks.hook('amqp-nova-relation-departed')
+@hooks.hook('amqp-nova-relation-changed')
+@restart_on_change(restart_map())
+def amqp_nova_changed():
+    if 'amqp-nova' not in CONFIGS.complete_contexts():
+        log('amqp relation incomplete. Peer not ready?')
+        return
+    CONFIGS.write_all()
 
 
 @hooks.hook('amqp-relation-departed')

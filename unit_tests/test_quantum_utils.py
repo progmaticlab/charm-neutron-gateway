@@ -1,6 +1,5 @@
 from mock import MagicMock, call, patch
 import collections
-
 import charmhelpers.contrib.openstack.templating as templating
 
 templating.OSConfigRenderer = MagicMock()
@@ -42,7 +41,8 @@ TO_PATCH = [
     'service_stop',
     'determine_dkms_package',
     'service_restart',
-    'remap_plugin'
+    'remap_plugin',
+    'is_relation_made',
 ]
 
 
@@ -62,6 +62,7 @@ class TestQuantumUtils(CharmTestCase):
         super(TestQuantumUtils, self).setUp(quantum_utils, TO_PATCH)
         self.networking_name.return_value = 'neutron'
         self.headers_package.return_value = 'linux-headers-2.6.18'
+
         def noop(value):
             return value
         self.remap_plugin.side_effect = noop
@@ -138,6 +139,7 @@ class TestQuantumUtils(CharmTestCase):
 
     def test_do_openstack_upgrade(self):
         self.config.side_effect = self.test_config.get
+        self.is_relation_made.return_value = False
         self.test_config.set('openstack-origin', 'cloud:precise-havana')
         self.test_config.set('plugin', 'ovs')
         self.get_os_codename_install_source.return_value = 'havana'
@@ -157,6 +159,25 @@ class TestQuantumUtils(CharmTestCase):
 
     def test_register_configs_ovs(self):
         self.config.return_value = 'ovs'
+        self.is_relation_made.return_value = False
+        configs = quantum_utils.register_configs()
+        confs = [quantum_utils.NEUTRON_DHCP_AGENT_CONF,
+                 quantum_utils.NEUTRON_METADATA_AGENT_CONF,
+                 quantum_utils.NOVA_CONF,
+                 quantum_utils.NEUTRON_CONF,
+                 quantum_utils.NEUTRON_L3_AGENT_CONF,
+                 quantum_utils.NEUTRON_OVS_PLUGIN_CONF,
+                 quantum_utils.EXT_PORT_CONF]
+        for conf in confs:
+            configs.register.assert_any_call(
+                conf,
+                quantum_utils.CONFIG_FILES['neutron'][quantum_utils.OVS][conf]
+                                          ['hook_contexts']
+            )
+
+    def test_register_configs_amqp_nova(self):
+        self.config.return_value = 'ovs'
+        self.is_relation_made.return_value = True
         configs = quantum_utils.register_configs()
         confs = [quantum_utils.NEUTRON_DHCP_AGENT_CONF,
                  quantum_utils.NEUTRON_METADATA_AGENT_CONF,
@@ -206,6 +227,7 @@ class TestQuantumUtils(CharmTestCase):
 
     def test_register_configs_nvp(self):
         self.config.return_value = 'nvp'
+        self.is_relation_made.return_value = False
         configs = quantum_utils.register_configs()
         confs = [quantum_utils.NEUTRON_DHCP_AGENT_CONF,
                  quantum_utils.NEUTRON_METADATA_AGENT_CONF,
@@ -273,6 +295,7 @@ class TestQuantumUtils(CharmTestCase):
 
     def test_register_configs_pre_install(self):
         self.config.return_value = 'ovs'
+        self.is_relation_made.return_value = False
         self.networking_name.return_value = 'quantum'
         configs = quantum_utils.register_configs()
         confs = [quantum_utils.QUANTUM_DHCP_AGENT_CONF,

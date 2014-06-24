@@ -7,7 +7,8 @@ from charmhelpers.core.hookenv import (
     log,
     config,
     relations_of_type,
-    unit_private_ip
+    unit_private_ip,
+    is_relation_made,
 )
 from charmhelpers.fetch import (
     apt_upgrade,
@@ -183,8 +184,7 @@ NOVA_CONF = "/etc/nova/nova.conf"
 
 NOVA_CONFIG_FILES = {
     NOVA_CONF: {
-        'hook_contexts': [context.AMQPContext(ssl_dir=NOVA_CONF_DIR),
-                          context.SharedDBContext(ssl_dir=NOVA_CONF_DIR),
+        'hook_contexts': [context.SharedDBContext(ssl_dir=NOVA_CONF_DIR),
                           context.PostgresqlDBContext(),
                           NetworkServiceContext(),
                           QuantumGatewayContext(),
@@ -352,6 +352,17 @@ def register_configs():
         if drop_config in CONFIG_FILES[name][plugin]:
             CONFIG_FILES[name][plugin].pop(drop_config)
 
+    if is_relation_made('amqp-nova'):
+        amqp_nova_ctxt = context.AMQPContext(
+            ssl_dir=NOVA_CONF_DIR,
+            rel_name='amqp-nova',
+            relation_prefix='nova')
+    else:
+        amqp_nova_ctxt = context.AMQPContext(
+            ssl_dir=NOVA_CONF_DIR,
+            rel_name='amqp')
+    CONFIG_FILES[name][plugin][NOVA_CONF][
+        'hook_contexts'].append(amqp_nova_ctxt)
     for conf in CONFIG_FILES[name][plugin]:
         configs.register(conf,
                          CONFIG_FILES[name][plugin][conf]['hook_contexts'])
