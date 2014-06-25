@@ -13,6 +13,6 @@ test:
 sync:
 	@charm-helper-sync -c charm-helpers-sync.yaml
 
-publish:
+publish: lint test
 	bzr push lp:charms/quantum-gateway
 	bzr push lp:charms/trusty/quantum-gateway

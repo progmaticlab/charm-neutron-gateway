@@ -290,10 +290,10 @@ class TestHostIP(CharmTestCase):
         _query.assert_called_with('myhost.example.com', 'A')
 
 
-class TestNetworkingName(CharmTestCase):
+class TestMisc(CharmTestCase):
 
     def setUp(self):
-        super(TestNetworkingName,
+        super(TestMisc,
               self).setUp(quantum_contexts,
                           TO_PATCH)
 
@@ -304,3 +304,29 @@ class TestNetworkingName(CharmTestCase):
     def test_ge_havana(self):
         self.get_os_codename_install_source.return_value = 'havana'
         self.assertEquals(quantum_contexts.networking_name(), 'neutron')
+
+    def test_remap_plugin(self):
+        self.get_os_codename_install_source.return_value = 'havana'
+        self.assertEquals(quantum_contexts.remap_plugin('nvp'), 'nvp')
+        self.assertEquals(quantum_contexts.remap_plugin('nsx'), 'nvp')
+
+    def test_remap_plugin_icehouse(self):
+        self.get_os_codename_install_source.return_value = 'icehouse'
+        self.assertEquals(quantum_contexts.remap_plugin('nvp'), 'nsx')
+        self.assertEquals(quantum_contexts.remap_plugin('nsx'), 'nsx')
+
+    def test_remap_plugin_noop(self):
+        self.get_os_codename_install_source.return_value = 'icehouse'
+        self.assertEquals(quantum_contexts.remap_plugin('ovs'), 'ovs')
+
+    def test_core_plugin(self):
+        self.get_os_codename_install_source.return_value = 'havana'
+        self.config.return_value = 'ovs'
+        self.assertEquals(quantum_contexts.core_plugin(),
+                          quantum_contexts.NEUTRON_OVS_PLUGIN)
+
+    def test_core_plugin_ml2(self):
+        self.get_os_codename_install_source.return_value = 'icehouse'
+        self.config.return_value = 'ovs'
+        self.assertEquals(quantum_contexts.core_plugin(),
+                          quantum_contexts.NEUTRON_ML2_PLUGIN)

@@ -7,7 +7,7 @@ options:
       Supported values include:
       .
         ovs - OpenVSwitch
-        nvp - Nicira NVP
+        nvp|nsx - Nicira NVP/VMware NSX
         n1kv - Cisco N1kv
   ext-port:
     type: string
