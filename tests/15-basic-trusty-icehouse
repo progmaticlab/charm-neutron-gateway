@@ -1,0 +1,9 @@
+#!/usr/bin/python
+
+"""Amulet tests on a basic quantum-gateway deployment on trusty-icehouse."""
+
+from basic_deployment import QuantumGatewayBasicDeployment
+
+if __name__ == '__main__':
+    deployment = QuantumGatewayBasicDeployment(series='trusty')
+    deployment.run_tests()
