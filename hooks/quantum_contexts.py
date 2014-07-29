@@ -28,6 +28,7 @@ from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader
 )
 import re
+from charmhelpers.contrib.network.ip import get_address_in_network
 
 DB_USER = "quantum"
 QUANTUM_DB = "quantum"
@@ -164,7 +165,9 @@ class QuantumGatewayContext(OSContextGenerator):
     def __call__(self):
         ctxt = {
             'shared_secret': get_shared_secret(),
-            'local_ip': get_host_ip(),  # XXX: data network impact
+            'local_ip':
+            get_address_in_network(config('os-data-network'),
+                                   get_host_ip(unit_get('private-address'))),
             'core_plugin': core_plugin(),
             'plugin': config('plugin'),
             'debug': config('debug'),
