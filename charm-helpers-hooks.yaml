@@ -5,7 +5,6 @@ include:
     - fetch
     - contrib.openstack
     - contrib.hahelpers
-    - contrib.network.ovs
+    - contrib.network
     - contrib.storage.linux
     - payload.execd
-    - contrib.network.ip
