@@ -51,6 +51,14 @@ options:
     type: string
     description: RabbitMQ Virtual Host
     default: openstack
+  nova-rabbit-user:
+    type: string
+    description: RabbitMQ Nova user
+    default: nova
+  nova-rabbit-vhost:
+    type: string
+    description: RabbitMQ Nova Virtual Host
+    default: openstack
   debug:
     default: False
     type: boolean
@@ -85,3 +93,14 @@ options:
     default: nova
     type: string
     description: Database name
+  # Network configuration options
+  # by default all access is over 'private-address'
+  os-data-network:
+    type: string
+    description: |
+      The IP address and netmask of the OpenStack Data network (e.g.,
+      192.168.0.0/24)
+      .
+      This network will be used for tenant network traffic in overlay
+      networks.
+

@@ -25,6 +25,8 @@ requires:
     interface: pgsql
   amqp:
     interface: rabbitmq
+  amqp-nova:
+    interface: rabbitmq
 peers:
   cluster:
     interface: quantum-gateway-ha
