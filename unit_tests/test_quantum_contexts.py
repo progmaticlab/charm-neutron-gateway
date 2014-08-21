@@ -165,7 +165,8 @@ class TestL3AgentContext(CharmTestCase):
         self.test_config.set('external-network-id', '')
         self.eligible_leader.return_value = False
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': False})
+                          {'handle_internal_only_router': False,
+                           'plugin': 'ovs'})
 
     def test_hior_leader(self):
         self.test_config.set('run-internal-router', 'leader')
@@ -173,7 +174,8 @@ class TestL3AgentContext(CharmTestCase):
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
                           {'handle_internal_only_router': True,
-                           'ext_net_id': 'netid'})
+                           'ext_net_id': 'netid',
+                           'plugin': 'ovs'})
 
     def test_hior_all(self):
         self.test_config.set('run-internal-router', 'all')
@@ -181,7 +183,8 @@ class TestL3AgentContext(CharmTestCase):
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
                           {'handle_internal_only_router': True,
-                           'ext_net_id': 'netid'})
+                           'ext_net_id': 'netid',
+                           'plugin': 'ovs'})
 
 
 class TestQuantumGatewayContext(CharmTestCase):
