@@ -173,7 +173,7 @@ class QuantumGatewayContext(OSContextGenerator):
             'debug': config('debug'),
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
-            'l2_population': config('l2_population'),
+            'l2_population': config('l2-population'),
         }
         return ctxt
 
