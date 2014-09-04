@@ -95,6 +95,26 @@ def core_plugin():
         return CORE_PLUGIN[networking_name()][plugin]
 
 
+def _neutron_api_settings():
+    '''
+    Inspects current neutron-plugin relation
+    '''
+    neutron_settings = {
+        'l2_population': True,
+
+    }
+    for rid in relation_ids('neutron-plugin-api'):
+        for unit in related_units(rid):
+            rdata = relation_get(rid=rid, unit=unit)
+            if 'l2_population' not in rdata:
+                continue
+            neutron_settings = {
+                'l2_population': rdata['l2-population'],
+            }
+            return neutron_settings
+    return neutron_settings
+
+
 class NetworkServiceContext(OSContextGenerator):
     interfaces = ['quantum-network-service']
 
@@ -163,6 +183,7 @@ class ExternalPortContext(OSContextGenerator):
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
+        neutron_api_settings = _neutron_api_settings()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
@@ -172,7 +193,8 @@ class QuantumGatewayContext(OSContextGenerator):
             'plugin': config('plugin'),
             'debug': config('debug'),
             'verbose': config('verbose'),
-            'instance_mtu': config('instance-mtu')
+            'instance_mtu': config('instance-mtu'),
+            'l2_population': neutron_api_settings['l2_population'],
         }
         return ctxt
 
