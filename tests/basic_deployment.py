@@ -628,6 +628,8 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'nova_metadata_ip': quantum_gateway_relation['private-address'],
                 'nova_metadata_port': '8775'
             }
+        if self._get_openstack_release() >= self.precise_icehouse:
+	    expected['cache_url'] = 'memory://?default_ttl=5'
 
         ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
         if ret:
