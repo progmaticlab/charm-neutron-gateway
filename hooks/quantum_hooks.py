@@ -41,6 +41,7 @@ from quantum_utils import (
     get_packages,
     get_early_packages,
     get_common_package,
+    get_topics,
     valid_plugin,
     configure_ovs,
     reassign_agent_resources,
@@ -85,6 +86,8 @@ def config_changed():
         amqp_joined(relation_id=r_id)
     for r_id in relation_ids('amqp-nova'):
         amqp_nova_joined(relation_id=r_id)
+    for rid in relation_ids('zeromq-configuration'):
+        zeromq_configuration_relation_joined(rid)
     if valid_plugin():
         CONFIGS.write_all()
         configure_ovs()
@@ -194,6 +197,20 @@ def cluster_departed():
 @hooks.hook('stop')
 def stop():
     stop_services()
+
+
+@hooks.hook('zeromq-configuration-relation-joined')
+def zeromq_configuration_relation_joined(relid=None):
+    relation_set(relation_id=relid,
+                 topics=" ".join(get_topics()),
+                 users="neutron")
+
+
+@hooks.hook('zeromq-configuration-relation-changed')
+@restart_on_change(restart_map(), stopstart=True)
+def zeromq_configuration_relation_changed():
+    CONFIGS.write_all()
+
 
 if __name__ == '__main__':
     try:

@@ -227,7 +227,8 @@ QUANTUM_OVS_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
                           QuantumGatewayContext(),
-                          SyslogContext()],
+                          SyslogContext(),
+                          context.ZeroMQContext()],
         'services': ['quantum-l3-agent',
                      'quantum-dhcp-agent',
                      'quantum-metadata-agent',
@@ -532,3 +533,17 @@ def configure_ovs():
         ext_port_ctx = ExternalPortContext()()
         if ext_port_ctx is not None and ext_port_ctx['ext_port']:
             add_bridge_port(EXT_BRIDGE, ext_port_ctx['ext_port'])
+
+
+def get_topics():
+    # metering_agent
+    topics = []
+    if 'neutron-l3-agent' in services():
+        topics.append('l3_agent')
+    if 'neutron-dhcp-agent' in services():
+        topics.append('dhcp_agent')
+    if 'neutron-metering-agent' in services():
+        topics.append('metering_agent')
+    if 'neutron-lbaas-agent' in services():
+        topics.append('n-lbaas_agent')
+    return topics

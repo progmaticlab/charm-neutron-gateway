@@ -27,6 +27,9 @@ requires:
     interface: rabbitmq
   amqp-nova:
     interface: rabbitmq
+  zeromq-configuration:
+    interface: zeromq-configuration
+    scope: container
 peers:
   cluster:
     interface: quantum-gateway-ha
