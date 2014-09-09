@@ -112,7 +112,6 @@ NEUTRON_GATEWAY_PKGS = {
         "nova-api-metadata",
         "neutron-plugin-metering-agent",
         "neutron-lbaas-agent",
-        "openswan"
     ],
     NVP: [
         "neutron-dhcp-agent",
@@ -147,11 +146,6 @@ def get_packages():
     '''Return a list of packages for install based on the configured plugin'''
     plugin = remap_plugin(config('plugin'))
     packages = deepcopy(GATEWAY_PKGS[networking_name()][plugin])
-    if (get_os_codename_install_source(config('openstack-origin'))
-            >= 'icehouse' and plugin == 'ovs'):
-        # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for icehouse
-        packages.remove('neutron-l3-agent')
-        packages.append('neutron-vpn-agent')
     return packages
 
 
@@ -254,7 +248,8 @@ NEUTRON_OVS_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
                           QuantumGatewayContext(),
-                          SyslogContext()],
+                          SyslogContext(),
+                          context.ZeroMQContext()],
         'services': ['neutron-l3-agent',
                      'neutron-dhcp-agent',
                      'neutron-metadata-agent',
@@ -546,4 +541,10 @@ def get_topics():
         topics.append('metering_agent')
     if 'neutron-lbaas-agent' in services():
         topics.append('n-lbaas_agent')
+    if 'neutron-plugin-openvswitch-agent' in services():
+        topics.append('q-agent-notifier-port-update')
+        topics.append('q-agent-notifier-network-delete')
+        topics.append('q-agent-notifier-tunnel-update')
+        topics.append('q-agent-notifier-security_group-update')
+        topics.append('q-agent-notifier-dvr-update')
     return topics
