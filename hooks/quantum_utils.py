@@ -182,7 +182,8 @@ NOVA_CONFIG_FILES = {
                           context.PostgresqlDBContext(),
                           NetworkServiceContext(),
                           QuantumGatewayContext(),
-                          SyslogContext()],
+                          SyslogContext(),
+                          context.ZeroMQContext()],
         'services': ['nova-api-metadata']
     },
 }
