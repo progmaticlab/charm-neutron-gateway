@@ -12,17 +12,19 @@ from test_utils import (
 )
 
 TO_PATCH = [
+    'apt_install',
     'config',
+    'context_complete',
+    'eligible_leader',
+    'get_ipv4_addr',
+    'get_ipv6_addr',
+    'get_nic_hwaddr',
+    'get_os_codename_install_source',
+    'list_nics',
     'relation_get',
     'relation_ids',
     'related_units',
-    'context_complete',
     'unit_get',
-    'apt_install',
-    'get_os_codename_install_source',
-    'eligible_leader',
-    'list_nics',
-    'get_nic_hwaddr',
 ]
 
 
@@ -120,37 +122,57 @@ class TestExternalPortContext(CharmTestCase):
     def setUp(self):
         super(TestExternalPortContext, self).setUp(quantum_contexts,
                                                    TO_PATCH)
+        self.machine_macs = {
+            'eth0': 'fe:c5:ce:8e:2b:00',
+            'eth1': 'fe:c5:ce:8e:2b:01',
+            'eth2': 'fe:c5:ce:8e:2b:02',
+            'eth3': 'fe:c5:ce:8e:2b:03',
+        }
+        self.machine_nics = {
+            'eth0': ['192.168.0.1'],
+            'eth1': ['192.168.0.2'],
+            'eth2': [],
+            'eth3': [],
+        }
+        self.absent_macs = "aa:a5:ae:ae:ab:a4 "
 
     def test_no_ext_port(self):
         self.config.return_value = None
-        self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          None)
+        self.assertIsNone(quantum_contexts.ExternalPortContext()())
 
     def test_ext_port_eth(self):
         self.config.return_value = 'eth1010'
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
                           {'ext_port': 'eth1010'})
 
-    def test_ext_port_mac(self):
-        machine_macs = {
-            'eth0': 'fe:c5:ce:8e:2b:00',
-            'eth1': 'fe:c5:ce:8e:2b:01',
-            'eth2': 'fe:c5:ce:8e:2b:02',
-            'eth3': 'fe:c5:ce:8e:2b:03',
-        }
-        absent_macs = "aa:a5:ae:ae:ab:a4 "
-        config_macs = absent_macs + " " + machine_macs['eth2']
+    def _fake_get_hwaddr(self, arg):
+        return self.machine_macs[arg]
 
-        def get_hwaddr(arg):
-            return machine_macs[arg]
+    def _fake_get_ipv4(self, arg, fatal=False):
+        return self.machine_nics[arg]
+
+    def test_ext_port_mac(self):
+        config_macs = self.absent_macs + " " + self.machine_macs['eth2']
+        self.get_ipv4_addr.side_effect = self._fake_get_ipv4
+        self.get_ipv6_addr.return_value = []
         self.config.return_value = config_macs
-        self.list_nics.return_value = machine_macs.keys()
-        self.get_nic_hwaddr.side_effect = get_hwaddr
+        self.list_nics.return_value = self.machine_macs.keys()
+        self.get_nic_hwaddr.side_effect = self._fake_get_hwaddr
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
                           {'ext_port': 'eth2'})
-        self.config.return_value = absent_macs
+        self.config.return_value = self.absent_macs
+        self.assertIsNone(quantum_contexts.ExternalPortContext()())
+
+    def test_ext_port_mac_one_used_nic(self):
+        config_macs = self.machine_macs['eth1'] + " " + \
+            self.machine_macs['eth2']
+        self.get_ipv4_addr.side_effect = self._fake_get_ipv4
+        self.get_ipv6_addr.return_value = []
+        self.config.return_value = config_macs
+        self.list_nics.return_value = self.machine_macs.keys()
+        self.get_nic_hwaddr.side_effect = self._fake_get_hwaddr
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          None)
+                          {'ext_port': 'eth2'})
 
 
 class TestL3AgentContext(CharmTestCase):
