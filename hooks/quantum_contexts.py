@@ -32,6 +32,7 @@ from charmhelpers.contrib.network.ip import (
     get_address_in_network,
     get_ipv4_addr,
     get_ipv6_addr,
+    is_bridge_member,
 )
 
 DB_USER = "quantum"
@@ -163,6 +164,9 @@ class ExternalPortContext(OSContextGenerator):
             entry = entry.strip()
             if re.match(mac_regex, entry):
                 if entry in hwaddr_to_nic and len(hwaddr_to_ip[entry]) == 0:
+                    # If the nic is part of a bridge then don't use it
+                    if is_bridge_member(hwaddr_to_nic[entry]):
+                        continue
                     # Entry is a MAC address for a valid interface that doesn't
                     # have an IP address assigned yet.
                     return {"ext_port": hwaddr_to_nic[entry]}
