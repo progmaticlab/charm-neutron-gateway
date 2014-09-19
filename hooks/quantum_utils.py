@@ -1,7 +1,8 @@
 from charmhelpers.core.host import (
     service_running,
     service_stop,
-    service_restart
+    service_restart,
+    lsb_release
 )
 from charmhelpers.core.hookenv import (
     log,
@@ -112,7 +113,6 @@ NEUTRON_GATEWAY_PKGS = {
         "nova-api-metadata",
         "neutron-plugin-metering-agent",
         "neutron-lbaas-agent",
-        "openswan"
     ],
     NVP: [
         "neutron-dhcp-agent",
@@ -148,10 +148,13 @@ def get_packages():
     plugin = remap_plugin(config('plugin'))
     packages = deepcopy(GATEWAY_PKGS[networking_name()][plugin])
     if (get_os_codename_install_source(config('openstack-origin'))
-            >= 'icehouse' and plugin == 'ovs'):
+            >= 'icehouse' and plugin == 'ovs'
+            and lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
         # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for icehouse
+        # but openswan was removed in utopic.
         packages.remove('neutron-l3-agent')
         packages.append('neutron-vpn-agent')
+        packages.append('openswan')
     return packages
 
 
