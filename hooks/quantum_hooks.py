@@ -47,7 +47,7 @@ from quantum_utils import (
     stop_services
 )
 
-hooks = Hooks()
+hooks = Hooks(config_save=False)
 CONFIGS = register_configs()
 
 
