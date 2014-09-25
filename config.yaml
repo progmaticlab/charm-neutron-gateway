@@ -10,9 +10,12 @@ options:
         nvp|nsx - Nicira NVP/VMware NSX
   ext-port:
     type: string
+    default:
     description: |
-      External port to use for routing of instance
-      traffic to the external public network.
+      A space-separated list of external ports to use for routing of instance
+      traffic to the external public network. Valid values are either MAC
+      addresses (in which case only MAC addresses for interfaces without an IP
+      address already assigned will be used), or interfaces (eth0)
   openstack-origin:
     type: string
     default: distro
@@ -38,6 +41,7 @@ options:
       Use leader and none when configuring multiple floating pools
   external-network-id:
     type: string
+    default:
     description: |
       Optional configuration to set the external-network-id. Only needed when
       configuring multiple external networks and should be used in conjunction
@@ -73,6 +77,7 @@ options:
       If set to True, supporting services will log to syslog.
   instance-mtu:
     type: int
+    default:
     description: |
       Configure DHCP services to provide MTU configuration to instances
       within the cloud.  This is useful in deployments where its not
@@ -90,6 +95,7 @@ options:
   # by default all access is over 'private-address'
   os-data-network:
     type: string
+    default:
     description: |
       The IP address and netmask of the OpenStack Data network (e.g.,
       192.168.0.0/24)
