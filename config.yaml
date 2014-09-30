@@ -102,4 +102,10 @@ options:
       .
       This network will be used for tenant network traffic in overlay
       networks.
-
+  l2-population:
+    type: boolean
+    default: True
+    description: |
+      Populate the forwarding tables of virtual switches (LinuxBridge or OVS),
+      to decrease broadcast traffics inside the physical networks fabric while
+      using overlays networks (VXLan, GRE).

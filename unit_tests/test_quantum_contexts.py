@@ -231,7 +231,8 @@ class TestQuantumGatewayContext(CharmTestCase):
                            "OVSQuantumPluginV2",
             'plugin': 'ovs',
             'debug': False,
-            'verbose': True
+            'verbose': True,
+            'l2_population': True,
         })
 
 
