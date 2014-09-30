@@ -353,3 +353,24 @@ class TestMisc(CharmTestCase):
         self.config.return_value = 'ovs'
         self.assertEquals(quantum_contexts.core_plugin(),
                           quantum_contexts.NEUTRON_ML2_PLUGIN)
+
+    def test_neutron_api_settings(self):
+        self.relation_ids.return_value = ['foo']
+        self.related_units.return_value = ['bar']
+        self.test_relation.set({'l2-population': True})
+        self.relation_get.side_effect = self.test_relation.get
+        self.assertEquals(quantum_contexts._neutron_api_settings(),
+                          {'l2_population': True})
+
+    def test_neutron_api_settings2(self):
+        self.relation_ids.return_value = ['foo']
+        self.related_units.return_value = ['bar']
+        self.test_relation.set({'l2-population': False})
+        self.relation_get.side_effect = self.test_relation.get
+        self.assertEquals(quantum_contexts._neutron_api_settings(),
+                          {'l2_population': False})
+
+    def test_neutron_api_settings_no_apiplugin(self):
+        self.relation_ids.return_value = []
+        self.assertEquals(quantum_contexts._neutron_api_settings(),
+                          {'l2_population': True})
