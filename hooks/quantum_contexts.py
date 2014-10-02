@@ -107,7 +107,7 @@ def _neutron_api_settings():
     '''
     neutron_settings = {
         'l2_population': True,
-        'ml2_typedriver': 'gre',
+        'overlay_network_type': 'gre',
 
     }
     for rid in relation_ids('neutron-plugin-api'):
@@ -117,7 +117,7 @@ def _neutron_api_settings():
                 continue
             neutron_settings = {
                 'l2_population': rdata['l2-population'],
-                'ml2_typedriver': rdata['neutron-ml2-typedriver'],
+                'overlay_network_type': rdata['overlay-network-type'],
             }
             return neutron_settings
     return neutron_settings
@@ -216,7 +216,7 @@ class QuantumGatewayContext(OSContextGenerator):
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
             'l2_population': neutron_api_settings['l2_population'],
-            'ml2_typedriver': neutron_api_settings['ml2_typedriver'],
+            'overlay_network_type': neutron_api_settings['overlay_network_type'],
         }
         return ctxt
 
