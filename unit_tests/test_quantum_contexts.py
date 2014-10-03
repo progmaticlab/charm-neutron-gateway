@@ -233,6 +233,7 @@ class TestQuantumGatewayContext(CharmTestCase):
             'debug': False,
             'verbose': True,
             'l2_population': True,
+            'overlay_network_type': 'gre',
         })
 
 
@@ -357,20 +358,25 @@ class TestMisc(CharmTestCase):
     def test_neutron_api_settings(self):
         self.relation_ids.return_value = ['foo']
         self.related_units.return_value = ['bar']
-        self.test_relation.set({'l2-population': True})
+        self.test_relation.set({'l2-population': True,
+                                'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
         self.assertEquals(quantum_contexts._neutron_api_settings(),
-                          {'l2_population': True})
+                          {'l2_population': True,
+                           'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings2(self):
         self.relation_ids.return_value = ['foo']
         self.related_units.return_value = ['bar']
-        self.test_relation.set({'l2-population': False})
+        self.test_relation.set({'l2-population': False,
+                                'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
         self.assertEquals(quantum_contexts._neutron_api_settings(),
-                          {'l2_population': False})
+                          {'l2_population': False,
+                           'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings_no_apiplugin(self):
         self.relation_ids.return_value = []
         self.assertEquals(quantum_contexts._neutron_api_settings(),
-                          {'l2_population': True})
+                          {'l2_population': True,
+                           'overlay_network_type': 'gre', })
