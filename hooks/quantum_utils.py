@@ -73,15 +73,12 @@ NEUTRON_ML2_PLUGIN_CONF = \
     "/etc/neutron/plugins/ml2/ml2_conf.ini"
 NEUTRON_NVP_PLUGIN_CONF = \
     "/etc/neutron/plugins/nicira/nvp.ini"
-NEUTRON_N1KV_PLUGIN_CONF = \
-    "/etc/neutron/plugins/cisco/cisco_plugins.ini"
 NEUTRON_NSX_PLUGIN_CONF = \
     "/etc/neutron/plugins/vmware/nsx.ini"
 
 NEUTRON_PLUGIN_CONF = {
     OVS: NEUTRON_OVS_PLUGIN_CONF,
     NVP: NEUTRON_NVP_PLUGIN_CONF,
-    N1KV: NEUTRON_N1KV_PLUGIN_CONF,
     NSX: NEUTRON_NSX_PLUGIN_CONF,
 }
 

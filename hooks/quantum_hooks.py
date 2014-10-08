@@ -16,6 +16,7 @@ from charmhelpers.fetch import (
     apt_update,
     apt_install,
     filter_installed_packages,
+    apt_purge,
 )
 from charmhelpers.core.host import (
     restart_on_change,
@@ -97,10 +98,11 @@ def config_changed():
     if config('plugin') == 'n1kv':
         if config('enable-l3-agent'):
             if not service_running('neutron-l3-agent'):
+                apt_install('neutron-l3-agent')
                 service_start('neutron-l3-agent')
         else:
             if service_running('neutron-l3-agent'):
-                service_stop('neutron-l3-agent')
+                apt_purge('neutron-l3-agent')
 
 
 @hooks.hook('upgrade-charm')
