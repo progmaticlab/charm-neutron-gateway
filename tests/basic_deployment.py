@@ -373,7 +373,8 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'local_ip': quantum_gateway_relation['private-address']
             },
             'agent': {
-                'tunnel_types': 'gre'
+                'tunnel_types': 'gre',
+                'l2_population': 'False'
             },
             'securitygroup': {
                 'firewall_driver': 'neutron.agent.linux.iptables_firewall.'
