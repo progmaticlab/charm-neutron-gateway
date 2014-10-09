@@ -106,7 +106,7 @@ def _neutron_api_settings():
     defaults if it is not present
     '''
     neutron_settings = {
-        'l2_population': True,
+        'l2_population': False,
         'overlay_network_type': 'gre',
 
     }
