@@ -180,7 +180,7 @@ class ExternalPortContext(OSContextGenerator):
             hwaddr = get_nic_hwaddr(nic)
             hwaddr_to_nic[hwaddr] = nic
             addresses = get_ipv4_addr(nic, fatal=False) + \
-                get_ipv6_addr(nic, fatal=False)
+                get_ipv6_addr(iface=nic, fatal=False)
             hwaddr_to_ip[hwaddr] = addresses
         mac_regex = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
         for entry in config('ext-port').split():
