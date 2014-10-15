@@ -100,7 +100,7 @@ def core_plugin():
         return CORE_PLUGIN[networking_name()][plugin]
 
 
-def _neutron_api_settings():
+def neutron_api_settings():
     '''
     Inspects current neutron-plugin-api relation for neutron settings. Return
     defaults if it is not present
@@ -204,7 +204,7 @@ class ExternalPortContext(OSContextGenerator):
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
-        neutron_api_settings = _neutron_api_settings()
+        neutron_api_settings = neutron_api_settings()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
