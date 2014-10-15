@@ -204,7 +204,7 @@ class ExternalPortContext(OSContextGenerator):
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
-        neutron_api_settings = neutron_api_settings()
+        napi_settings = neutron_api_settings()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
@@ -215,9 +215,9 @@ class QuantumGatewayContext(OSContextGenerator):
             'debug': config('debug'),
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
-            'l2_population': neutron_api_settings['l2_population'],
+            'l2_population': napi_settings['l2_population'],
             'overlay_network_type':
-            neutron_api_settings['overlay_network_type'],
+            napi_settings['overlay_network_type'],
         }
         return ctxt
 
