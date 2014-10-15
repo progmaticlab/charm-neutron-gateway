@@ -165,7 +165,8 @@ def amqp_departed():
             'pgsql-db-relation-changed',
             'amqp-relation-changed',
             'cluster-relation-changed',
-            'cluster-relation-joined')
+            'cluster-relation-joined',
+            'neutron-plugin-api-relation-changed')
 @restart_on_change(restart_map())
 def db_amqp_changed():
     CONFIGS.write_all()

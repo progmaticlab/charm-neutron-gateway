@@ -28,7 +28,12 @@ from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader
 )
 import re
-from charmhelpers.contrib.network.ip import get_address_in_network
+from charmhelpers.contrib.network.ip import (
+    get_address_in_network,
+    get_ipv4_addr,
+    get_ipv6_addr,
+    is_bridge_member,
+)
 
 DB_USER = "quantum"
 QUANTUM_DB = "quantum"
@@ -95,6 +100,29 @@ def core_plugin():
         return CORE_PLUGIN[networking_name()][plugin]
 
 
+def _neutron_api_settings():
+    '''
+    Inspects current neutron-plugin-api relation for neutron settings. Return
+    defaults if it is not present
+    '''
+    neutron_settings = {
+        'l2_population': False,
+        'overlay_network_type': 'gre',
+
+    }
+    for rid in relation_ids('neutron-plugin-api'):
+        for unit in related_units(rid):
+            rdata = relation_get(rid=rid, unit=unit)
+            if 'l2-population' not in rdata:
+                continue
+            neutron_settings = {
+                'l2_population': rdata['l2-population'],
+                'overlay_network_type': rdata['overlay-network-type'],
+            }
+            return neutron_settings
+    return neutron_settings
+
+
 class NetworkServiceContext(OSContextGenerator):
     interfaces = ['quantum-network-service']
 
@@ -146,16 +174,29 @@ class ExternalPortContext(OSContextGenerator):
     def __call__(self):
         if not config('ext-port'):
             return None
-        hwaddrs = {}
+        hwaddr_to_nic = {}
+        hwaddr_to_ip = {}
         for nic in list_nics(['eth', 'bond']):
-            hwaddrs[get_nic_hwaddr(nic)] = nic
+            hwaddr = get_nic_hwaddr(nic)
+            hwaddr_to_nic[hwaddr] = nic
+            addresses = get_ipv4_addr(nic, fatal=False) + \
+                get_ipv6_addr(iface=nic, fatal=False)
+            hwaddr_to_ip[hwaddr] = addresses
         mac_regex = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
         for entry in config('ext-port').split():
             entry = entry.strip()
             if re.match(mac_regex, entry):
-                if entry in hwaddrs:
-                    return {"ext_port": hwaddrs[entry]}
+                if entry in hwaddr_to_nic and len(hwaddr_to_ip[entry]) == 0:
+                    # If the nic is part of a bridge then don't use it
+                    if is_bridge_member(hwaddr_to_nic[entry]):
+                        continue
+                    # Entry is a MAC address for a valid interface that doesn't
+                    # have an IP address assigned yet.
+                    return {"ext_port": hwaddr_to_nic[entry]}
             else:
+                # If the passed entry is not a MAC address, assume it's a valid
+                # interface, and that the user put it there on purpose (we can
+                # trust it to be the real external network).
                 return {"ext_port": entry}
         return None
 
@@ -163,6 +204,7 @@ class ExternalPortContext(OSContextGenerator):
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
+        neutron_api_settings = _neutron_api_settings()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
@@ -172,7 +214,10 @@ class QuantumGatewayContext(OSContextGenerator):
             'plugin': config('plugin'),
             'debug': config('debug'),
             'verbose': config('verbose'),
-            'instance_mtu': config('instance-mtu')
+            'instance_mtu': config('instance-mtu'),
+            'l2_population': neutron_api_settings['l2_population'],
+            'overlay_network_type':
+            neutron_api_settings['overlay_network_type'],
         }
         return ctxt
 

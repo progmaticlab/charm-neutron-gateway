@@ -57,6 +57,7 @@ class TestQuantumHooks(CharmTestCase):
         self.lsb_release.return_value = {'DISTRIB_CODENAME': 'precise'}
         self.b64decode.side_effect = passthrough
         hookenv.config.side_effect = self.test_config.get
+        hooks.hooks._config_save = False
 
     def _call_hook(self, hookname):
         hooks.hooks.execute([

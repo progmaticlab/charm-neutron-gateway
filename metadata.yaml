@@ -30,6 +30,8 @@ requires:
   zeromq-configuration:
     interface: zeromq-configuration
     scope: container
+  neutron-plugin-api:
+    interface: neutron-plugin-api
 peers:
   cluster:
     interface: quantum-gateway-ha

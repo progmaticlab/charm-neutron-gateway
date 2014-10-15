@@ -43,6 +43,7 @@ TO_PATCH = [
     'service_restart',
     'remap_plugin',
     'is_relation_made',
+    'lsb_release'
 ]
 
 
@@ -62,6 +63,7 @@ class TestQuantumUtils(CharmTestCase):
         super(TestQuantumUtils, self).setUp(quantum_utils, TO_PATCH)
         self.networking_name.return_value = 'neutron'
         self.headers_package.return_value = 'linux-headers-2.6.18'
+        self._set_distrib_codename('trusty')
 
         def noop(value):
             return value
@@ -70,6 +72,9 @@ class TestQuantumUtils(CharmTestCase):
     def tearDown(self):
         # Reset cached cache
         hookenv.cache = {}
+
+    def _set_distrib_codename(self, newcodename):
+        self.lsb_release.return_value = {'DISTRIB_CODENAME': newcodename}
 
     def test_valid_plugin(self):
         self.config.return_value = 'ovs'
@@ -110,6 +115,19 @@ class TestQuantumUtils(CharmTestCase):
     def test_get_packages_ovs_icehouse(self):
         self.config.return_value = 'ovs'
         self.get_os_codename_install_source.return_value = 'icehouse'
+        self.assertTrue('neutron-vpn-agent' in quantum_utils.get_packages())
+        self.assertFalse('neutron-l3-agent' in quantum_utils.get_packages())
+
+    def test_get_packages_ovs_juno_utopic(self):
+        self.config.return_value = 'ovs'
+        self.get_os_codename_install_source.return_value = 'juno'
+        self._set_distrib_codename('utopic')
+        self.assertFalse('neutron-vpn-agent' in quantum_utils.get_packages())
+        self.assertTrue('neutron-l3-agent' in quantum_utils.get_packages())
+
+    def test_get_packages_ovs_juno_trusty(self):
+        self.config.return_value = 'ovs'
+        self.get_os_codename_install_source.return_value = 'juno'
         self.assertTrue('neutron-vpn-agent' in quantum_utils.get_packages())
         self.assertFalse('neutron-l3-agent' in quantum_utils.get_packages())
 
