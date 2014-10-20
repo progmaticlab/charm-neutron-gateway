@@ -361,7 +361,7 @@ class TestMisc(CharmTestCase):
         self.test_relation.set({'l2-population': True,
                                 'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
-        self.assertEquals(quantum_contexts._neutron_api_settings(),
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
                           {'l2_population': True,
                            'overlay_network_type': 'gre'})
 
@@ -371,12 +371,12 @@ class TestMisc(CharmTestCase):
         self.test_relation.set({'l2-population': True,
                                 'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
-        self.assertEquals(quantum_contexts._neutron_api_settings(),
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
                           {'l2_population': True,
                            'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings_no_apiplugin(self):
         self.relation_ids.return_value = []
-        self.assertEquals(quantum_contexts._neutron_api_settings(),
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
                           {'l2_population': False,
                            'overlay_network_type': 'gre', })

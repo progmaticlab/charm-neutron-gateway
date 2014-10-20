@@ -47,7 +47,6 @@ from quantum_contexts import (
     L3AgentContext,
     ExternalPortContext,
     remap_plugin,
-    neutron_api_settings,
 )
 
 from copy import deepcopy
