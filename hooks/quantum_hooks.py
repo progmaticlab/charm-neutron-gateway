@@ -30,6 +30,7 @@ from charmhelpers.contrib.hahelpers.apache import(
 from charmhelpers.contrib.openstack.utils import (
     configure_installation_source,
     openstack_upgrade_available,
+    os_requires_version,
 )
 from charmhelpers.payload.execd import execd_preinstall
 
@@ -201,6 +202,7 @@ def stop():
 
 
 @hooks.hook('zeromq-configuration-relation-joined')
+@os_requires_version('juno', 'neutron-common')
 def zeromq_configuration_relation_joined(relid=None):
     relation_set(relation_id=relid,
                  topics=" ".join(get_topics()),
