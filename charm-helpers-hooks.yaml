@@ -8,3 +8,4 @@ include:
     - contrib.network
     - contrib.storage.linux
     - payload.execd
+    - contrib.charmsupport
