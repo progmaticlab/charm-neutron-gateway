@@ -33,6 +33,8 @@ from charmhelpers.contrib.openstack.utils import (
 )
 from charmhelpers.payload.execd import execd_preinstall
 
+from charmhelpers.contrib.charmsupport.nrpe import NRPE
+
 import sys
 from quantum_utils import (
     register_configs,
@@ -76,6 +78,7 @@ def config_changed():
     global CONFIGS
     if openstack_upgrade_available(get_common_package()):
         CONFIGS = do_openstack_upgrade()
+    update_nrpe_config()
     # Re-run joined hooks as config might have changed
     for r_id in relation_ids('shared-db'):
         db_joined(relation_id=r_id)
@@ -195,6 +198,30 @@ def cluster_departed():
 @hooks.hook('stop')
 def stop():
     stop_services()
+
+
+@hooks.hook('nrpe-external-master-relation-joined', 'nrpe-external-master-relation-changed')
+def update_nrpe_config():
+    SERVICES = [
+        'neutron-dhcp-agent',
+        'neutron-lbaas-agent',
+        'neutron-metadata-agent',
+        'neutron-metering-agent',
+        'neutron-ovs-cleanup',
+        'neutron-plugin-openvswitch-agent',
+        'neutron-vpn-agent',
+    ]
+    nrpe = NRPE()
+    apt_install('python-dbus')
+    
+    for service in SERVICES:
+        nrpe.add_check(
+            shortname=service,
+            description='%s process' % service,
+            check_cmd = 'check_upstart_job %s' % service,
+            )
+
+    nrpe.write()
 
 if __name__ == '__main__':
     try:
