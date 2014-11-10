@@ -46,6 +46,7 @@ from quantum_contexts import (
     NetworkServiceContext,
     L3AgentContext,
     ExternalPortContext,
+    DataPortContext,
     remap_plugin
 )
 
@@ -404,6 +405,7 @@ def restart_map():
 
 INT_BRIDGE = "br-int"
 EXT_BRIDGE = "br-ex"
+DATA_BRIDGE = 'br-data'
 
 DHCP_AGENT = "DHCP Agent"
 L3_AGENT = "L3 Agent"
@@ -533,5 +535,11 @@ def configure_ovs():
         add_bridge(INT_BRIDGE)
         add_bridge(EXT_BRIDGE)
         ext_port_ctx = ExternalPortContext()()
-        if ext_port_ctx is not None and ext_port_ctx['ext_port']:
+        if ext_port_ctx and ext_port_ctx['ext_port']:
             add_bridge_port(EXT_BRIDGE, ext_port_ctx['ext_port'])
+
+        add_bridge(DATA_BRIDGE)
+        data_port_ctx = DataPortContext()()
+        if data_port_ctx and data_port_ctx['data_port']:
+            add_bridge_port(DATA_BRIDGE, data_port_ctx['data_port'],
+                            promisc=True)

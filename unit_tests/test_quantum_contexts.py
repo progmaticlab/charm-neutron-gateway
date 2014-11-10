@@ -117,11 +117,11 @@ class TestNetworkServiceContext(_TestQuantumContext):
         }
 
 
-class TestExternalPortContext(CharmTestCase):
+class TestNeutronPortContext(CharmTestCase):
 
     def setUp(self):
-        super(TestExternalPortContext, self).setUp(quantum_contexts,
-                                                   TO_PATCH)
+        super(TestNeutronPortContext, self).setUp(quantum_contexts,
+                                                  TO_PATCH)
         self.machine_macs = {
             'eth0': 'fe:c5:ce:8e:2b:00',
             'eth1': 'fe:c5:ce:8e:2b:01',
@@ -173,6 +173,11 @@ class TestExternalPortContext(CharmTestCase):
         self.get_nic_hwaddr.side_effect = self._fake_get_hwaddr
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
                           {'ext_port': 'eth2'})
+
+    def test_data_port_eth(self):
+        self.config.return_value = 'eth1010'
+        self.assertEquals(quantum_contexts.DataPortContext()(),
+                          {'data_port': 'eth1010'})
 
 
 class TestL3AgentContext(CharmTestCase):
