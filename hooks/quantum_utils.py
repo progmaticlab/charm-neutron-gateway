@@ -402,6 +402,14 @@ def restart_map():
     return _map
 
 
+def services():
+    ''' Returns a list of services associate with this charm '''
+    _services = []
+    for v in restart_map().values():
+        _services = _services + v
+    return list(set(_services))
+
+
 INT_BRIDGE = "br-int"
 EXT_BRIDGE = "br-ex"
 
