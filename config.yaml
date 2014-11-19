@@ -8,6 +8,7 @@ options:
       .
         ovs - OpenVSwitch
         nvp|nsx - Nicira NVP/VMware NSX
+        n1kv - Cisco N1kv
   ext-port:
     type: string
     default:
@@ -83,6 +84,12 @@ options:
       within the cloud.  This is useful in deployments where its not
       possible to increase MTU on switches and physical servers to
       accomodate the packet overhead of using GRE tunnels.
+  enable-l3-agent:
+    type: boolean
+    default: True 
+    description: |
+      Optional configuration to support use of linux router
+      Note that this is used only for Cisco n1kv plugin.
   database-user:
     default: nova
     type: string

@@ -19,6 +19,7 @@ TO_PATCH = [
     'valid_plugin',
     'apt_update',
     'apt_install',
+    'apt_purge',
     'filter_installed_packages',
     'get_early_packages',
     'get_packages',
@@ -118,6 +119,17 @@ class TestQuantumHooks(CharmTestCase):
         self._call_hook('config-changed')
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.configure_ovs.called)
+
+    def test_config_changed_n1kv(self):
+        self.openstack_upgrade_available.return_value = False
+        self.valid_plugin.return_value = True
+        self.filter_installed_packages.side_effect = lambda p: p
+        self.test_config.set('plugin', 'n1kv')
+        self._call_hook('config-changed')
+        self.apt_install.assert_called_with('neutron-l3-agent')
+        self.test_config.set('enable-l3-agent', False)
+        self._call_hook('config-changed')
+        self.apt_purge.assert_called_with('neutron-l3-agent')
 
     @patch('sys.exit')
     def test_config_changed_invalid_plugin(self, _exit):

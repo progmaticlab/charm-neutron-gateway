@@ -50,6 +50,8 @@ NEUTRON_ML2_PLUGIN = \
     "neutron.plugins.ml2.plugin.Ml2Plugin"
 NEUTRON_NVP_PLUGIN = \
     "neutron.plugins.nicira.nicira_nvp_plugin.NeutronPlugin.NvpPluginV2"
+NEUTRON_N1KV_PLUGIN = \
+    "neutron.plugins.cisco.n1kv.n1kv_neutron_plugin.N1kvNeutronPluginV2"
 NEUTRON_NSX_PLUGIN = "vmware"
 
 NEUTRON = 'neutron'
@@ -65,16 +67,18 @@ def networking_name():
 
 OVS = 'ovs'
 NVP = 'nvp'
+N1KV = 'n1kv'
 NSX = 'nsx'
 
 CORE_PLUGIN = {
     QUANTUM: {
         OVS: QUANTUM_OVS_PLUGIN,
-        NVP: QUANTUM_NVP_PLUGIN
+        NVP: QUANTUM_NVP_PLUGIN,
     },
     NEUTRON: {
         OVS: NEUTRON_OVS_PLUGIN,
         NVP: NEUTRON_NVP_PLUGIN,
+        N1KV: NEUTRON_N1KV_PLUGIN,
         NSX: NEUTRON_NSX_PLUGIN
     },
 }
@@ -166,6 +170,9 @@ class L3AgentContext(OSContextGenerator):
 
         if config('external-network-id'):
             ctxt['ext_net_id'] = config('external-network-id')
+
+        if config('plugin'):
+            ctxt['plugin'] = config('plugin')
         return ctxt
 
 

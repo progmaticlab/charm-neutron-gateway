@@ -16,6 +16,7 @@ from charmhelpers.fetch import (
     apt_update,
     apt_install,
     filter_installed_packages,
+    apt_purge,
 )
 from charmhelpers.core.host import (
     restart_on_change,
@@ -91,6 +92,11 @@ def config_changed():
     else:
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)
+    if config('plugin') == 'n1kv':
+        if config('enable-l3-agent'):
+            apt_install(filter_installed_packages('neutron-l3-agent'))
+        else:
+            apt_purge('neutron-l3-agent')
 
 
 @hooks.hook('upgrade-charm')
@@ -184,6 +190,10 @@ def cluster_departed():
     if config('plugin') in ['nvp', 'nsx']:
         log('Unable to re-assign agent resources for'
             ' failed nodes with nvp|nsx',
+            level=WARNING)
+        return
+    if config('plugin') == 'n1kv':
+        log('Unable to re-assign agent resources for failed nodes with n1kv',
             level=WARNING)
         return
     if eligible_leader(None):
