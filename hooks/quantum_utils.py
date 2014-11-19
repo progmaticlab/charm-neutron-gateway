@@ -585,6 +585,6 @@ def configure_mtu():
             if tunnel_ip in get_ipv4_addr(nic, fatal=False):
                 tunnel_nic = nic
                 break
-        set_nic_mtu(tunnel_nic, tunnel_nic_mtu)
+        set_nic_mtu(tunnel_nic, str(tunnel_nic_mtu))
         log('set mtu={} for tunnel nic={}'
             .format(tunnel_nic_mtu, tunnel_nic), level=INFO)
