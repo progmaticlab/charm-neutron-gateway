@@ -40,7 +40,8 @@ TO_PATCH = [
     'lsb_release',
     'stop_services',
     'b64decode',
-    'is_relation_made'
+    'is_relation_made',
+    'configure_mtu'
 ]
 
 
@@ -80,6 +81,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.get_early_packages.called)
         self.assertTrue(self.get_packages.called)
         self.assertTrue(self.execd_preinstall.called)
+        self.assertTrue(self.configure_mtu.called)
 
     def test_install_hook_precise_nocloudarchive(self):
         self.test_config.set('openstack-origin', 'distro')
@@ -112,6 +114,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_pgsql_db_joined.called)
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
+        self.assertTrue(self.configure_mtu.called)
 
     def test_config_changed_upgrade(self):
         self.openstack_upgrade_available.return_value = True
@@ -119,6 +122,7 @@ class TestQuantumHooks(CharmTestCase):
         self._call_hook('config-changed')
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.configure_ovs.called)
+        self.assertTrue(self.configure_mtu.called)
 
     def test_config_changed_n1kv(self):
         self.openstack_upgrade_available.return_value = False

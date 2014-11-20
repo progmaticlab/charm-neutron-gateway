@@ -576,6 +576,7 @@ def configure_ovs():
         if ext_port_ctx is not None and ext_port_ctx['ext_port']:
             add_bridge_port(EXT_BRIDGE, ext_port_ctx['ext_port'])
 
+
 def configure_mtu():
     tunnel_nic_mtu = config('tunnel-nic-mtu')
     if tunnel_nic_mtu >= 1500:
