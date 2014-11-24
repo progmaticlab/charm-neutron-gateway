@@ -36,6 +36,7 @@ TO_PATCH = [
     'service_running',
     'NetworkServiceContext',
     'ExternalPortContext',
+    'DataPortContext',
     'unit_private_ip',
     'relations_of_type',
     'service_stop',
@@ -148,12 +149,32 @@ class TestQuantumUtils(CharmTestCase):
         self.test_config.set('ext-port', 'eth0')
         self.ExternalPortContext.return_value = \
             DummyExternalPortContext(return_value={'ext_port': 'eth0'})
+        self.DataPortContext.return_value = \
+            DummyExternalPortContext(return_value=None)
         quantum_utils.configure_ovs()
         self.add_bridge.assert_has_calls([
             call('br-int'),
-            call('br-ex')
+            call('br-ex'),
+            call('br-data')
         ])
         self.add_bridge_port.assert_called_with('br-ex', 'eth0')
+
+    def test_configure_ovs_ovs_data_port(self):
+        self.config.side_effect = self.test_config.get
+        self.test_config.set('plugin', 'ovs')
+        self.test_config.set('data-port', 'eth0')
+        self.ExternalPortContext.return_value = \
+            DummyExternalPortContext(return_value=None)
+        self.DataPortContext.return_value = \
+            DummyExternalPortContext(return_value={'data_port': 'eth0'})
+        quantum_utils.configure_ovs()
+        self.add_bridge.assert_has_calls([
+            call('br-int'),
+            call('br-ex'),
+            call('br-data')
+        ])
+        self.add_bridge_port.assert_called_with('br-data', 'eth0',
+                                                promisc=True)
 
     def test_do_openstack_upgrade(self):
         self.config.side_effect = self.test_config.get
