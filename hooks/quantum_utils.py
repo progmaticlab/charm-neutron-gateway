@@ -3,19 +3,13 @@ from charmhelpers.core.host import (
     service_stop,
     service_restart,
     lsb_release,
-    list_nics,
-    set_nic_mtu
-)
-from charmhelpers.contrib.network.ip import (
-    get_ipv4_addr
 )
 from charmhelpers.core.hookenv import (
-    log, INFO,
+    log,
     config,
     relations_of_type,
     unit_private_ip,
     is_relation_made,
-    unit_get
 )
 from charmhelpers.fetch import (
     apt_upgrade,
@@ -575,17 +569,3 @@ def configure_ovs():
         ext_port_ctx = ExternalPortContext()()
         if ext_port_ctx is not None and ext_port_ctx['ext_port']:
             add_bridge_port(EXT_BRIDGE, ext_port_ctx['ext_port'])
-
-
-def configure_mtu():
-    tunnel_nic_mtu = config('tunnel-nic-mtu')
-    if tunnel_nic_mtu >= 1500:
-        tunnel_ip = unit_get('private-address')
-        tunnel_nic = 'eth0'
-        for nic in list_nics(['eth', 'bond']):
-            if tunnel_ip in get_ipv4_addr(nic, fatal=False):
-                tunnel_nic = nic
-                break
-        set_nic_mtu(tunnel_nic, str(tunnel_nic_mtu))
-        log('set mtu={} for tunnel nic={}'
-            .format(tunnel_nic_mtu, tunnel_nic), level=INFO)

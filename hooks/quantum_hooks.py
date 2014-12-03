@@ -22,6 +22,9 @@ from charmhelpers.core.host import (
     restart_on_change,
     lsb_release,
 )
+from charmhelpers.contrib.network.ip import (
+    configure_phy_nic_mtu
+)
 from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader
 )
@@ -45,8 +48,7 @@ from quantum_utils import (
     valid_plugin,
     configure_ovs,
     reassign_agent_resources,
-    stop_services,
-    configure_mtu
+    stop_services
 )
 
 hooks = Hooks()
@@ -67,7 +69,7 @@ def install():
                     fatal=True)
         apt_install(filter_installed_packages(get_packages()),
                     fatal=True)
-        configure_mtu()
+        configure_phy_nic_mtu()
     else:
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)
@@ -91,7 +93,7 @@ def config_changed():
     if valid_plugin():
         CONFIGS.write_all()
         configure_ovs()
-        configure_mtu()
+        configure_phy_nic_mtu()
     else:
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)

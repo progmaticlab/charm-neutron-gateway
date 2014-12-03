@@ -109,7 +109,7 @@ options:
       .
       This network will be used for tenant network traffic in overlay
       networks.
-  tunnel-nic-mtu:
+  phy-nic-mtu:
     type: int
     default: 1500
     description: |
