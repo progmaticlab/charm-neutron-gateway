@@ -1,4 +1,4 @@
-branch: lp:charm-helpers
+branch: lp:~zhhuabj/charms/trusty/charm-helpers/lp74646
 destination: hooks/charmhelpers
 include:
     - core

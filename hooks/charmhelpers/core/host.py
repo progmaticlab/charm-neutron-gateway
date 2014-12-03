@@ -13,13 +13,13 @@ import random
 import string
 import subprocess
 import hashlib
-import shutil
 from contextlib import contextmanager
-
 from collections import OrderedDict
 
-from hookenv import log
-from fstab import Fstab
+import six
+
+from .hookenv import log
+from .fstab import Fstab
 
 
 def service_start(service_name):
@@ -55,7 +55,9 @@ def service(action, service_name):
 def service_running(service):
     """Determine whether a system service is running"""
     try:
-        output = subprocess.check_output(['service', service, 'status'], stderr=subprocess.STDOUT)
+        output = subprocess.check_output(
+            ['service', service, 'status'],
+            stderr=subprocess.STDOUT).decode('UTF-8')
     except subprocess.CalledProcessError:
         return False
     else:
@@ -68,7 +70,9 @@ def service_running(service):
 def service_available(service_name):
     """Determine whether a system service is available"""
     try:
-        subprocess.check_output(['service', service_name, 'status'], stderr=subprocess.STDOUT)
+        subprocess.check_output(
+            ['service', service_name, 'status'],
+            stderr=subprocess.STDOUT).decode('UTF-8')
     except subprocess.CalledProcessError as e:
         return 'unrecognized service' not in e.output
     else:
@@ -116,7 +120,7 @@ def rsync(from_path, to_path, flags='-r', options=None):
     cmd.append(from_path)
     cmd.append(to_path)
     log(" ".join(cmd))
-    return subprocess.check_output(cmd).strip()
+    return subprocess.check_output(cmd).decode('UTF-8').strip()
 
 
 def symlink(source, destination):
@@ -131,7 +135,7 @@ def symlink(source, destination):
     subprocess.check_call(cmd)
 
 
-def mkdir(path, owner='root', group='root', perms=0555, force=False):
+def mkdir(path, owner='root', group='root', perms=0o555, force=False):
     """Create a directory"""
     log("Making dir {} {}:{} {:o}".format(path, owner, group,
                                           perms))
@@ -147,7 +151,7 @@ def mkdir(path, owner='root', group='root', perms=0555, force=False):
     os.chown(realpath, uid, gid)
 
 
-def write_file(path, content, owner='root', group='root', perms=0444):
+def write_file(path, content, owner='root', group='root', perms=0o444):
     """Create or overwrite a file with the contents of a string"""
     log("Writing file {} {}:{} {:o}".format(path, owner, group, perms))
     uid = pwd.getpwnam(owner).pw_uid
@@ -178,7 +182,7 @@ def mount(device, mountpoint, options=None, persist=False, filesystem="ext3"):
     cmd_args.extend([device, mountpoint])
     try:
         subprocess.check_output(cmd_args)
-    except subprocess.CalledProcessError, e:
+    except subprocess.CalledProcessError as e:
         log('Error mounting {} at {}\n{}'.format(device, mountpoint, e.output))
         return False
 
@@ -192,7 +196,7 @@ def umount(mountpoint, persist=False):
     cmd_args = ['umount', mountpoint]
     try:
         subprocess.check_output(cmd_args)
-    except subprocess.CalledProcessError, e:
+    except subprocess.CalledProcessError as e:
         log('Error unmounting {}\n{}'.format(mountpoint, e.output))
         return False
 
@@ -219,8 +223,8 @@ def file_hash(path, hash_type='md5'):
     """
     if os.path.exists(path):
         h = getattr(hashlib, hash_type)()
-        with open(path, 'r') as source:
-            h.update(source.read())  # IGNORE:E1101 - it does have update
+        with open(path, 'rb') as source:
+            h.update(source.read())
         return h.hexdigest()
     else:
         return None
@@ -298,7 +302,7 @@ def pwgen(length=None):
     if length is None:
         length = random.choice(range(35, 45))
     alphanumeric_chars = [
-        l for l in (string.letters + string.digits)
+        l for l in (string.ascii_letters + string.digits)
         if l not in 'l0QD1vAEIOUaeiou']
     random_chars = [
         random.choice(alphanumeric_chars) for _ in range(length)]
@@ -307,14 +311,14 @@ def pwgen(length=None):
 
 def list_nics(nic_type):
     '''Return a list of nics of given type(s)'''
-    if isinstance(nic_type, basestring):
+    if isinstance(nic_type, six.string_types):
         int_types = [nic_type]
     else:
         int_types = nic_type
     interfaces = []
     for int_type in int_types:
         cmd = ['ip', 'addr', 'show', 'label', int_type + '*']
-        ip_output = subprocess.check_output(cmd).split('\n')
+        ip_output = subprocess.check_output(cmd).decode('UTF-8').split('\n')
         ip_output = (line for line in ip_output if line)
         for line in ip_output:
             if line.split()[1].startswith(int_type):
@@ -328,15 +332,44 @@ def list_nics(nic_type):
     return interfaces
 
 
-def set_nic_mtu(nic, mtu):
+def set_nic_mtu(nic, mtu, persistence=False):
     '''Set MTU on a network interface'''
     cmd = ['ip', 'link', 'set', nic, 'mtu', mtu]
     subprocess.check_call(cmd)
+    # persistence mtu configuration
+    if not persistence:
+        return
+    if os.path.exists("/etc/network/interfaces.d/%s.cfg"):
+        nic_cfg_file = "/etc/network/interfaces.d/%s.cfg" % nic
+    else:
+        nic_cfg_file = "/etc/network/interfaces"
+    f = open(nic_cfg_file,"r")
+    lines = f.readlines()
+    found = False
+    length = len(lines)
+    for i in range(len(lines)):
+        lines[i] = lines[i].replace('\n', '')
+        if lines[i].startswith("iface %s" % nic):
+            found = True
+            lines.insert(i+1, "    up ip link set $IFACE mtu %s" % mtu)
+            lines.insert(i+2, "    down ip link set $IFACE mtu 1500")
+            if length>i+2 and lines[i+3].startswith("    up ip link set $IFACE mtu"):
+                del lines[i+3]
+            if length>i+2 and lines[i+3].startswith("    down ip link set $IFACE mtu"):
+                del lines[i+3]
+            break
+    if not found:
+        lines.insert(length+1, "")
+        lines.insert(length+2, "auto %s" % nic)
+        lines.insert(length+3, "iface %s inet dhcp" % nic)
+        lines.insert(length+4, "    up ip link set $IFACE mtu %s" % mtu)
+        lines.insert(length+5, "    down ip link set $IFACE mtu 1500")
+    write_file(path=nic_cfg_file, content="\n".join(lines), perms=0o666)
 
 
 def get_nic_mtu(nic):
     cmd = ['ip', 'addr', 'show', nic]
-    ip_output = subprocess.check_output(cmd).split('\n')
+    ip_output = subprocess.check_output(cmd).decode('UTF-8').split('\n')
     mtu = ""
     for line in ip_output:
         words = line.split()
@@ -347,7 +380,7 @@ def get_nic_mtu(nic):
 
 def get_nic_hwaddr(nic):
     cmd = ['ip', '-o', '-0', 'addr', 'show', nic]
-    ip_output = subprocess.check_output(cmd)
+    ip_output = subprocess.check_output(cmd).decode('UTF-8')
     hwaddr = ""
     words = ip_output.split()
     if 'link/ether' in words:
