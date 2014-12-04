@@ -46,11 +46,39 @@ def patch_open():
         yield mock_open, mock_file
 
 
-class _TestQuantumContext(CharmTestCase):
+class TestNetworkServiceContext(CharmTestCase):
 
     def setUp(self):
-        super(_TestQuantumContext, self).setUp(quantum_contexts, TO_PATCH)
+        super(TestNetworkServiceContext, self).setUp(quantum_contexts,
+                                                     TO_PATCH)
         self.config.side_effect = self.test_config.get
+        self.context = quantum_contexts.NetworkServiceContext()
+        self.test_relation.set(
+            {'keystone_host': '10.5.0.1',
+             'service_port': '5000',
+             'auth_port': '20000',
+             'service_tenant': 'tenant',
+             'service_username': 'username',
+             'service_password': 'password',
+             'quantum_host': '10.5.0.2',
+             'quantum_port': '9696',
+             'quantum_url': 'http://10.5.0.2:9696/v2',
+             'region': 'aregion'}
+        )
+        self.data_result = {
+            'keystone_host': '10.5.0.1',
+            'service_port': '5000',
+            'auth_port': '20000',
+            'service_tenant': 'tenant',
+            'service_username': 'username',
+            'service_password': 'password',
+            'quantum_host': '10.5.0.2',
+            'quantum_port': '9696',
+            'quantum_url': 'http://10.5.0.2:9696/v2',
+            'region': 'aregion',
+            'service_protocol': 'http',
+            'auth_protocol': 'http',
+        }
 
     def test_not_related(self):
         self.relation_ids.return_value = []
@@ -82,39 +110,6 @@ class _TestQuantumContext(CharmTestCase):
         self.context_complete.return_value = True
         self.relation_get.side_effect = self.test_relation.get
         self.assertEquals(self.context(), self.data_result)
-
-
-class TestNetworkServiceContext(_TestQuantumContext):
-
-    def setUp(self):
-        super(TestNetworkServiceContext, self).setUp()
-        self.context = quantum_contexts.NetworkServiceContext()
-        self.test_relation.set(
-            {'keystone_host': '10.5.0.1',
-             'service_port': '5000',
-             'auth_port': '20000',
-             'service_tenant': 'tenant',
-             'service_username': 'username',
-             'service_password': 'password',
-             'quantum_host': '10.5.0.2',
-             'quantum_port': '9696',
-             'quantum_url': 'http://10.5.0.2:9696/v2',
-             'region': 'aregion'}
-        )
-        self.data_result = {
-            'keystone_host': '10.5.0.1',
-            'service_port': '5000',
-            'auth_port': '20000',
-            'service_tenant': 'tenant',
-            'service_username': 'username',
-            'service_password': 'password',
-            'quantum_host': '10.5.0.2',
-            'quantum_port': '9696',
-            'quantum_url': 'http://10.5.0.2:9696/v2',
-            'region': 'aregion',
-            'service_protocol': 'http',
-            'auth_protocol': 'http',
-        }
 
 
 class TestExternalPortContext(CharmTestCase):
