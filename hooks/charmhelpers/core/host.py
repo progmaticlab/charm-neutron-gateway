@@ -339,7 +339,7 @@ def set_nic_mtu(nic, mtu, persistence=False):
     # persistence mtu configuration
     if not persistence:
         return
-    if os.path.exists("/etc/network/interfaces.d/%s.cfg"):
+    if os.path.exists("/etc/network/interfaces.d/%s.cfg" % nic):
         nic_cfg_file = "/etc/network/interfaces.d/%s.cfg" % nic
     else:
         nic_cfg_file = "/etc/network/interfaces"
@@ -364,7 +364,7 @@ def set_nic_mtu(nic, mtu, persistence=False):
         lines.insert(length+3, "iface %s inet dhcp" % nic)
         lines.insert(length+4, "    up ip link set $IFACE mtu %s" % mtu)
         lines.insert(length+5, "    down ip link set $IFACE mtu 1500")
-    write_file(path=nic_cfg_file, content="\n".join(lines), perms=0o666)
+    write_file(path=nic_cfg_file, content="\n".join(lines), perms=0o644)
 
 
 def get_nic_mtu(nic):
