@@ -376,6 +376,6 @@ def configure_phy_nic_mtu(mng_ip=None):
                             break
                 break
         if phy_nic is not None and phy_nic_mtu != get_nic_mtu(phy_nic):
-            set_nic_mtu(phy_nic, str(phy_nic_mtu))
+            set_nic_mtu(phy_nic, str(phy_nic_mtu), persistence=True)
             log('set mtu={} for phy_nic={}'
                 .format(phy_nic_mtu, phy_nic), level=INFO)
