@@ -23,7 +23,8 @@ from charmhelpers.core.host import (
     lsb_release,
 )
 from charmhelpers.contrib.hahelpers.cluster import(
-    eligible_leader
+    eligible_leader,
+    get_hacluster_config
 )
 from charmhelpers.contrib.hahelpers.apache import(
     install_ca_cert
@@ -45,7 +46,11 @@ from quantum_utils import (
     valid_plugin,
     configure_ovs,
     reassign_agent_resources,
-    stop_services
+    stop_services,
+    cache_env_data,
+    get_dns_host,
+    get_external_agent_f,
+    install_legacy_ha_files
 )
 
 hooks = Hooks()
@@ -69,6 +74,9 @@ def install():
     else:
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)
+
+    # Legacy HA for Icehouse
+    install_legacy_ha_files()
 
 
 @hooks.hook('config-changed')
@@ -103,6 +111,7 @@ def config_changed():
 def upgrade_charm():
     install()
     config_changed()
+    install_legacy_ha_files(update=True)
 
 
 @hooks.hook('shared-db-relation-joined')
@@ -205,6 +214,51 @@ def cluster_departed():
 @hooks.hook('stop')
 def stop():
     stop_services()
+
+
+@hooks.hook('ha-relation-joined')
+@hooks.hook('ha-relation-changed')
+def ha_relation_joined():
+    if config('ha-legacy-mode'):
+        cache_env_data()
+        dns_hosts = get_dns_host()
+        debug = config('ocf_ping_debug')
+        external_agent = get_external_agent_f()
+
+        cluster_config = get_hacluster_config(excludes_key=['vip'])
+        resources = {
+            'res_PingCheck': 'ocf:pacemaker:ping',
+            'res_ClusterMon': 'ocf:pacemaker:ClusterMon',
+            'res_MonitorHA': 'ocf:pacemaker:MonitorNeutron'
+        }
+        resource_params = {
+            'res_PingCheck': 'params host_list={host} dampen="5s" '
+                             'debug={debug} multiplier="100" '
+                             'failure_score="100" '
+                             'op monitor on-fail="restart" interval="10s" '
+                             'timeout="1000s" '.format(host=dns_hosts,
+                                                       debug=debug),
+            'res_ClusterMon': 'params user="root" update="30" '
+                              'extra_options="-E {external_agent} '
+                              'op monitor on-fail="restart" interval="10s"'
+                              .format(external_agent=external_agent),
+            'res_MonitorHA': 'op monitor interval="5s" '
+                             'location needs_connectivity res_MonitorHA'
+                             'rule pingd: defined pingd'
+                              #'rule -inf: not_defined pingd or pingd lte 0'
+        }
+
+        clones = {
+            'cl_PingCheck': 'res_PingCheck',
+            'cl_ClusterMon': 'res_ClusterMon'
+        }
+
+        relation_set(corosync_bindiface=cluster_config['ha-bindiface'],
+                     corosync_mcastport=cluster_config['ha-mcastport'],
+                     resources=resources,
+                     resource_params=resource_params,
+                     clones=clones)
+
 
 if __name__ == '__main__':
     try:

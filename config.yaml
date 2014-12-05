@@ -115,3 +115,15 @@ options:
       .
       This network will be used for tenant network traffic in overlay
       networks.
+  # Legacy HA
+  ha-legacy-mode:
+    type: boolean
+    default: False
+    description: |
+      Support HA ACTIVE/PASSIVE mode with pacemaker and corosync before neutron
+      native HA feature landed to Juno.
+  ocf_ping_debug:
+    type: boolean
+    default: False
+  dns_hosts:
+    type: string

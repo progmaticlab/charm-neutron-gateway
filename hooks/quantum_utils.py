@@ -1,11 +1,17 @@
+import os
+import shutil
+import stat
+import subprocess
 from charmhelpers.core.host import (
     service_running,
     service_stop,
     service_restart,
-    lsb_release
+    lsb_release,
+    mkdir
 )
 from charmhelpers.core.hookenv import (
     log,
+    ERROR,
     config,
     relations_of_type,
     unit_private_ip,
@@ -144,6 +150,8 @@ EARLY_PACKAGES = {
     NVP: [],
     N1KV: []
 }
+
+LEGACY_HA_TEMPLATE_FILES = 'files'
 
 
 def get_early_packages():
@@ -577,3 +585,97 @@ def configure_ovs():
         if data_port_ctx and data_port_ctx['data_port']:
             add_bridge_port(DATA_BRIDGE, data_port_ctx['data_port'],
                             promisc=True)
+
+
+def get_dns_host():
+    dns_hosts = ['8.8.8.8 ']
+    try:
+        nameservers = subprocess.check_output(['grep', 'nameserver',
+                                               '/etc/resolv.conf'])
+        for ns in nameservers:
+            dns_hosts.append(ns.split(' ')[1].split('\n')[0].strip() + ' ')
+    except Exception:
+        log('Failed to get nameserver from resolv.conf !', level=ERROR)
+
+    if config('dns_hosts'):
+        dnss = config('dns_hosts').split(' ')
+        for dns in dnss:
+            dns_hosts.append(dns + ' ')
+
+    return ''.join(dns_hosts)
+
+
+def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
+    if not os.path.isdir(des_dir):
+        mkdir(des_dir)
+        log('Directory created at: %s' % des_dir)
+
+    if not os.path.isfile(os.path.join(des_dir, f)) or update:
+        try:
+            source_f = os.path.join(source_dir, f)
+            des_f = os.path.join(des_dir, f)
+            shutil.copy2(source_f, des_dir)
+            if f_mod:
+                os.chmod(des_f, f_mod)
+        except IOError:
+            log('Failed to copy file from %s to %s.' %
+                (source_f, des_dir), level=ERROR)
+            raise
+
+
+def init_upstart_f_4_reassign_agent_resources():
+    upstart_f = 'reassign_agent_resources.conf'
+    exec_dir = '/etc/init'
+    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir, upstart_f)
+
+
+def init_ocf_MonitorNeutron_f(update=False):
+    ocf_f = 'MonitorNeutron'
+    exec_dir = '/usr/lib/ocf/resource.d/pacemaker'
+    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
+              ocf_f, update=update)
+
+
+def init_external_agent_f(update=False):
+    agent = 'ns_cleanup.sh'
+    exec_dir = '/usr/lib/ocf/resource.d/openstack'
+    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
+              agent, stat.S_IEXEC, update=update)
+
+
+def init_reassign_agent_services_binary():
+    service = 'reassign_agent_services'
+    exec_dir = '/usr/local/bin/'
+    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir, service, stat.S_IEXEC)
+
+
+def init_monitor_daemon(update=False):
+    service = 'monitor.py'
+    exec_dir = '/usr/local/bin/'
+    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
+              service, stat.S_IEXEC, update=update)
+
+
+def install_legacy_ha_files(update=False):
+    if config('ha-legacy-mode'):
+        init_ocf_MonitorNeutron_f(update=update)
+        init_external_agent_f(update=update)
+        #init_reassign_agent_services_binary()
+        init_monitor_daemon(update=update)
+
+
+def get_external_agent_f():
+    agent = 'ns_cleanup.sh'
+    exec_dir = '/usr/lib/ocf/resource.d/openstack'
+    return os.path.join(exec_dir, agent)
+
+
+def cache_env_data():
+    env = NetworkServiceContext()()
+    if not env:
+        log('Unable to get NetworkServiceContext at this time', level=ERROR)
+        return
+
+    with open('/etc/legacy_ha_env_data', 'w') as f:
+        for k, v in env.items():
+            f.write(''.join(k, '=', v, '\n'))
