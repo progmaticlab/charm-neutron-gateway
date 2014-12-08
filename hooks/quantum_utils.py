@@ -590,10 +590,13 @@ def configure_ovs():
 def get_dns_host():
     dns_hosts = ['8.8.8.8 ']
     try:
-        nameservers = subprocess.check_output(['grep', 'nameserver',
-                                               '/etc/resolv.conf'])
-        for ns in nameservers:
-            dns_hosts.append(ns.split(' ')[1].split('\n')[0].strip() + ' ')
+        output = subprocess.check_output(['grep', 'nameserver',
+                                          '/etc/resolv.conf'])
+        nameservers = output.split('\n')
+        hosts = [(ns.split(' ')[1].split('\n')[0].strip() + ' ')
+                 for ns in nameservers if ns.startswith('nameserver')
+                 and ns.split(' ')[1]]
+        dns_hosts.append(hosts)
     except Exception:
         log('Failed to get nameserver from resolv.conf !', level=ERROR)
 
