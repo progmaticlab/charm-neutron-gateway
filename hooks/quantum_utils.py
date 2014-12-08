@@ -588,24 +588,24 @@ def configure_ovs():
 
 
 def get_dns_host():
-    dns_hosts = ['8.8.8.8 ']
+    dns_hosts = []
     try:
         output = subprocess.check_output(['grep', 'nameserver',
                                           '/etc/resolv.conf'])
         nameservers = output.split('\n')
-        hosts = [(ns.split(' ')[1].split('\n')[0].strip() + ' ')
-                 for ns in nameservers if ns.startswith('nameserver')
-                 and ns.split(' ')[1]]
-        dns_hosts.append(hosts)
+        dns_hosts = [(ns.split(' ')[1].split('\n')[0].strip() + ' ')
+                     for ns in nameservers if ns.startswith('nameserver')
+                     and ns.split(' ')[1]]
     except Exception:
         log('Failed to get nameserver from resolv.conf !', level=ERROR)
 
+    dns_hosts.append('8.8.8.8')
     if config('dns_hosts'):
         dnss = config('dns_hosts').split(' ')
         for dns in dnss:
-            dns_hosts.append(dns + ' ')
+            dns_hosts.append(dns)
 
-    return ''.join(dns_hosts)
+    return ' '.join(dns_hosts)
 
 
 def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
