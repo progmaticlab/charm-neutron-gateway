@@ -637,7 +637,7 @@ def init_ocf_MonitorNeutron_f(update=False):
 
 
 def init_external_agent_f(update=False):
-    agent = 'ns_cleanup.sh'
+    agent = 'ns_ovs_cleanup.sh'
     exec_dir = '/usr/lib/ocf/resource.d/openstack'
     copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
               agent, stat.S_IEXEC, update=update)
@@ -665,7 +665,7 @@ def install_legacy_ha_files(update=False):
 
 
 def get_external_agent_f():
-    agent = 'ns_cleanup.sh'
+    agent = 'ns_ovs_cleanup.sh'
     exec_dir = '/usr/lib/ocf/resource.d/openstack'
     return os.path.join(exec_dir, agent)
 
