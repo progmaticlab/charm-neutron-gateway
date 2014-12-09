@@ -681,4 +681,4 @@ def cache_env_data():
 
     with open('/etc/legacy_ha_env_data', 'w') as f:
         for k, v in env.items():
-            f.write(''.join(k, '=', v, '\n'))
+            f.write(''.join([k, '=', v, '\n']))
