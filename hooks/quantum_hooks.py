@@ -232,7 +232,7 @@ def ha_relation_joined():
             'res_MonitorHA': 'ocf:pacemaker:MonitorNeutron'
         }
         resource_params = {
-            'res_PingCheck': 'params host_list={host} dampen="5s" '
+            'res_PingCheck': 'params host_list="{host}" dampen="5s" '
                              'debug={debug} multiplier="100" '
                              'failure_score="100" '
                              'op monitor on-fail="restart" interval="10s" '
@@ -242,9 +242,9 @@ def ha_relation_joined():
                               'extra_options="-E {external_agent} '
                               'op monitor on-fail="restart" interval="10s"'
                               .format(external_agent=external_agent),
-            'res_MonitorHA': 'op monitor interval="5s" '
-                             'location needs_connectivity res_MonitorHA'
-                             'rule pingd: defined pingd'
+            'res_MonitorHA': 'op monitor interval="5s"',
+            'nees_connectivity': 'location res_MonitorHA '
+                                 'rule pingd: defined pingd'
                               #'rule -inf: not_defined pingd or pingd lte 0'
         }
 

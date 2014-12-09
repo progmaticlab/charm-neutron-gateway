@@ -80,14 +80,6 @@ The number by which to multiply the number of connected ping nodes by
 <content type="integer" default=""/>
 </parameter>
 
-<parameter name="host_list" unique="0" required="1">
-<longdesc lang="en">
-The list of ping nodes to count.
-</longdesc>
-<shortdesc lang="en">Host list</shortdesc>
-<content type="string" default=""/>
-</parameter>
-
 <parameter name="attempts" unique="0">
 <longdesc lang="en">
 Number of ping attempts, per host, before declaring it dead
@@ -162,14 +154,15 @@ MonitorNeutron_conditional_log() {
 
 MonitorNeutron_usage() {
         cat <<END
-usage: $0 {start|stop|migrate_to|migrate_from|validate-all|meta-data}
+#usage: $0 {start|stop|migrate_to|migrate_from|validate-all|meta-data}
+usage: $0 {start|stop|monitor|validate-all|meta-data}
 
 Expects to have a fully populated OCF RA-compliant environment set.
 END
 }
 
 MonitorNeutron_start() {
-    echo "MonitorNeutron_start"
+    ocf_log info "MonitorNeutron_start"
     su ${OCF_RESKEY_user} -s /bin/sh -c "python ${OCF_RESKEY_binary} $OCF_RESKEY_additional_parameters" \
     ' >> /dev/null 2>&1 & echo $!' > $OCF_RESKEY_pid
 
@@ -204,6 +197,13 @@ MonitorNeutron_validate() {
     return $OCF_SUCCESS
 }
 
+MonitorNeutron_monitor() {
+    if [ -f ${OCF_RESKEY_pid} ]; then
+        return $OCF_SUCCESS
+    fi
+    return $OCF_ERR_GENERIC
+}
+
 case $__OCF_ACTION in
 meta-data)      meta_data
                 exit $OCF_SUCCESS
@@ -211,6 +211,7 @@ meta-data)      meta_data
 start)          MonitorNeutron_start;;
 stop)           MonitorNeutron_stop;;
 reload)         MonitorNeutron_start;;
+monitor)        MonitorNeutron_monitor;;
 validate-all)   MonitorNeutron_validate;;
 usage|help)     MonitorNeutron_usage
                 exit $OCF_SUCCESS

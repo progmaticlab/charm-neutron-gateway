@@ -636,7 +636,7 @@ def init_ocf_MonitorNeutron_f(update=False):
     ocf_f = 'MonitorNeutron'
     exec_dir = '/usr/lib/ocf/resource.d/pacemaker'
     copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
-              ocf_f, update=update)
+              ocf_f, stat.S_IEXEC, update=update)
 
 
 def init_external_agent_f(update=False):

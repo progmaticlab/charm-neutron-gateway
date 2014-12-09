@@ -17,57 +17,12 @@ import fcntl
 import os
 import signal
 import sys
+import time
 
+from oslo.config import cfg
 from neutron.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
-
-
-class Pidfile(object):
-    def __init__(self, pidfile, procname, uuid=None):
-        self.pidfile = pidfile
-        self.procname = procname
-        self.uuid = uuid
-        try:
-            self.fd = os.open(pidfile, os.O_CREAT | os.O_RDWR)
-            fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except IOError:
-            LOG.exception(_("Error while handling pidfile: %s"), pidfile)
-            sys.exit(1)
-
-    def __str__(self):
-        return self.pidfile
-
-    def unlock(self):
-        if not not fcntl.flock(self.fd, fcntl.LOCK_UN):
-            raise IOError(_('Unable to unlock pid file'))
-
-    def write(self, pid):
-        os.ftruncate(self.fd, 0)
-        os.write(self.fd, "%d" % pid)
-        os.fsync(self.fd)
-
-    def read(self):
-        try:
-            pid = int(os.read(self.fd, 128))
-            os.lseek(self.fd, 0, os.SEEK_SET)
-            return pid
-        except ValueError:
-            return
-
-    def is_running(self):
-        pid = self.read()
-        if not pid:
-            return False
-
-        cmdline = '/proc/%s/cmdline' % pid
-        try:
-            with open(cmdline, "r") as f:
-                exec_out = f.readline()
-            return self.procname in exec_out and (not self.uuid or
-                                                  self.uuid in exec_out)
-        except IOError:
-            return False
 
 
 class Daemon(object):
@@ -75,13 +30,12 @@ class Daemon(object):
 
     Usage: subclass the Daemon class and override the run() method
     """
-    def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null',
+    def __init__(self, stdin='/dev/null', stdout='/dev/null',
                  stderr='/dev/null', procname='python', uuid=None):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
         self.procname = procname
-        self.pidfile = Pidfile(pidfile, procname, uuid)
 
     def _fork(self):
         try:
@@ -89,7 +43,7 @@ class Daemon(object):
             if pid > 0:
                 sys.exit(0)
         except OSError:
-            LOG.exception(_('Fork failed'))
+            LOG.exception('Fork failed')
             sys.exit(1)
 
     def daemonize(self):
@@ -101,7 +55,6 @@ class Daemon(object):
         os.chdir("/")
         os.setsid()
         os.umask(0)
-
         # fork second time
         self._fork()
 
@@ -112,30 +65,18 @@ class Daemon(object):
         stdin = open(self.stdin, 'r')
         stdout = open(self.stdout, 'a+')
         stderr = open(self.stderr, 'a+', 0)
-        os.dup2(stdin.fileno(), sys.stdin.fileno())
-        os.dup2(stdout.fileno(), sys.stdout.fileno())
-        os.dup2(stderr.fileno(), sys.stderr.fileno())
+        #os.dup2(stdin.fileno(), sys.stdin.fileno())
+        #os.dup2(stdout.fileno(), sys.stdout.fileno())
+        #os.dup2(stderr.fileno(), sys.stderr.fileno())
 
-        # write pidfile
-        atexit.register(self.delete_pid)
+        #atexit.register(self.delete_pid)
         signal.signal(signal.SIGTERM, self.handle_sigterm)
-        self.pidfile.write(os.getpid())
-    def delete_pid(self):
-        os.remove(str(self.pidfile))
 
     def handle_sigterm(self, signum, frame):
         sys.exit(0)
 
     def start(self):
         """Start the daemon."""
-
-        if self.pidfile.is_running():
-            self.pidfile.unlock()
-            message = _('Pidfile %s already exist. Daemon already running?')
-            LOG.error(message, self.pidfile)
-            sys.exit(1)
-
-        # Start the daemon
         self.daemonize()
         self.run()
 
@@ -149,25 +90,30 @@ class Daemon(object):
 
 class MonitorNeutronAgentsDaemon(Daemon):
     def __init__(self, check_interval=None):
+        super(MonitorNeutronAgentsDaemon, self).__init__()
         self.check_interval = check_interval
-        log('Monitor Neutron Agent Loop Init')
+        LOG.info('Monitor Neutron Agent Loop Init')
 
-    def get_env():
+    def get_env(self):
         env = {}
-        with open('/etc/legacy_ha_env_data', 'r') as f:
-            f.readline()
-            data = f.split('=').strip()
-            if data and data[0] and data[1]:
-                env[data[0]] = env[data[1]]
-            else:
-                raise Exception("OpenStack env data uncomplete.")
+        env_data = '/etc/legacy_ha_env_data'
+        if os.path.isfile(env_data):
+            with open(env_data, 'r') as f:
+                f.readline()
+                data = f.split('=').strip()
+                if data and data[0] and data[1]:
+                    env[data[0]] = env[data[1]]
+                else:
+                    raise Exception("OpenStack env data uncomplete.")
         return env
 
-    def reassign_agent_resources():
+    def reassign_agent_resources(self):
         ''' Use agent scheduler API to detect down agents and re-schedule '''
-        env = get_env()
+        DHCP_AGENT = "DHCP Agent"
+        L3_AGENT = "L3 Agent"
+        env = self.get_env()
         if not env:
-            log('Unable to re-assign resources at this time')
+            LOG.info('Unable to re-assign resources at this time')
             return
         try:
             from quantumclient.v2_0 import client
@@ -175,17 +121,19 @@ class MonitorNeutronAgentsDaemon(Daemon):
             ''' Try to import neutronclient instead for havana+ '''
             from neutronclient.v2_0 import client
 
-        auth_url = '%(auth_protocol)s://%(keystone_host)s:%(auth_port)s/v2.0' % env
+        auth_url = '%(auth_protocol)s://%(keystone_host)s:%(auth_port)s/v2.0' \
+                   % env
         quantum = client.Client(username=env['service_username'],
                                 password=env['service_password'],
                                 tenant_name=env['service_tenant'],
                                 auth_url=auth_url,
                                 region_name=env['region'])
 
-        partner_gateways = [unit_private_ip().split('.')[0]]
-        for partner_gateway in relations_of_type(reltype='cluster'):
-            gateway_hostname = get_hostname(partner_gateway['private-address'])
-            partner_gateways.append(gateway_hostname.partition('.')[0])
+        partner_gateways = []
+        #partner_gateways = [unit_private_ip().split('.')[0]]
+        #for partner_gateway in relations_of_type(reltype='cluster'):
+        #    gateway_hostname = get_hostname(partner_gateway['private-address'])
+        #    partner_gateways.append(gateway_hostname.partition('.')[0])
 
         agents = quantum.list_agents(agent_type=DHCP_AGENT)
         dhcp_agents = []
@@ -193,7 +141,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         networks = {}
         for agent in agents['agents']:
             if not agent['alive']:
-                log('DHCP Agent %s down' % agent['id'])
+                LOG.info('DHCP Agent %s down' % agent['id'])
                 for network in \
                         quantum.list_networks_on_dhcp_agent(
                             agent['id'])['networks']:
@@ -206,7 +154,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         routers = {}
         for agent in agents['agents']:
             if not agent['alive']:
-                log('L3 Agent %s down' % agent['id'])
+                LOG.info('L3 Agent %s down' % agent['id'])
                 for router in \
                         quantum.list_routers_on_l3_agent(
                             agent['id'])['routers']:
@@ -216,15 +164,16 @@ class MonitorNeutronAgentsDaemon(Daemon):
                     l3_agents.append(agent['id'])
 
         if len(dhcp_agents) == 0 or len(l3_agents) == 0:
-            log('Unable to relocate resources, there are %s dhcp_agents and %s \
-                 l3_agents in this cluster' % (len(dhcp_agents), len(l3_agents)))
+            LOG.info('Unable to relocate resources, there are %s dhcp_agents '
+                     'and %s l3_agents in this cluster' % (len(dhcp_agents),
+                                                           len(l3_agents)))
             return
 
         index = 0
         for router_id in routers:
             agent = index % len(l3_agents)
-            log('Moving router %s from %s to %s' %
-                (router_id, routers[router_id], l3_agents[agent]))
+            LOG.info('Moving router %s from %s to %s' %
+                     (router_id, routers[router_id], l3_agents[agent]))
             quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
                                                 router_id=router_id)
             quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
@@ -234,30 +183,35 @@ class MonitorNeutronAgentsDaemon(Daemon):
         index = 0
         for network_id in networks:
             agent = index % len(dhcp_agents)
-            log('Moving network %s from %s to %s' %
-                (network_id, networks[network_id], dhcp_agents[agent]))
-            quantum.remove_network_from_dhcp_agent(dhcp_agent=networks[network_id],
-                                                   network_id=network_id)
+            LOG.info('Moving network %s from %s to %s' %
+                     (network_id, networks[network_id], dhcp_agents[agent]))
+            quantum.remove_network_from_dhcp_agent(
+                dhcp_agent=networks[network_id], network_id=network_id)
             quantum.add_network_to_dhcp_agent(dhcp_agent=dhcp_agents[agent],
                                               body={'network_id': network_id})
             index += 1
 
-    def run():
-        log('Monitor Neutron Agent Loop Start')
-        time.sleep(self.check_interval)
-        reassign_agent_resources() 
+    def run(self):
+        while True:
+            LOG.info('Monitor Neutron Agent Loop Start')
+            print "Monitor Neutron Agent Loop Start"
+            print "Start : %s" % time.ctime()
+            #time.sleep(self.check_interval)
+            time.sleep( 15 )
+            print "End : %s" % time.ctime()
+            self.reassign_agent_resources()
 
 
-def main():
+if __name__ == '__main__':
     opts = [
-    cfg.StrOpt('check_interval',
-               default=15,
-               help=_('Check Neutron Agents interval.')),
+        cfg.StrOpt('check_interval',
+                   default=15,
+                   help='Check Neutron Agents interval.'),
     ]
 
     cfg.CONF.register_cli_opts(opts)
     cfg.CONF(project='monitor_neutron_agents', default_config_files=[])
 
     monitor_daemon = MonitorNeutronAgentsDaemon(
-            check_interval=cfg.CONF.check_interval)
+        check_interval=cfg.CONF.check_interval)
     monitor_daemon.start()
