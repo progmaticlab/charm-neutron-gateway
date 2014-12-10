@@ -110,6 +110,12 @@ MonitorNeutron_start() {
 
 MonitorNeutron_stop() {
     # Try SIGTERM
+    if [ ! -f $OCF_RESKEY_pid ]; then
+        ocf_log info "MonitorNeutron already stopped"
+        #return $OCF_NOT_RUNNING
+        return $OCF_SUCCESS
+    fi
+
     pid=`cat $OCF_RESKEY_pid`
     ocf_run kill -s TERM $pid
     rc=$?
