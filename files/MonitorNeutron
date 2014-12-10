@@ -39,80 +39,15 @@ meta_data() {
         cat <<END
 <?xml version="1.0"?>
 <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
-<resource-agent name="ping">
+<resource-agent name="MonitorNeutron" version="1.0">
 <version>1.0</version>
 
 <longdesc lang="en">
-Every time the monitor action is run, this resource agent records (in the CIB) the current number of ping nodes the host can connect to.
-It is essentially the same as pingd except that it uses the system ping tool to obtain the results.
+Monitor Neutron L3/DHCP agents for legacy HA.
 </longdesc>
-<shortdesc lang="en">node connectivity</shortdesc>
+<shortdesc lang="en">Monitor Neutron L3/DHCP agents for legacy HA</shortdesc>
 
 <parameters>
-
-<parameter name="pidfile" unique="0">
-<longdesc lang="en">PID file</longdesc>
-<shortdesc lang="en">PID file</shortdesc>
-<content type="string" default="$HA_VARRUN/ping-${OCF_RESOURCE_INSTANCE}" />
-</parameter>
-
-<parameter name="dampen" unique="0">
-<longdesc lang="en">
-The time to wait (dampening) further changes occur
-</longdesc>
-<shortdesc lang="en">Dampening interval</shortdesc>
-<content type="integer" default="5s"/>
-</parameter>
-
-<parameter name="name" unique="0">
-<longdesc lang="en">
-The name of the attributes to set.  This is the name to be used in the constraints.
-</longdesc>
-<shortdesc lang="en">Attribute name</shortdesc>
-<content type="string" default="pingd"/>
-</parameter>
-
-<parameter name="multiplier" unique="0">
-<longdesc lang="en">
-The number by which to multiply the number of connected ping nodes by
-</longdesc>
-<shortdesc lang="en">Value multiplier</shortdesc>
-<content type="integer" default=""/>
-</parameter>
-
-<parameter name="attempts" unique="0">
-<longdesc lang="en">
-Number of ping attempts, per host, before declaring it dead
-</longdesc>
-<shortdesc lang="en">no. of ping attempts</shortdesc>
-<content type="integer" default="2"/>
-</parameter>
-
-<parameter name="timeout" unique="0">
-<longdesc lang="en">
-How long, in seconds, to wait before declaring a ping lost
-</longdesc>
-<shortdesc lang="en">ping timeout in seconds</shortdesc>
-<content type="integer" default="2"/>
-</parameter>
-
-<parameter name="options" unique="0">
-<longdesc lang="en">
-A catch all for any other options that need to be passed to ping.
-</longdesc>
-<shortdesc lang="en">Extra Options</shortdesc>
-<content type="string" default=""/>
-</parameter>
-
-<parameter name="failure_score" unique="0">
-<longdesc lang="en">
-Resource is failed if the score is less than failure_score.
-Default never fails.
-</longdesc>
-<shortdesc lang="en">failure_score</shortdesc>
-<content type="integer" default=""/>
-</parameter>
-
 <parameter name="debug" unique="0">
 <longdesc lang="en">
 Enables to use default attrd_updater verbose logging on every call.
@@ -120,8 +55,8 @@ Enables to use default attrd_updater verbose logging on every call.
 <shortdesc lang="en">Verbose logging</shortdesc>
 <content type="string" default="false"/>
 </parameter>
-
 </parameters>
+
 <actions>
 <action name="start"   timeout="60" />
 <action name="stop"    timeout="20" />
