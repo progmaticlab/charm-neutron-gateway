@@ -7,4 +7,5 @@ include:
     - contrib.hahelpers
     - contrib.network
     - contrib.storage.linux
+    - contrib.python
     - payload.execd
