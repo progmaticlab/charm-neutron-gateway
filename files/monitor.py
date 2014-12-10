@@ -99,8 +99,8 @@ class MonitorNeutronAgentsDaemon(Daemon):
         env_data = '/etc/legacy_ha_env_data'
         if os.path.isfile(env_data):
             with open(env_data, 'r') as f:
-                f.readline()
-                data = f.split('=').strip()
+                line = f.readline()
+                data = line.split('=').strip()
                 if data and data[0] and data[1]:
                     env[data[0]] = env[data[1]]
                 else:

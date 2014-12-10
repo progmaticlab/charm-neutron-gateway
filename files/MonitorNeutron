@@ -71,7 +71,7 @@ END
 
 #######################################################################
 OCF_RESKEY_binary_default="/usr/local/bin/monitor.py"
-OCF_RESKEY_user_default="neutron"
+OCF_RESKEY_user_default="root"
 OCF_RESKEY_pid_default="$HA_RSCTMP/$OCF_RESOURCE_INSTANCE.pid"
 
 : ${OCF_RESKEY_binary=${OCF_RESKEY_binary_default}}
@@ -117,6 +117,11 @@ MonitorNeutron_stop() {
     fi
 
     pid=`cat $OCF_RESKEY_pid`
+    if [ -z "$pid" ]; then
+        ocf_log err "MonitorNeutron pid is empty"
+        exit $OCF_ERR_GENERIC
+    fi
+
     ocf_run kill -s TERM $pid
     rc=$?
     if [ $rc -ne 0 ]; then
