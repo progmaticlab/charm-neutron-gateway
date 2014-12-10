@@ -239,7 +239,7 @@ def ha_relation_joined():
                              'timeout="1000s" '.format(host=dns_hosts,
                                                        debug=debug),
             'res_ClusterMon': 'params user="root" update="30" '
-                              'extra_options="-E {external_agent} '
+                              'extra_options="-E {external_agent}" '
                               'op monitor on-fail="restart" interval="10s"'
                               .format(external_agent=external_agent),
             'res_MonitorHA': 'op monitor interval="5s"',

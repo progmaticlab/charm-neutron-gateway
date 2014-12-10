@@ -166,7 +166,6 @@ MonitorNeutron_start() {
     su ${OCF_RESKEY_user} -s /bin/sh -c "python ${OCF_RESKEY_binary} $OCF_RESKEY_additional_parameters" \
     ' >> /dev/null 2>&1 & echo $!' > $OCF_RESKEY_pid
 
-    ping_monitor
     if [ $? =  $OCF_SUCCESS ]; then
         return $OCF_SUCCESS
     fi
@@ -198,6 +197,7 @@ MonitorNeutron_validate() {
 }
 
 MonitorNeutron_monitor() {
+    return $OCF_SUCCESS
     if [ -f ${OCF_RESKEY_pid} ]; then
         return $OCF_SUCCESS
     fi
