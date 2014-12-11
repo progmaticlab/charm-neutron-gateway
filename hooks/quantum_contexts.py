@@ -122,7 +122,8 @@ def _neutron_api_settings():
             neutron_settings = {
                 'l2_population': rdata['l2-population'],
                 'overlay_network_type': rdata['overlay-network-type'],
-                'network_device_mtu': rdata['network-device-mtu'],
+                'network_device_mtu': rdata['network-device-mtu']
+                    if 'network-device-mtu' in rdata else 1500,
             }
             return neutron_settings
     return neutron_settings
