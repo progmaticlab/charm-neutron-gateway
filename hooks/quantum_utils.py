@@ -473,11 +473,7 @@ def reassign_agent_resources():
                             auth_url=auth_url,
                             region_name=env['region'])
 
-    partner_gateways = [unit_private_ip().split('.')[0]]
-    for partner_gateway in relations_of_type(reltype='cluster'):
-        gateway_hostname = get_hostname(partner_gateway['private-address'])
-        partner_gateways.append(gateway_hostname.partition('.')[0])
-
+    partner_gateways = get_quantum_gateway_cluster_nodes()
     agents = quantum.list_agents(agent_type=DHCP_AGENT)
     dhcp_agents = []
     l3_agents = []
@@ -608,6 +604,14 @@ def get_dns_host():
     return ' '.join(dns_hosts)
 
 
+def get_quantum_gateway_cluster_nodes():
+    partner_gateways = get_hostname(unit_private_ip())
+    for partner_gateway in relations_of_type(reltype='cluster'):
+        gateway_hostname = get_hostname(partner_gateway['private-address'])
+        partner_gateways.append(gateway_hostname.partition('.')[0])
+    return partner_gateways
+
+
 def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
     if not os.path.isdir(des_dir):
         mkdir(des_dir)
@@ -663,7 +667,7 @@ def install_legacy_ha_files(update=False):
     if config('ha-legacy-mode'):
         init_ocf_MonitorNeutron_f(update=update)
         init_external_agent_f(update=update)
-        #init_reassign_agent_services_binary()
+        # init_reassign_agent_services_binary()
         init_monitor_daemon(update=update)
 
 
@@ -679,6 +683,24 @@ def cache_env_data():
         log('Unable to get NetworkServiceContext at this time', level=ERROR)
         return
 
-    with open('/etc/legacy_ha_env_data', 'w') as f:
-        for k, v in env.items():
-            f.write(''.join([k, '=', v, '\n']))
+    no_envrc = False
+    envrc_f = '/etc/legacy_ha_envrc'
+    if os.path.isfile(envrc):
+        with open(envrc_f, 'r') as f:
+            data = f.read()
+        data = data.strip().split('\n')
+
+        diff = False
+        for line in data:
+            k = line.split('=')[0]
+            v = line.split('=')[1]
+            if k not in env or v != env[k]:
+                diff = True
+                break
+    else:
+        no_envrc = True
+    
+    if no_envrc or diff:
+        with open(envrc, 'w') as f:
+            for k, v in env.items():
+                f.write(''.join([k, '=', v, '\n']))

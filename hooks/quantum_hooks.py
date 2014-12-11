@@ -192,6 +192,9 @@ def nm_changed():
         ca_crt = b64decode(relation_get('ca_cert'))
         install_ca_cert(ca_crt)
 
+    if config('ha-legacy-mode'):
+        cache_env_data()
+
 
 @hooks.hook("cluster-relation-departed")
 @restart_on_change(restart_map())
@@ -245,7 +248,6 @@ def ha_relation_joined():
             'res_MonitorHA': 'op monitor interval="5s"',
             'nees_connectivity': 'location res_MonitorHA '
                                  'rule pingd: defined pingd'
-                              #'rule -inf: not_defined pingd or pingd lte 0'
         }
 
         clones = {

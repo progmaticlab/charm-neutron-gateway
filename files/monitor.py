@@ -93,19 +93,26 @@ class MonitorNeutronAgentsDaemon(Daemon):
         super(MonitorNeutronAgentsDaemon, self).__init__()
         self.check_interval = check_interval
         LOG.info('Monitor Neutron Agent Loop Init')
+        self.env = {}
 
     def get_env(self):
-        env = {}
-        env_data = '/etc/legacy_ha_env_data'
-        if os.path.isfile(env_data):
-            with open(env_data, 'r') as f:
-                line = f.readline()
-                data = line.split('=').strip()
-                if data and data[0] and data[1]:
-                    env[data[0]] = env[data[1]]
-                else:
-                    raise Exception("OpenStack env data uncomplete.")
-        return env
+        envrc_f = '/etc/legacy_ha_envrc'
+        envrc_f_m = False
+        if os.path.isfile(envrc_f):
+            ctime = time.ctime(os.stat(envrc_f).st_ctime)
+            mtime = time.ctime(os.stat(envrc_f).st_mtime)
+            if ctime != mtime:
+                envrc_f_m = True
+
+            if not self.env or envrc_f_m:
+                with open(envrc_f, 'r') as f:
+                    line = f.readline()
+                    data = line.split('=').strip()
+                    if data and data[0] and data[1]:
+                        self.env[data[0]] = self.env[data[1]]
+                    else:
+                        raise Exception("OpenStack env data uncomplete.")
+        return self.env
 
     def reassign_agent_resources(self):
         ''' Use agent scheduler API to detect down agents and re-schedule '''
@@ -130,10 +137,6 @@ class MonitorNeutronAgentsDaemon(Daemon):
                                 region_name=env['region'])
 
         partner_gateways = []
-        #partner_gateways = [unit_private_ip().split('.')[0]]
-        #for partner_gateway in relations_of_type(reltype='cluster'):
-        #    gateway_hostname = get_hostname(partner_gateway['private-address'])
-        #    partner_gateways.append(gateway_hostname.partition('.')[0])
 
         agents = quantum.list_agents(agent_type=DHCP_AGENT)
         dhcp_agents = []
@@ -147,8 +150,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                             agent['id'])['networks']:
                     networks[network['id']] = agent['id']
             else:
-                if agent['host'].partition('.')[0] in partner_gateways:
-                    dhcp_agents.append(agent['id'])
+                dhcp_agents.append(agent['id'])
 
         agents = quantum.list_agents(agent_type=L3_AGENT)
         routers = {}
@@ -160,8 +162,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                             agent['id'])['routers']:
                     routers[router['id']] = agent['id']
             else:
-                if agent['host'].split('.')[0] in partner_gateways:
-                    l3_agents.append(agent['id'])
+                l3_agents.append(agent['id'])
 
         if len(dhcp_agents) == 0 or len(l3_agents) == 0:
             LOG.info('Unable to relocate resources, there are %s dhcp_agents '
