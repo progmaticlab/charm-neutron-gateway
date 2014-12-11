@@ -685,7 +685,7 @@ def cache_env_data():
 
     no_envrc = False
     envrc_f = '/etc/legacy_ha_envrc'
-    if os.path.isfile(envrc):
+    if os.path.isfile(envrc_f):
         with open(envrc_f, 'r') as f:
             data = f.read()
         data = data.strip().split('\n')
@@ -699,8 +699,8 @@ def cache_env_data():
                 break
     else:
         no_envrc = True
-    
+
     if no_envrc or diff:
-        with open(envrc, 'w') as f:
+        with open(envrc_f, 'w') as f:
             for k, v in env.items():
                 f.write(''.join([k, '=', v, '\n']))
