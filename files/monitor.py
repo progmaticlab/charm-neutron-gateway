@@ -20,9 +20,7 @@ import sys
 import time
 
 from oslo.config import cfg
-from neutron.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
+import logging as LOG
 
 
 class Daemon(object):
@@ -59,17 +57,15 @@ class Daemon(object):
         self._fork()
 
         # redirect standard file descriptors
-        # redirect standard file descriptors
         sys.stdout.flush()
         sys.stderr.flush()
         stdin = open(self.stdin, 'r')
         stdout = open(self.stdout, 'a+')
         stderr = open(self.stderr, 'a+', 0)
-        #os.dup2(stdin.fileno(), sys.stdin.fileno())
-        #os.dup2(stdout.fileno(), sys.stdout.fileno())
-        #os.dup2(stderr.fileno(), sys.stderr.fileno())
+        os.dup2(stdin.fileno(), sys.stdin.fileno())
+        os.dup2(stdout.fileno(), sys.stdout.fileno())
+        os.dup2(stderr.fileno(), sys.stderr.fileno())
 
-        #atexit.register(self.delete_pid)
         signal.signal(signal.SIGTERM, self.handle_sigterm)
 
     def handle_sigterm(self, signum, frame):
@@ -93,19 +89,26 @@ class MonitorNeutronAgentsDaemon(Daemon):
         super(MonitorNeutronAgentsDaemon, self).__init__()
         self.check_interval = check_interval
         LOG.info('Monitor Neutron Agent Loop Init')
+        self.env = {}
 
     def get_env(self):
-        env = {}
-        env_data = '/etc/legacy_ha_env_data'
-        if os.path.isfile(env_data):
-            with open(env_data, 'r') as f:
-                line = f.readline()
-                data = line.split('=').strip()
-                if data and data[0] and data[1]:
-                    env[data[0]] = env[data[1]]
-                else:
-                    raise Exception("OpenStack env data uncomplete.")
-        return env
+        envrc_f = '/etc/legacy_ha_envrc'
+        envrc_f_m = False
+        if os.path.isfile(envrc_f):
+            ctime = time.ctime(os.stat(envrc_f).st_ctime)
+            mtime = time.ctime(os.stat(envrc_f).st_mtime)
+            if ctime != mtime:
+                envrc_f_m = True
+
+            if not self.env or envrc_f_m:
+                with open(envrc_f, 'r') as f:
+                    for line in f:
+                        data = line.strip().split('=')
+                        if data and data[0] and data[1]:
+                            self.env[data[0]] = data[1]
+                        else:
+                            raise Exception("OpenStack env data uncomplete.")
+        return self.env
 
     def reassign_agent_resources(self):
         ''' Use agent scheduler API to detect down agents and re-schedule '''
@@ -130,10 +133,6 @@ class MonitorNeutronAgentsDaemon(Daemon):
                                 region_name=env['region'])
 
         partner_gateways = []
-        #partner_gateways = [unit_private_ip().split('.')[0]]
-        #for partner_gateway in relations_of_type(reltype='cluster'):
-        #    gateway_hostname = get_hostname(partner_gateway['private-address'])
-        #    partner_gateways.append(gateway_hostname.partition('.')[0])
 
         agents = quantum.list_agents(agent_type=DHCP_AGENT)
         dhcp_agents = []
@@ -147,8 +146,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                             agent['id'])['networks']:
                     networks[network['id']] = agent['id']
             else:
-                if agent['host'].partition('.')[0] in partner_gateways:
-                    dhcp_agents.append(agent['id'])
+                dhcp_agents.append(agent['id'])
 
         agents = quantum.list_agents(agent_type=L3_AGENT)
         routers = {}
@@ -160,8 +158,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                             agent['id'])['routers']:
                     routers[router['id']] = agent['id']
             else:
-                if agent['host'].split('.')[0] in partner_gateways:
-                    l3_agents.append(agent['id'])
+                l3_agents.append(agent['id'])
 
         if len(dhcp_agents) == 0 or len(l3_agents) == 0:
             LOG.info('Unable to relocate resources, there are %s dhcp_agents '
@@ -194,11 +191,9 @@ class MonitorNeutronAgentsDaemon(Daemon):
     def run(self):
         while True:
             LOG.info('Monitor Neutron Agent Loop Start')
-            print "Monitor Neutron Agent Loop Start"
-            print "Start : %s" % time.ctime()
-            #time.sleep(self.check_interval)
-            time.sleep( 15 )
-            print "End : %s" % time.ctime()
+            LOG.info("Start : %s" % time.ctime())
+            time.sleep(self.check_interval)
+            LOG.info("End : %s" % time.ctime())
             self.reassign_agent_resources()
 
 
@@ -207,11 +202,15 @@ if __name__ == '__main__':
         cfg.StrOpt('check_interval',
                    default=15,
                    help='Check Neutron Agents interval.'),
+        cfg.StrOpt('log_file',
+                   default='/var/log/monitor.log',
+                   help='log file'),
     ]
 
     cfg.CONF.register_cli_opts(opts)
     cfg.CONF(project='monitor_neutron_agents', default_config_files=[])
 
+    LOG.basicConfig(filename=cfg.CONF.log_file, level=LOG.INFO)
     monitor_daemon = MonitorNeutronAgentsDaemon(
         check_interval=cfg.CONF.check_interval)
     monitor_daemon.start()

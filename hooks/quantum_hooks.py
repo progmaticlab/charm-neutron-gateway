@@ -192,6 +192,9 @@ def nm_changed():
         ca_crt = b64decode(relation_get('ca_cert'))
         install_ca_cert(ca_crt)
 
+    if config('ha-legacy-mode'):
+        cache_env_data()
+
 
 @hooks.hook("cluster-relation-departed")
 @restart_on_change(restart_map())
@@ -243,21 +246,20 @@ def ha_relation_joined():
                               'op monitor on-fail="restart" interval="10s"'
                               .format(external_agent=external_agent),
             'res_MonitorHA': 'op monitor interval="5s"',
-            'nees_connectivity': 'location res_MonitorHA '
-                                 'rule pingd: defined pingd'
-                              #'rule -inf: not_defined pingd or pingd lte 0'
         }
-
         clones = {
             'cl_PingCheck': 'res_PingCheck',
             'cl_ClusterMon': 'res_ClusterMon'
         }
+        constraints = {'location': 'nees_connectivity res_MonitorHA '
+                                   'rule pingd: defined pingd'}
 
         relation_set(corosync_bindiface=cluster_config['ha-bindiface'],
                      corosync_mcastport=cluster_config['ha-mcastport'],
                      resources=resources,
                      resource_params=resource_params,
-                     clones=clones)
+                     clones=clones,
+                     constraints=constraints)
 
 
 if __name__ == '__main__':
