@@ -106,12 +106,12 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
             if not self.env or envrc_f_m:
                 with open(envrc_f, 'r') as f:
-                    line = f.readline()
-                    data = line.split('=').strip()
-                    if data and data[0] and data[1]:
-                        self.env[data[0]] = self.env[data[1]]
-                    else:
-                        raise Exception("OpenStack env data uncomplete.")
+                    for line in f:
+                        data = line.strip().split('=')
+                        if data and data[0] and data[1]:
+                            self.env[data[0]] = self.env[data[1]]
+                        else:
+                            raise Exception("OpenStack env data uncomplete.")
         return self.env
 
     def reassign_agent_resources(self):
