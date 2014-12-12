@@ -127,7 +127,8 @@ MonitorNeutron_stop() {
     rc=$?
     if [ $rc -ne 0 ]; then
         ocf_log err "MonitorNeutron couldn't be stopped"
-        exit $OCF_ERR_GENERIC
+        return $OCF_SUCCESS
+        #exit $OCF_ERR_GENERIC
     fi
 
     ocf_log info "MonitorNeutron stopped"
