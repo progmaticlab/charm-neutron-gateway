@@ -238,7 +238,7 @@ def ha_relation_joined():
                              'debug={debug} multiplier="100" '
                              'failure_score="100" '
                              'op monitor on-fail="restart" interval="10s" '
-                             'timeout="1000s" '.format(host=dns_hosts,
+                             'timeout="60s" '.format(host=dns_hosts,
                                                        debug=debug),
             'res_ClusterMon': 'params user="root" update="30" '
                               'extra_options="-E {external_agent}" '
