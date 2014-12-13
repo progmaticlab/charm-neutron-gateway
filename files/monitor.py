@@ -189,12 +189,8 @@ class MonitorNeutronAgentsDaemon(Daemon):
             index += 1
 
     def run(self):
-        while True:
-            LOG.info('Monitor Neutron Agent Loop Start')
-            LOG.info("Start : %s" % time.ctime())
-            time.sleep(self.check_interval)
-            LOG.info("End : %s" % time.ctime())
-            self.reassign_agent_resources()
+        LOG.info('Monitor Neutron Agent Loop Start')
+        self.reassign_agent_resources()
 
 
 if __name__ == '__main__':

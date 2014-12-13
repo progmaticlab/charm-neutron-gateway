@@ -232,7 +232,6 @@ def ha_relation_joined():
         resources = {
             'res_PingCheck': 'ocf:pacemaker:ping',
             'res_ClusterMon': 'ocf:pacemaker:ClusterMon',
-            'res_MonitorHA': 'ocf:pacemaker:MonitorNeutron'
         }
         resource_params = {
             'res_PingCheck': 'params host_list="{host}" dampen="5s" '
@@ -245,21 +244,17 @@ def ha_relation_joined():
                               'extra_options="-E {external_agent}" '
                               'op monitor on-fail="restart" interval="10s"'
                               .format(external_agent=external_agent),
-            'res_MonitorHA': 'op monitor interval="5s"',
         }
         clones = {
             'cl_PingCheck': 'res_PingCheck',
             'cl_ClusterMon': 'res_ClusterMon'
         }
-        constraints = {'location': 'nees_connectivity res_MonitorHA '
-                                   'rule pingd: defined pingd'}
 
         relation_set(corosync_bindiface=cluster_config['ha-bindiface'],
                      corosync_mcastport=cluster_config['ha-mcastport'],
                      resources=resources,
                      resource_params=resource_params,
-                     clones=clones,
-                     constraints=constraints)
+                     clones=clones)
 
 
 if __name__ == '__main__':
