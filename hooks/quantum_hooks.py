@@ -238,7 +238,7 @@ def ha_relation_joined():
                              'debug={debug} multiplier="1000" '
                              'failure_score="10" '
                              'op monitor on-fail="restart" interval="10s" '
-                             'timeout="60s" '.format(host=dns_hosts,
+                             'timeout="40s" '.format(host=dns_hosts,
                                                      debug=debug),
             'res_ClusterMon': 'params user="root" update="30" '
                               'extra_options="-E {external_agent}" '
@@ -246,8 +246,8 @@ def ha_relation_joined():
                               .format(external_agent=external_agent),
         }
         clones = {
-            'cl_PingCheck': 'res_PingCheck',
-            'cl_ClusterMon': 'res_ClusterMon'
+            'cl_PingCheck': 'res_PingCheck meta interleave="true"',
+            'cl_ClusterMon': 'res_ClusterMon meta interleave="true"'
         }
 
         relation_set(corosync_bindiface=cluster_config['ha-bindiface'],
