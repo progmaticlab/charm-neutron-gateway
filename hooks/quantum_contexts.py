@@ -50,6 +50,8 @@ NEUTRON_ML2_PLUGIN = \
     "neutron.plugins.ml2.plugin.Ml2Plugin"
 NEUTRON_NVP_PLUGIN = \
     "neutron.plugins.nicira.nicira_nvp_plugin.NeutronPlugin.NvpPluginV2"
+NEUTRON_N1KV_PLUGIN = \
+    "neutron.plugins.cisco.n1kv.n1kv_neutron_plugin.N1kvNeutronPluginV2"
 NEUTRON_NSX_PLUGIN = "vmware"
 
 NEUTRON = 'neutron'
@@ -65,16 +67,18 @@ def networking_name():
 
 OVS = 'ovs'
 NVP = 'nvp'
+N1KV = 'n1kv'
 NSX = 'nsx'
 
 CORE_PLUGIN = {
     QUANTUM: {
         OVS: QUANTUM_OVS_PLUGIN,
-        NVP: QUANTUM_NVP_PLUGIN
+        NVP: QUANTUM_NVP_PLUGIN,
     },
     NEUTRON: {
         OVS: NEUTRON_OVS_PLUGIN,
         NVP: NEUTRON_NVP_PLUGIN,
+        N1KV: NEUTRON_N1KV_PLUGIN,
         NSX: NEUTRON_NSX_PLUGIN
     },
 }
@@ -166,13 +170,16 @@ class L3AgentContext(OSContextGenerator):
 
         if config('external-network-id'):
             ctxt['ext_net_id'] = config('external-network-id')
+
+        if config('plugin'):
+            ctxt['plugin'] = config('plugin')
         return ctxt
 
 
-class ExternalPortContext(OSContextGenerator):
+class NeutronPortContext(OSContextGenerator):
 
-    def __call__(self):
-        if not config('ext-port'):
+    def _resolve_port(self, config_key):
+        if not config(config_key):
             return None
         hwaddr_to_nic = {}
         hwaddr_to_ip = {}
@@ -183,7 +190,7 @@ class ExternalPortContext(OSContextGenerator):
                 get_ipv6_addr(iface=nic, fatal=False)
             hwaddr_to_ip[hwaddr] = addresses
         mac_regex = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
-        for entry in config('ext-port').split():
+        for entry in config(config_key).split():
             entry = entry.strip()
             if re.match(mac_regex, entry):
                 if entry in hwaddr_to_nic and len(hwaddr_to_ip[entry]) == 0:
@@ -192,13 +199,33 @@ class ExternalPortContext(OSContextGenerator):
                         continue
                     # Entry is a MAC address for a valid interface that doesn't
                     # have an IP address assigned yet.
-                    return {"ext_port": hwaddr_to_nic[entry]}
+                    return hwaddr_to_nic[entry]
             else:
                 # If the passed entry is not a MAC address, assume it's a valid
                 # interface, and that the user put it there on purpose (we can
                 # trust it to be the real external network).
-                return {"ext_port": entry}
+                return entry
         return None
+
+
+class ExternalPortContext(NeutronPortContext):
+
+    def __call__(self):
+        port = self._resolve_port('ext-port')
+        if port:
+            return {"ext_port": port}
+        else:
+            return None
+
+
+class DataPortContext(NeutronPortContext):
+
+    def __call__(self):
+        port = self._resolve_port('data-port')
+        if port:
+            return {"data_port": port}
+        else:
+            return None
 
 
 class QuantumGatewayContext(OSContextGenerator):

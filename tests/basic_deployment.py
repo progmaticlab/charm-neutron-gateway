@@ -358,8 +358,8 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         quantum_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
         expected = {
             'ml2': {
-                'type_drivers': 'gre,vxlan',
-                'tenant_network_types': 'gre,vxlan',
+                'type_drivers': 'gre,vxlan,vlan,flat',
+                'tenant_network_types': 'gre,vxlan,vlan,flat',
                 'mechanism_drivers': 'openvswitch,l2population'
             },
             'ml2_type_gre': {

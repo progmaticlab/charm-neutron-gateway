@@ -8,6 +8,7 @@ options:
       .
         ovs - OpenVSwitch
         nvp|nsx - Nicira NVP/VMware NSX
+        n1kv - Cisco N1kv
   ext-port:
     type: string
     default:
@@ -16,6 +17,12 @@ options:
       traffic to the external public network. Valid values are either MAC
       addresses (in which case only MAC addresses for interfaces without an IP
       address already assigned will be used), or interfaces (eth0)
+  data-port:
+    type: string
+    default:
+    description: |
+      The data port will be added to br-data and will allow usage of flat or VLAN
+      network types with Neutron.
   openstack-origin:
     type: string
     default: distro
@@ -83,6 +90,12 @@ options:
       within the cloud.  This is useful in deployments where its not
       possible to increase MTU on switches and physical servers to
       accomodate the packet overhead of using GRE tunnels.
+  enable-l3-agent:
+    type: boolean
+    default: True 
+    description: |
+      Optional configuration to support use of linux router
+      Note that this is used only for Cisco n1kv plugin.
   database-user:
     default: nova
     type: string

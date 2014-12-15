@@ -39,14 +39,15 @@ from charmhelpers.contrib.openstack.context import (
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
 from quantum_contexts import (
-    CORE_PLUGIN, OVS, NVP, NSX,
+    CORE_PLUGIN, OVS, NVP, NSX, N1KV,
     NEUTRON, QUANTUM,
     networking_name,
     QuantumGatewayContext,
     NetworkServiceContext,
     L3AgentContext,
     ExternalPortContext,
-    remap_plugin,
+    DataPortContext,
+    remap_plugin
 )
 
 from copy import deepcopy
@@ -63,7 +64,7 @@ QUANTUM_NVP_PLUGIN_CONF = \
     "/etc/quantum/plugins/nicira/nvp.ini"
 QUANTUM_PLUGIN_CONF = {
     OVS: QUANTUM_OVS_PLUGIN_CONF,
-    NVP: QUANTUM_NVP_PLUGIN_CONF
+    NVP: QUANTUM_NVP_PLUGIN_CONF,
 }
 
 NEUTRON_CONF_DIR = '/etc/neutron'
@@ -120,6 +121,15 @@ NEUTRON_GATEWAY_PKGS = {
         'python-psycopg2',
         'python-oslo.config',  # Force upgrade
         "nova-api-metadata"
+    ],
+    N1KV: [
+        "neutron-plugin-cisco",
+        "neutron-dhcp-agent",
+        "python-mysqldb",
+        "python-psycopg2",
+        "nova-api-metadata",
+        "neutron-common",
+        "neutron-l3-agent"
     ]
 }
 NEUTRON_GATEWAY_PKGS[NSX] = NEUTRON_GATEWAY_PKGS[NVP]
@@ -127,6 +137,12 @@ NEUTRON_GATEWAY_PKGS[NSX] = NEUTRON_GATEWAY_PKGS[NVP]
 GATEWAY_PKGS = {
     QUANTUM: QUANTUM_GATEWAY_PKGS,
     NEUTRON: NEUTRON_GATEWAY_PKGS,
+}
+
+EARLY_PACKAGES = {
+    OVS: ['openvswitch-datapath-dkms'],
+    NVP: [],
+    N1KV: []
 }
 
 
@@ -332,6 +348,24 @@ NEUTRON_NVP_CONFIG_FILES = {
 }
 NEUTRON_NVP_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 
+NEUTRON_N1KV_CONFIG_FILES = {
+    NEUTRON_CONF: {
+        'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
+                          QuantumGatewayContext(),
+                          SyslogContext()],
+        'services': ['neutron-l3-agent',
+                     'neutron-dhcp-agent',
+                     'neutron-metadata-agent']
+    },
+    NEUTRON_L3_AGENT_CONF: {
+        'hook_contexts': [NetworkServiceContext(),
+                          L3AgentContext(),
+                          QuantumGatewayContext()],
+        'services': ['neutron-l3-agent']
+    },
+}
+NEUTRON_N1KV_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
+
 CONFIG_FILES = {
     QUANTUM: {
         NVP: QUANTUM_NVP_CONFIG_FILES,
@@ -341,6 +375,7 @@ CONFIG_FILES = {
         NSX: NEUTRON_NVP_CONFIG_FILES,
         NVP: NEUTRON_NVP_CONFIG_FILES,
         OVS: NEUTRON_OVS_CONFIG_FILES,
+        N1KV: NEUTRON_N1KV_CONFIG_FILES,
     },
 }
 
@@ -410,6 +445,7 @@ def restart_map():
 
 INT_BRIDGE = "br-int"
 EXT_BRIDGE = "br-ex"
+DATA_BRIDGE = 'br-data'
 
 DHCP_AGENT = "DHCP Agent"
 L3_AGENT = "L3 Agent"
@@ -539,8 +575,13 @@ def configure_ovs():
         add_bridge(INT_BRIDGE)
         add_bridge(EXT_BRIDGE)
         ext_port_ctx = ExternalPortContext()()
-        if ext_port_ctx is not None and ext_port_ctx['ext_port']:
+        if ext_port_ctx and ext_port_ctx['ext_port']:
             add_bridge_port(EXT_BRIDGE, ext_port_ctx['ext_port'])
+        add_bridge(DATA_BRIDGE)
+        data_port_ctx = DataPortContext()()
+        if data_port_ctx and data_port_ctx['data_port']:
+            add_bridge_port(DATA_BRIDGE, data_port_ctx['data_port'],
+                            promisc=True)
 
 
 def get_topics():
