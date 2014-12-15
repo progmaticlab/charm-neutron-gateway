@@ -235,11 +235,11 @@ def ha_relation_joined():
         }
         resource_params = {
             'res_PingCheck': 'params host_list="{host}" dampen="5s" '
-                             'debug={debug} multiplier="100" '
-                             'failure_score="100" '
+                             'debug={debug} multiplier="1000" '
+                             'failure_score="10" '
                              'op monitor on-fail="restart" interval="10s" '
                              'timeout="60s" '.format(host=dns_hosts,
-                                                       debug=debug),
+                                                     debug=debug),
             'res_ClusterMon': 'params user="root" update="30" '
                               'extra_options="-E {external_agent}" '
                               'op monitor on-fail="restart" interval="10s"'

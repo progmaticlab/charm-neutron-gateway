@@ -595,7 +595,6 @@ def get_dns_host():
     except Exception:
         log('Failed to get nameserver from resolv.conf !', level=ERROR)
 
-    dns_hosts.append('8.8.8.8')
     if config('dns_hosts'):
         dnss = config('dns_hosts').split(' ')
         for dns in dnss:
