@@ -19,8 +19,11 @@ import signal
 import sys
 import time
 
-from oslo.config import cfg
 import logging as LOG
+
+from oslo.config import cfg
+from neutron.agent.linux import ovs_lib
+from neutron.agent.linux import ip_lib
 
 
 class Daemon(object):
@@ -110,6 +113,56 @@ class MonitorNeutronAgentsDaemon(Daemon):
                             raise Exception("OpenStack env data uncomplete.")
         return self.env
 
+    def get_hostname():
+        return subprocess.check_output(['uname', '-n'])
+
+    def get_root_helper():
+        return 'sudo'
+
+    def unplug_device(conf, device):
+        try:
+            device.link.delete()
+        except RuntimeError:
+            root_helper = self.get_root_helper()
+            # Maybe the device is OVS port, so try to delete
+            bridge_name = ovs_lib.get_bridge_for_iface(root_helper, device.name)
+            if bridge_name:
+                bridge = ovs_lib.OVSBridge(bridge_name, root_helper)
+                bridge.delete_port(device.name)
+            else:
+                LOG.debug(_('Unable to find bridge for device: %s'), device.name)
+
+    def cleanup_dhcp(networks):
+        namespaces = []
+        for network, agent in networks.iteritems():
+            namespaces.append('qdhcp-' + network)
+
+        if namespaces:
+            LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
+            destroy_namespaces(namespaces)
+
+    def cleanup_router(routers):
+        namespaces = []
+        for router, agent in routers.iteritems():
+            namespaces.append('qrouter-' + router)
+
+        if namespaces:
+            LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
+            destroy_namespaces(namespaces)
+
+    def destroy_namespaces(namespaces):
+        try:
+            root_helper = self.get_root_helper()
+            for namespace in namespaces:
+                ip = ip_lib.IPWrapper(root_helper, namespace)
+                if ip.netns.exists(namespace):
+                    for device in ip.get_devices(exclude_loopback=True):
+                         unplug_device(device)
+
+            ip.garbage_collect_namespace()
+        except Exception:
+            LOG.exception(_('Error unable to destroy namespace: %s'), namespace) 
+
     def reassign_agent_resources(self):
         ''' Use agent scheduler API to detect down agents and re-schedule '''
         DHCP_AGENT = "DHCP Agent"
@@ -145,9 +198,12 @@ class MonitorNeutronAgentsDaemon(Daemon):
                         quantum.list_networks_on_dhcp_agent(
                             agent['id'])['networks']:
                     networks[network['id']] = agent['id']
+                    if agent['id'] == self.get_hostname():
+                        self.cleanup_dhcp(networks)
             else:
                 dhcp_agents.append(agent['id'])
-
+                LOG.info('Active dhcp agents: %s' % dhcp_agents)
+    
         agents = quantum.list_agents(agent_type=L3_AGENT)
         routers = {}
         for agent in agents['agents']:
@@ -157,13 +213,22 @@ class MonitorNeutronAgentsDaemon(Daemon):
                         quantum.list_routers_on_l3_agent(
                             agent['id'])['routers']:
                     routers[router['id']] = agent['id']
+                    if agent['id'] == self.get_hostname():
+                        self.cleanup_router(routers)
             else:
                 l3_agents.append(agent['id'])
+                LOG.info('Active l3 agents: %s' % l3_agents)
 
         if len(dhcp_agents) == 0 or len(l3_agents) == 0:
             LOG.info('Unable to relocate resources, there are %s dhcp_agents '
                      'and %s l3_agents in this cluster' % (len(dhcp_agents),
                                                            len(l3_agents)))
+            return
+
+        if l3_agents[0] != self.get_hostname() or \
+                dhcp_agents[0] != self.get_hostname():
+            LOG.info('Only the first agent could reschedule. l3 agents: %s '
+                     'dhcp agents: %s' % (l3_agents, dhcp_agents))
             return
 
         index = 0
@@ -200,15 +265,16 @@ if __name__ == '__main__':
         cfg.StrOpt('check_interval',
                    default=15,
                    help='Check Neutron Agents interval.'),
-        cfg.StrOpt('log_file',
-                   default='/var/log/monitor.log',
-                   help='log file'),
+#        cfg.StrOpt('log_file',
+#                   default='/var/log/monitor.log',
+#                   help='log file'),
     ]
 
     cfg.CONF.register_cli_opts(opts)
     cfg.CONF(project='monitor_neutron_agents', default_config_files=[])
-
-    LOG.basicConfig(filename=cfg.CONF.log_file, level=LOG.INFO)
+    log_file = '/tmp/monitor.log'
+    print "log file: %s" % cfg.CONF.log_file
+    LOG.basicConfig(filename=log_file, level=LOG.INFO)
     monitor_daemon = MonitorNeutronAgentsDaemon(
         check_interval=cfg.CONF.check_interval)
     monitor_daemon.start()

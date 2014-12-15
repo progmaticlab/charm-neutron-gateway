@@ -236,7 +236,6 @@ def ha_relation_joined():
         resource_params = {
             'res_PingCheck': 'params host_list="{host}" dampen="5s" '
                              'debug={debug} multiplier="1000" '
-                             'failure_score="10" '
                              'op monitor on-fail="restart" interval="10s" '
                              'timeout="40s" '.format(host=dns_hosts,
                                                      debug=debug),
