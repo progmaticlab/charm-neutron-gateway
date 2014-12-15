@@ -237,7 +237,7 @@ def ha_relation_joined():
             'res_PingCheck': 'params host_list="{host}" dampen="5s" '
                              'debug={debug} multiplier="1000" '
                              'op monitor on-fail="restart" interval="10s" '
-                             'timeout="40s" '.format(host=dns_hosts,
+                             'timeout="60s" '.format(host=dns_hosts,
                                                      debug=debug),
             'res_ClusterMon': 'params user="root" update="30" '
                               'extra_options="-E {external_agent}" '
