@@ -17,13 +17,15 @@ import fcntl
 import os
 import signal
 import sys
+import subprocess
 import time
-
-import logging as LOG
 
 from oslo.config import cfg
 from neutron.agent.linux import ovs_lib
 from neutron.agent.linux import ip_lib
+from neutron.openstack.common import log as logging
+
+LOG = logging.getLogger(__name__)
 
 
 class Daemon(object):
@@ -88,9 +90,9 @@ class Daemon(object):
 
 
 class MonitorNeutronAgentsDaemon(Daemon):
-    def __init__(self, check_interval=None):
+    def __init__(self):
         super(MonitorNeutronAgentsDaemon, self).__init__()
-        self.check_interval = check_interval
+        logging.setup('Neuron-HA-Monitor')
         LOG.info('Monitor Neutron Agent Loop Init')
         self.env = {}
 
@@ -113,13 +115,13 @@ class MonitorNeutronAgentsDaemon(Daemon):
                             raise Exception("OpenStack env data uncomplete.")
         return self.env
 
-    def get_hostname():
+    def get_hostname(self):
         return subprocess.check_output(['uname', '-n'])
 
-    def get_root_helper():
+    def get_root_helper(self):
         return 'sudo'
 
-    def unplug_device(conf, device):
+    def unplug_device(self, conf, device):
         try:
             device.link.delete()
         except RuntimeError:
@@ -132,7 +134,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
             else:
                 LOG.debug(_('Unable to find bridge for device: %s'), device.name)
 
-    def cleanup_dhcp(networks):
+    def cleanup_dhcp(self, networks):
         namespaces = []
         for network, agent in networks.iteritems():
             namespaces.append('qdhcp-' + network)
@@ -141,7 +143,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
             LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
             destroy_namespaces(namespaces)
 
-    def cleanup_router(routers):
+    def cleanup_router(self, routers):
         namespaces = []
         for router, agent in routers.iteritems():
             namespaces.append('qrouter-' + router)
@@ -150,7 +152,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
             LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
             destroy_namespaces(namespaces)
 
-    def destroy_namespaces(namespaces):
+    def destroy_namespaces(self, namespaces):
         try:
             root_helper = self.get_root_helper()
             for namespace in namespaces:
@@ -163,6 +165,40 @@ class MonitorNeutronAgentsDaemon(Daemon):
         except Exception:
             LOG.exception(_('Error unable to destroy namespace: %s'), namespace) 
 
+    def l3_agents_reschedule(self, l3_agents, routers):
+        if l3_agents[0] != self.get_hostname():
+            LOG.info('Only the first agent could reschedule. l3 agents: %s '
+                     'dhcp agents: %s' % (l3_agents))
+            return
+
+        index = 0
+        for router_id in routers:
+            agent = index % len(l3_agents)
+            LOG.info('Moving router %s from %s to %s' %
+                     (router_id, routers[router_id], l3_agents[agent]))
+            quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
+                                                router_id=router_id)
+            quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
+                                           body={'router_id': router_id})
+            index += 1
+
+    def dhcp_agents_reschedule(self, dhcp_agents, networks):
+        if dhcp_agents[0] != self.get_hostname():
+            LOG.info('Only the first agent could reschedule. '
+                     'dhcp agents: %s' % dhcp_agents)
+            return
+
+        index = 0
+        for network_id in networks:
+            agent = index % len(dhcp_agents)
+            LOG.info('Moving network %s from %s to %s' %
+                     (network_id, networks[network_id], dhcp_agents[agent]))
+            quantum.remove_network_from_dhcp_agent(
+                dhcp_agent=networks[network_id], network_id=network_id)
+            quantum.add_network_to_dhcp_agent(dhcp_agent=dhcp_agents[agent],
+                                              body={'network_id': network_id})
+            index += 1
+        
     def reassign_agent_resources(self):
         ''' Use agent scheduler API to detect down agents and re-schedule '''
         DHCP_AGENT = "DHCP Agent"
@@ -219,44 +255,27 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 l3_agents.append(agent['id'])
                 LOG.info('Active l3 agents: %s' % l3_agents)
 
-        if len(dhcp_agents) == 0 or len(l3_agents) == 0:
-            LOG.info('Unable to relocate resources, there are %s dhcp_agents '
-                     'and %s l3_agents in this cluster' % (len(dhcp_agents),
+        if not networks and not routers:
+            LOG.info('No failed agents found, return.')
+            return
+
+        if len(dhcp_agents) == 0 and len(l3_agents) == 0:
+            LOG.error('Unable to relocate resources, there are %s dhcp_agents '
+                      'and %s l3_agents in this cluster' % (len(dhcp_agents),
                                                            len(l3_agents)))
             return
 
-        if l3_agents[0] != self.get_hostname() or \
-                dhcp_agents[0] != self.get_hostname():
-            LOG.info('Only the first agent could reschedule. l3 agents: %s '
-                     'dhcp agents: %s' % (l3_agents, dhcp_agents))
-            return
+        if len(l3_agents) != 0:
+            self.l3_agents_reschedule(l3_agents, routers)
 
-        index = 0
-        for router_id in routers:
-            agent = index % len(l3_agents)
-            LOG.info('Moving router %s from %s to %s' %
-                     (router_id, routers[router_id], l3_agents[agent]))
-            quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
-                                                router_id=router_id)
-            quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
-                                           body={'router_id': router_id})
-            index += 1
-
-        index = 0
-        for network_id in networks:
-            agent = index % len(dhcp_agents)
-            LOG.info('Moving network %s from %s to %s' %
-                     (network_id, networks[network_id], dhcp_agents[agent]))
-            quantum.remove_network_from_dhcp_agent(
-                dhcp_agent=networks[network_id], network_id=network_id)
-            quantum.add_network_to_dhcp_agent(dhcp_agent=dhcp_agents[agent],
-                                              body={'network_id': network_id})
-            index += 1
+        if len(dhcp_agents) != 0:
+            self.dhcp_agents_reschedule(dhcp_agents, networks)
 
     def run(self):
         while True:
             LOG.info('Monitor Neutron Agent Loop Start')
-            time.sleep(15)
+            LOG.info('sleep %s' % cfg.CONF.check_interval)
+            time.sleep(float(cfg.CONF.check_interval))
             self.reassign_agent_resources()
 
 
@@ -265,16 +284,10 @@ if __name__ == '__main__':
         cfg.StrOpt('check_interval',
                    default=15,
                    help='Check Neutron Agents interval.'),
-#        cfg.StrOpt('log_file',
-#                   default='/var/log/monitor.log',
-#                   help='log file'),
     ]
 
     cfg.CONF.register_cli_opts(opts)
     cfg.CONF(project='monitor_neutron_agents', default_config_files=[])
-    log_file = '/tmp/monitor.log'
-    print "log file: %s" % cfg.CONF.log_file
-    LOG.basicConfig(filename=log_file, level=LOG.INFO)
-    monitor_daemon = MonitorNeutronAgentsDaemon(
-        check_interval=cfg.CONF.check_interval)
+    logging.setup('Neuron-HA-Monitor')
+    monitor_daemon = MonitorNeutronAgentsDaemon()
     monitor_daemon.start()

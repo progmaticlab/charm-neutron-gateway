@@ -629,12 +629,6 @@ def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
             raise
 
 
-def init_upstart_f_4_reassign_agent_resources():
-    upstart_f = 'reassign_agent_resources.conf'
-    exec_dir = '/etc/init'
-    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir, upstart_f)
-
-
 def init_ocf_MonitorNeutron_f(update=False):
     ocf_f = 'MonitorNeutron'
     exec_dir = '/usr/lib/ocf/resource.d/pacemaker'
@@ -642,17 +636,17 @@ def init_ocf_MonitorNeutron_f(update=False):
               ocf_f, stat.S_IEXEC, update=update)
 
 
+def get_external_agent_f():
+    agent = 'monitor_neutron_ha.sh'
+    exec_dir = '/usr/lib/ocf/resource.d/canonical'
+    return os.path.join(exec_dir, agent)
+
+
 def init_external_agent_f(update=False):
-    agent = 'ns_ovs_cleanup.sh'
-    exec_dir = '/usr/lib/ocf/resource.d/openstack'
+    agent = 'monitor_neutron_ha.sh'
+    exec_dir = '/usr/lib/ocf/resource.d/canonical'
     copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
               agent, stat.S_IEXEC, update=update)
-
-
-def init_reassign_agent_services_binary():
-    service = 'reassign_agent_services'
-    exec_dir = '/usr/local/bin/'
-    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir, service, stat.S_IEXEC)
 
 
 def init_monitor_daemon(update=False):
@@ -662,18 +656,18 @@ def init_monitor_daemon(update=False):
               service, stat.S_IEXEC, update=update)
 
 
+def init_monitor_conf_files(update=False):
+    conf = 'monitor.conf'
+    exec_dir = '/tmp'
+    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
+              conf, update=update)
+
+
 def install_legacy_ha_files(update=False):
     if config('ha-legacy-mode'):
         init_ocf_MonitorNeutron_f(update=update)
         init_external_agent_f(update=update)
-        # init_reassign_agent_services_binary()
         init_monitor_daemon(update=update)
-
-
-def get_external_agent_f():
-    agent = 'ns_ovs_cleanup.sh'
-    exec_dir = '/usr/lib/ocf/resource.d/openstack'
-    return os.path.join(exec_dir, agent)
 
 
 def cache_env_data():
