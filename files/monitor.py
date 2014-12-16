@@ -116,7 +116,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         return self.env
 
     def get_hostname(self):
-        return subprocess.check_output(['uname', '-n'])
+        return str(subprocess.check_output(['uname', '-n'])).strip()
 
     def get_root_helper(self):
         return 'sudo'
@@ -164,38 +164,40 @@ class MonitorNeutronAgentsDaemon(Daemon):
             ip.garbage_collect_namespace()
         except Exception:
             LOG.exception(_('Error unable to destroy namespace: %s'), namespace) 
+    def is_same_host(self, host):
+        return str(host).strip() == self.get_hostname()
 
-    def l3_agents_reschedule(self, l3_agents, routers):
-        if l3_agents[0] != self.get_hostname():
-            LOG.info('Only the first agent could reschedule. l3 agents: %s '
-                     'dhcp agents: %s' % (l3_agents))
+    def l3_agents_reschedule(self, l3_agents, routers, quantum):
+        if not self.is_same_host(l3_agents[0]['host']): 
+            LOG.info('Only the first l3 agent %s could reschedule. '
+                     % l3_agents[0]['host'])
             return
 
         index = 0
         for router_id in routers:
             agent = index % len(l3_agents)
             LOG.info('Moving router %s from %s to %s' %
-                     (router_id, routers[router_id], l3_agents[agent]))
+                     (router_id, routers[router_id], l3_agents[agent]['id']))
             quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
                                                 router_id=router_id)
-            quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
+            quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent]['id'],
                                            body={'router_id': router_id})
             index += 1
 
-    def dhcp_agents_reschedule(self, dhcp_agents, networks):
-        if dhcp_agents[0] != self.get_hostname():
-            LOG.info('Only the first agent could reschedule. '
-                     'dhcp agents: %s' % dhcp_agents)
+    def dhcp_agents_reschedule(self, dhcp_agents, networks, quantum):
+        if not is_same_host(dhcp_agents[0]['host']):
+            LOG.info('Only the first dhcp agent %s could reschedule. '
+                     % dhcp_agents[0]['host'])
             return
 
         index = 0
         for network_id in networks:
             agent = index % len(dhcp_agents)
             LOG.info('Moving network %s from %s to %s' %
-                     (network_id, networks[network_id], dhcp_agents[agent]))
+                     (network_id, networks[network_id], dhcp_agents[agent]['id']))
             quantum.remove_network_from_dhcp_agent(
                 dhcp_agent=networks[network_id], network_id=network_id)
-            quantum.add_network_to_dhcp_agent(dhcp_agent=dhcp_agents[agent],
+            quantum.add_network_to_dhcp_agent(dhcp_agent=dhcp_agents[agent]['id'],
                                               body={'network_id': network_id})
             index += 1
         
@@ -234,10 +236,10 @@ class MonitorNeutronAgentsDaemon(Daemon):
                         quantum.list_networks_on_dhcp_agent(
                             agent['id'])['networks']:
                     networks[network['id']] = agent['id']
-                    if agent['id'] == self.get_hostname():
+                    if is_same_host(agent['host']):
                         self.cleanup_dhcp(networks)
             else:
-                dhcp_agents.append(agent['id'])
+                dhcp_agents.append(agent)
                 LOG.info('Active dhcp agents: %s' % dhcp_agents)
     
         agents = quantum.list_agents(agent_type=L3_AGENT)
@@ -249,10 +251,10 @@ class MonitorNeutronAgentsDaemon(Daemon):
                         quantum.list_routers_on_l3_agent(
                             agent['id'])['routers']:
                     routers[router['id']] = agent['id']
-                    if agent['id'] == self.get_hostname():
+                    if is_same_host(agent['host']):
                         self.cleanup_router(routers)
             else:
-                l3_agents.append(agent['id'])
+                l3_agents.append(agent)
                 LOG.info('Active l3 agents: %s' % l3_agents)
 
         if not networks and not routers:
