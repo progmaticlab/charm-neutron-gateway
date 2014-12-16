@@ -1,10 +1,10 @@
 #! /bin/bash
 
-logger " ** "
+logger " ******************************************************************* "
 logger "Start running ns_ovs_cleanup.sh..."
 logger "CRM_notify_task: $CRM_notify_task, CRM_notify_desc: $CRM_notify_desc"
 logger "CRM_notify_rsc: $CRM_notify_rsc, CRM_notify_node: $CRM_notify_node"
-logger " ** "
+logger " ******************************************************************* "
 
 set -x
 DEFAULT_PIDFILE="/tmp/monitor.pid"

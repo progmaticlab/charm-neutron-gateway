@@ -629,13 +629,6 @@ def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
             raise
 
 
-def init_ocf_MonitorNeutron_f(update=False):
-    ocf_f = 'MonitorNeutron'
-    exec_dir = '/usr/lib/ocf/resource.d/pacemaker'
-    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
-              ocf_f, stat.S_IEXEC, update=update)
-
-
 def get_external_agent_f():
     agent = 'monitor_neutron_ha.sh'
     exec_dir = '/usr/lib/ocf/resource.d/canonical'
@@ -665,9 +658,9 @@ def init_monitor_conf_files(update=False):
 
 def install_legacy_ha_files(update=False):
     if config('ha-legacy-mode'):
-        init_ocf_MonitorNeutron_f(update=update)
         init_external_agent_f(update=update)
         init_monitor_daemon(update=update)
+        init_monitor_conf_files()
 
 
 def cache_env_data():

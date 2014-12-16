@@ -256,7 +256,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 LOG.info('Active l3 agents: %s' % l3_agents)
 
         if not networks and not routers:
-            LOG.info('No failed agents found, return.')
+            LOG.info('No networks and routers hosted on failed agents.')
             return
 
         if len(dhcp_agents) == 0 and len(l3_agents) == 0:
@@ -273,10 +273,10 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
     def run(self):
         while True:
-            LOG.info('Monitor Neutron Agent Loop Start')
+            LOG.info('Monitor Neutron HA Agent Loop Start')
+            self.reassign_agent_resources()
             LOG.info('sleep %s' % cfg.CONF.check_interval)
             time.sleep(float(cfg.CONF.check_interval))
-            self.reassign_agent_resources()
 
 
 if __name__ == '__main__':
