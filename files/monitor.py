@@ -123,7 +123,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
     def get_root_helper(self):
         return 'sudo'
 
-    def unplug_device(self, conf, device):
+    def unplug_device(self, device):
         try:
             device.link.delete()
         except RuntimeError:
@@ -143,9 +143,9 @@ class MonitorNeutronAgentsDaemon(Daemon):
             for network, agent in networks.iteritems():
                 namespaces.append('qdhcp-' + network)
         else:
-            cmd = ['sudo', 'ip', 'netns', '|', 'grep', 'qdhcp']
+            cmd = 'sudo ip netns | grep qdhcp'
             try:
-                qns = subprocess.call(cmd).strip().split(' ')
+                qns = subprocess.check_output(cmd, True).strip().split(' ')
                 for qn in qns:
                     namespaces.append(qn)
             except Exception:
@@ -161,9 +161,9 @@ class MonitorNeutronAgentsDaemon(Daemon):
             for router, agent in routers.iteritems():
                 namespaces.append('qrouter-' + router)
         else:
-            cmd = ['sudo', 'ip', 'netns', '|', 'grep', 'qrouter']
+            cmd = 'sudo ip netns | grep qrouter'
             try:
-                qns = subprocess.call(cmd).strip().split(' ')
+                qns = subprocess.check_output(cmd, True).strip().split(' ')
                 for qn in qns:
                     namespaces.append(qn)
             except Exception:
