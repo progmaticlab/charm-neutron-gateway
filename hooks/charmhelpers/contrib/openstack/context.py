@@ -21,11 +21,15 @@ from charmhelpers.core.hookenv import (
     relation_set,
     unit_get,
     unit_private_ip,
+    charm_name,
     DEBUG,
     INFO,
     WARNING,
     ERROR,
 )
+
+from charmhelpers.core.sysctl import create as sysctl_create
+
 from charmhelpers.core.host import (
     mkdir,
     write_file,
@@ -431,8 +435,11 @@ class HAProxyContext(OSContextGenerator):
     """
     interfaces = ['cluster']
 
+    def __init__(self, singlenode_mode=False):
+        self.singlenode_mode = singlenode_mode
+
     def __call__(self):
-        if not relation_ids('cluster'):
+        if not relation_ids('cluster') and not self.singlenode_mode:
             return {}
 
         if config('prefer-ipv6'):
@@ -493,7 +500,8 @@ class HAProxyContext(OSContextGenerator):
             ctxt['stat_port'] = ':8888'
 
         for frontend in cluster_hosts:
-            if len(cluster_hosts[frontend]['backends']) > 1:
+            if (len(cluster_hosts[frontend]['backends']) > 1 or
+                    self.singlenode_mode):
                 # Enable haproxy when we have enough peers.
                 log('Ensuring haproxy enabled in /etc/default/haproxy.',
                     level=DEBUG)
@@ -1011,3 +1019,14 @@ class NotificationDriverContext(OSContextGenerator):
             ctxt['notifications'] = "True"
 
         return ctxt
+
+
+class SysctlContext(OSContextGenerator):
+    """This context check if the 'sysctl' option exists on configuration
+    then creates a file with the loaded contents"""
+    def __call__(self):
+        sysctl_dict = config('sysctl')
+        if sysctl_dict:
+            sysctl_create(sysctl_dict,
+                          '/etc/sysctl.d/50-{0}.conf'.format(charm_name()))
+        return {'sysctl': sysctl_dict}
