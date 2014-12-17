@@ -656,11 +656,19 @@ def init_monitor_conf_files(update=False):
               conf, update=update)
 
 
+def init_canonical_ping_file(update=False):
+    f = 'ping'
+    exec_dir = '/usr/lib/ocf/resource.d/canonical'
+    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
+              f, update=update)
+
+
 def install_legacy_ha_files(update=False):
     if config('ha-legacy-mode'):
         init_external_agent_f(update=update)
         init_monitor_daemon(update=update)
         init_monitor_conf_files()
+        init_canonical_ping_file()
 
 
 def cache_env_data():

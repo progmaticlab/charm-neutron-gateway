@@ -230,7 +230,7 @@ def ha_relation_joined():
 
         cluster_config = get_hacluster_config(excludes_key=['vip'])
         resources = {
-            'res_PingCheck': 'ocf:pacemaker:ping',
+            'res_PingCheck': 'ocf:canonical:ping',
             'res_ClusterMon': 'ocf:pacemaker:ClusterMon',
         }
         resource_params = {
