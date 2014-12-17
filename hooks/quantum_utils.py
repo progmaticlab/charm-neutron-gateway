@@ -91,7 +91,7 @@ QUANTUM_GATEWAY_PKGS = {
         "quantum-dhcp-agent",
         'python-mysqldb',
         'python-psycopg2',
-        "python-six",  # Force upgrade
+#        "python-six",  # Force upgrade
         "nova-api-metadata"
     ],
     NVP: [
@@ -99,7 +99,7 @@ QUANTUM_GATEWAY_PKGS = {
         "quantum-dhcp-agent",
         'python-mysqldb',
         'python-psycopg2',
-        "python-six",  # Force upgrade
+#        "python-six",  # Force upgrade
         "nova-api-metadata"
     ]
 }
@@ -113,7 +113,7 @@ NEUTRON_GATEWAY_PKGS = {
         'python-mysqldb',
         'python-psycopg2',
         'python-oslo.config',  # Force upgrade
-        "python-six",  # Force upgrade
+#        "python-six",  # Force upgrade
         "nova-api-metadata",
         "neutron-plugin-metering-agent",
         "neutron-lbaas-agent",
@@ -123,7 +123,7 @@ NEUTRON_GATEWAY_PKGS = {
         'python-mysqldb',
         'python-psycopg2',
         'python-oslo.config',  # Force upgrade
-        "python-six",  # Force upgrade
+#        "python-six",  # Force upgrade
         "nova-api-metadata"
     ],
     N1KV: [
@@ -131,7 +131,7 @@ NEUTRON_GATEWAY_PKGS = {
         "neutron-dhcp-agent",
         "python-mysqldb",
         "python-psycopg2",
-        "python-six",  # Force upgrade
+#        "python-six",  # Force upgrade
         "nova-api-metadata",
         "neutron-common",
         "neutron-l3-agent"
@@ -156,11 +156,12 @@ def get_early_packages():
     if config('plugin') in [OVS]:
         pkgs = determine_dkms_package()
     else:
-        return []
+        return ['python-six']
 
     # ensure headers are installed build any required dkms packages
     if [p for p in pkgs if 'dkms' in p]:
         return pkgs + [headers_package()]
+    pkgs.append('python-six')
     return pkgs
 
 
