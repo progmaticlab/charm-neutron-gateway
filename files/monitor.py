@@ -1,4 +1,4 @@
-# Copyright 2012 New Dream Network, LLC (DreamHost)
+# Copyright 2014 Canonical
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import atexit
-import fcntl
 import os
 import signal
 import sys
@@ -94,6 +92,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         super(MonitorNeutronAgentsDaemon, self).__init__()
         logging.setup('Neuron-HA-Monitor')
         LOG.info('Monitor Neutron Agent Loop Init')
+        self.hostname = None
         self.env = {}
 
     def get_env(self):
@@ -116,7 +115,10 @@ class MonitorNeutronAgentsDaemon(Daemon):
         return self.env
 
     def get_hostname(self):
-        return str(subprocess.check_output(['uname', '-n'])).strip()
+        if not self.hostname:
+            hostname = subprocess.check_output(['uname', '-n'])
+            self.hostname = str(hostname).strip()
+        return self.hostname
 
     def get_root_helper(self):
         return 'sudo'
@@ -127,30 +129,49 @@ class MonitorNeutronAgentsDaemon(Daemon):
         except RuntimeError:
             root_helper = self.get_root_helper()
             # Maybe the device is OVS port, so try to delete
-            bridge_name = ovs_lib.get_bridge_for_iface(root_helper, device.name)
+            bridge_name = ovs_lib.get_bridge_for_iface(root_helper,
+                                                       device.name)
             if bridge_name:
                 bridge = ovs_lib.OVSBridge(bridge_name, root_helper)
                 bridge.delete_port(device.name)
             else:
-                LOG.debug(_('Unable to find bridge for device: %s'), device.name)
+                LOG.debug('Unable to find bridge for device: %s', device.name)
 
     def cleanup_dhcp(self, networks):
         namespaces = []
-        for network, agent in networks.iteritems():
-            namespaces.append('qdhcp-' + network)
+        if networks:
+            for network, agent in networks.iteritems():
+                namespaces.append('qdhcp-' + network)
+        else:
+            cmd = ['sudo', 'ip', 'netns', '|', 'grep', 'qdhcp']
+            try:
+                qns = subprocess.call(cmd).strip().split(' ')
+                for qn in qns:
+                    namespaces.append(qn)
+            except Exception:
+                LOG.error('No dhcp namespaces found.')
 
         if namespaces:
             LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
-            destroy_namespaces(namespaces)
+            self.destroy_namespaces(namespaces)
 
     def cleanup_router(self, routers):
         namespaces = []
-        for router, agent in routers.iteritems():
-            namespaces.append('qrouter-' + router)
+        if routers:
+            for router, agent in routers.iteritems():
+                namespaces.append('qrouter-' + router)
+        else:
+            cmd = ['sudo', 'ip', 'netns', '|', 'grep', 'qrouter']
+            try:
+                qns = subprocess.call(cmd).strip().split(' ')
+                for qn in qns:
+                    namespaces.append(qn)
+            except Exception:
+                LOG.error('No router namespaces found.')
 
         if namespaces:
             LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
-            destroy_namespaces(namespaces)
+            self.destroy_namespaces(namespaces)
 
     def destroy_namespaces(self, namespaces):
         try:
@@ -159,16 +180,17 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 ip = ip_lib.IPWrapper(root_helper, namespace)
                 if ip.netns.exists(namespace):
                     for device in ip.get_devices(exclude_loopback=True):
-                         unplug_device(device)
+                        self.unplug_device(device)
 
             ip.garbage_collect_namespace()
         except Exception:
-            LOG.exception(_('Error unable to destroy namespace: %s'), namespace) 
+            LOG.exception('Error unable to destroy namespace: %s', namespace)
+
     def is_same_host(self, host):
         return str(host).strip() == self.get_hostname()
 
     def l3_agents_reschedule(self, l3_agents, routers, quantum):
-        if not self.is_same_host(l3_agents[0]['host']): 
+        if not self.is_same_host(l3_agents[0]['host']):
             LOG.info('Only the first l3 agent %s could reschedule. '
                      % l3_agents[0]['host'])
             return
@@ -185,7 +207,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
             index += 1
 
     def dhcp_agents_reschedule(self, dhcp_agents, networks, quantum):
-        if not is_same_host(dhcp_agents[0]['host']):
+        if not self.is_same_host(dhcp_agents[0]['host']):
             LOG.info('Only the first dhcp agent %s could reschedule. '
                      % dhcp_agents[0]['host'])
             return
@@ -193,14 +215,15 @@ class MonitorNeutronAgentsDaemon(Daemon):
         index = 0
         for network_id in networks:
             agent = index % len(dhcp_agents)
-            LOG.info('Moving network %s from %s to %s' %
-                     (network_id, networks[network_id], dhcp_agents[agent]['id']))
+            LOG.info('Moving network %s from %s to %s' % (network_id,
+                     networks[network_id], dhcp_agents[agent]['id']))
             quantum.remove_network_from_dhcp_agent(
                 dhcp_agent=networks[network_id], network_id=network_id)
-            quantum.add_network_to_dhcp_agent(dhcp_agent=dhcp_agents[agent]['id'],
-                                              body={'network_id': network_id})
+            quantum.add_network_to_dhcp_agent(
+                dhcp_agent=dhcp_agents[agent]['id'],
+                body={'network_id': network_id})
             index += 1
-        
+
     def reassign_agent_resources(self):
         ''' Use agent scheduler API to detect down agents and re-schedule '''
         DHCP_AGENT = "DHCP Agent"
@@ -223,39 +246,41 @@ class MonitorNeutronAgentsDaemon(Daemon):
                                 auth_url=auth_url,
                                 region_name=env['region'])
 
-        partner_gateways = []
-
         agents = quantum.list_agents(agent_type=DHCP_AGENT)
         dhcp_agents = []
         l3_agents = []
         networks = {}
         for agent in agents['agents']:
+            for network in \
+                    quantum.list_networks_on_dhcp_agent(
+                        agent['id'])['networks']:
+                networks[network['id']] = agent['id']
             if not agent['alive']:
                 LOG.info('DHCP Agent %s down' % agent['id'])
-                for network in \
-                        quantum.list_networks_on_dhcp_agent(
-                            agent['id'])['networks']:
-                    networks[network['id']] = agent['id']
-                    if is_same_host(agent['host']):
-                        self.cleanup_dhcp(networks)
+                if self.is_same_host(agent['host']) and networks:
+                    self.cleanup_dhcp(networks)
             else:
                 dhcp_agents.append(agent)
                 LOG.info('Active dhcp agents: %s' % dhcp_agents)
-    
+                if not networks:
+                    self.cleanup_dhcp(None)
+
         agents = quantum.list_agents(agent_type=L3_AGENT)
         routers = {}
         for agent in agents['agents']:
+            for router in \
+                    quantum.list_routers_on_l3_agent(
+                        agent['id'])['routers']:
+                routers[router['id']] = agent['id']
             if not agent['alive']:
                 LOG.info('L3 Agent %s down' % agent['id'])
-                for router in \
-                        quantum.list_routers_on_l3_agent(
-                            agent['id'])['routers']:
-                    routers[router['id']] = agent['id']
-                    if is_same_host(agent['host']):
-                        self.cleanup_router(routers)
+                if self.is_same_host(agent['host']) and routers:
+                    self.cleanup_router(routers)
             else:
                 l3_agents.append(agent)
                 LOG.info('Active l3 agents: %s' % l3_agents)
+                if not routers:
+                    self.cleanup_router(None)
 
         if not networks and not routers:
             LOG.info('No networks and routers hosted on failed agents.')
@@ -264,7 +289,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         if len(dhcp_agents) == 0 and len(l3_agents) == 0:
             LOG.error('Unable to relocate resources, there are %s dhcp_agents '
                       'and %s l3_agents in this cluster' % (len(dhcp_agents),
-                                                           len(l3_agents)))
+                                                            len(l3_agents)))
             return
 
         if len(l3_agents) != 0:
