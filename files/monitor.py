@@ -1,16 +1,13 @@
-# Copyright 2014 Canonical
+# Copyright 2014 Canonical Ltd.
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
+# Authors: Hui Xiang <hui.xiang@canonical.com>
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
+
+"""
+Helpers for monitoring Neutron agents, reschedule failed agents,
+cleaned resources on failed nodes.
+"""
+
 
 import os
 import signal
@@ -145,7 +142,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         else:
             cmd = 'sudo ip netns | grep qdhcp'
             try:
-                qns = subprocess.check_output(cmd, True).strip().split(' ')
+                qns = subprocess.check_output(cmd, shell=True).strip().split(' ')
                 for qn in qns:
                     namespaces.append(qn)
             except Exception:
@@ -163,7 +160,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         else:
             cmd = 'sudo ip netns | grep qrouter'
             try:
-                qns = subprocess.check_output(cmd, True).strip().split(' ')
+                qns = subprocess.check_output(cmd, shell=True).strip().split(' ')
                 for qn in qns:
                     namespaces.append(qn)
             except Exception:
@@ -257,7 +254,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 LOG.info('DHCP Agent %s down' % agent['id'])
                 for network in hosted_networks:
                     networks[network['id']] = agent['id']
-                if self.is_same_host(agent['host']) and networks:
+                if self.is_same_host(agent['host']):
                     self.cleanup_dhcp(networks)
             else:
                 dhcp_agents.append(agent)
@@ -274,7 +271,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 LOG.info('L3 Agent %s down' % agent['id'])
                 for router in hosted_routers:
                     routers[router['id']] = agent['id']
-                if self.is_same_host(agent['host']) and routers:
+                if self.is_same_host(agent['host']):
                     self.cleanup_router(routers)
             else:
                 l3_agents.append(agent)
