@@ -156,12 +156,13 @@ def get_early_packages():
     if config('plugin') in [OVS]:
         pkgs = determine_dkms_package()
     else:
-        return ['python-six']
+        return []
+#        return ['python-six']
 
     # ensure headers are installed build any required dkms packages
     if [p for p in pkgs if 'dkms' in p]:
         return pkgs + [headers_package()]
-    pkgs.append('python-six')
+#    pkgs.append('python-six')
     return pkgs
 
 

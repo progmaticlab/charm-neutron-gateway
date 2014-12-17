@@ -61,6 +61,7 @@ def install():
         src = 'cloud:precise-folsom'
     configure_installation_source(src)
     apt_update(fatal=True)
+    apt_install('python-six', fatal=True)
     if valid_plugin():
         apt_install(filter_installed_packages(get_early_packages()),
                     fatal=True)
