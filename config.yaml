@@ -92,7 +92,7 @@ options:
       accomodate the packet overhead of using GRE tunnels.
   enable-l3-agent:
     type: boolean
-    default: True 
+    default: True
     description: |
       Optional configuration to support use of linux router
       Note that this is used only for Cisco n1kv plugin.
@@ -115,3 +115,9 @@ options:
       .
       This network will be used for tenant network traffic in overlay
       networks.
+  sysctl:
+    type: string
+    default:
+    description: |
+      YAML-formatted associative array of sysctl key/value pairs to be set
+      persistently e.g. '{ kernel.pid_max : 4194303 }'.
