@@ -1,10 +1,5 @@
 #! /bin/bash
 
-logger " ******************************************************************* "
-logger "CRM_notify_task: $CRM_notify_task, CRM_notify_desc: $CRM_notify_desc"
-logger "CRM_notify_rsc: $CRM_notify_rsc, CRM_notify_node: $CRM_notify_node"
-logger " ******************************************************************* "
-
 set -x
 DEFAULT_PIDFILE="/tmp/monitor.pid"
 
@@ -27,8 +22,16 @@ function clean_pid
     fi
 }
 
-#if [[ ${CRM_notify_task} == 'start' && $CRM_notify_rsc == 'res_PingCheck' ]]; then
-if [[ $CRM_notify_rsc == 'res_PingCheck' && ${CRM_notify_task} == 'start' ]]; then
+hostname=`uname -n`
+if [[ $CRM_notify_node == $hostname ]]; then
+    logger " ******************************************************************* "
+    logger "CRM_notify_task: $CRM_notify_task, CRM_notify_desc: $CRM_notify_desc"
+    logger "CRM_notify_rsc: $CRM_notify_rsc, CRM_notify_node: $CRM_notify_node"
+    logger " ******************************************************************* "
+fi
+
+if [[ $CRM_notify_rsc == 'res_PingCheck' && ${CRM_notify_task} == 'start' && \
+    $CRM_notify_node == $hostname ]]; then
     if [[ ${CRM_notify_desc} == 'OK' || ${CRM_notify_desc} == 'ok' ]]; then
         check_pid
         if [ $? -ne 0 ]; then
