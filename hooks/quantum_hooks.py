@@ -33,6 +33,7 @@ from charmhelpers.contrib.openstack.utils import (
     openstack_upgrade_available,
 )
 from charmhelpers.payload.execd import execd_preinstall
+from charmhelpers.core.sysctl import create as create_sysctl
 
 import sys
 from quantum_utils import (
@@ -78,6 +79,11 @@ def config_changed():
     global CONFIGS
     if openstack_upgrade_available(get_common_package()):
         CONFIGS = do_openstack_upgrade()
+
+    sysctl_dict = config('sysctl')
+    if sysctl_dict:
+        create_sysctl(sysctl_dict, '/etc/sysctl.d/50-quantum-gateway.conf')
+
     # Re-run joined hooks as config might have changed
     for r_id in relation_ids('shared-db'):
         db_joined(relation_id=r_id)
