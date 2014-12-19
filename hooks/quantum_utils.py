@@ -668,7 +668,7 @@ def install_legacy_ha_files(update=False):
         init_external_agent_f(update=update)
         init_monitor_daemon(update=update)
         init_monitor_conf_files()
-        init_canonical_ping_file()
+        #init_canonical_ping_file()
 
 
 def cache_env_data():
