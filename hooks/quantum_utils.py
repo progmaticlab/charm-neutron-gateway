@@ -669,13 +669,13 @@ def init_canonical_ping_file(update=False):
 
 
 def install_legacy_ha_files(update=False):
-    for f, p in LEGACY_FILES_MAP:
+    for f, p in LEGACY_FILES_MAP.iteritems():
         copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'],
                   p['permission'], update=update)
 
 
 def remove_legacy_ha_files():
-    for f, p in LEGACY_FILES_MAP:
+    for f, p in LEGACY_FILES_MAP.iteritems():
         remove_file(p['path'], f)
 
 
