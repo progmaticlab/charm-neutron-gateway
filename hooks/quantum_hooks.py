@@ -50,7 +50,9 @@ from quantum_utils import (
     cache_env_data,
     get_dns_host,
     get_external_agent_f,
-    update_legacy_ha_files
+    update_legacy_ha_files,
+    remove_legacy_ha_files,
+    delete_legacy_resources
 )
 
 hooks = Hooks()
@@ -232,23 +234,23 @@ def ha_relation_joined():
 
         cluster_config = get_hacluster_config(excludes_key=['vip'])
         resources = {
-            'res_PingCheck': 'ocf:pacemaker:ping',
             'res_ClusterMon': 'ocf:pacemaker:ClusterMon',
+            'res_PingCheck': 'ocf:pacemaker:ping',
         }
         resource_params = {
+            'res_ClusterMon': 'params user="root" update="30" '
+                              'extra_options="-E {external_agent}" '
+                              'op monitor on-fail="restart" interval="10s"'
+                              .format(external_agent=external_agent),
             'res_PingCheck': 'params host_list="{host}" dampen="5s" '
                              'debug={debug} multiplier="1000" '
                              'op monitor on-fail="restart" interval="10s" '
                              'timeout="60s" '.format(host=dns_hosts,
                                                      debug=debug),
-            'res_ClusterMon': 'params user="root" update="30" '
-                              'extra_options="-E {external_agent}" '
-                              'op monitor on-fail="restart" interval="10s"'
-                              .format(external_agent=external_agent),
         }
         clones = {
+            'cl_ClusterMon': 'res_ClusterMon meta interleave="true"',
             'cl_PingCheck': 'res_PingCheck meta interleave="true"',
-            'cl_ClusterMon': 'res_ClusterMon meta interleave="true"'
         }
 
         relation_set(corosync_bindiface=cluster_config['ha-bindiface'],
@@ -256,6 +258,13 @@ def ha_relation_joined():
                      resources=resources,
                      resource_params=resource_params,
                      clones=clones)
+
+
+@hooks.hook('ha-relation-departed')
+def ha_relation_destroyed():
+    if config('ha-legacy-mode'):
+        delete_legacy_resources()
+        remove_legacy_ha_files()
 
 
 if __name__ == '__main__':

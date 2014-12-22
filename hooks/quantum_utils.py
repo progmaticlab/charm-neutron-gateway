@@ -713,3 +713,14 @@ def cache_env_data():
         with open(envrc_f, 'w') as f:
             for k, v in env.items():
                 f.write(''.join([k, '=', v, '\n']))
+
+
+def delete_legacy_resources():
+    def crm_op(op, res):
+        cmd = 'crm -w -F %s %s' % (op, res)
+        subprocess.call(cmd.split())
+
+    crm_op('resource stop', 'res_PingCheck')
+    crm_op('resource stop', 'res_ClusterMon')
+    crm_op('configure delete', 'res_PingCheck')
+    crm_op('configure delete', 'res_ClusterMon')
