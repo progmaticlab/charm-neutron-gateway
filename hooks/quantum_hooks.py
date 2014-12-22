@@ -50,7 +50,7 @@ from quantum_utils import (
     cache_env_data,
     get_dns_host,
     get_external_agent_f,
-    install_legacy_ha_files
+    update_legacy_ha_files
 )
 
 hooks = Hooks()
@@ -76,7 +76,7 @@ def install():
         sys.exit(1)
 
     # Legacy HA for Icehouse
-    install_legacy_ha_files()
+    update_legacy_ha_files()
 
 
 @hooks.hook('config-changed')
@@ -106,12 +106,14 @@ def config_changed():
         else:
             apt_purge('neutron-l3-agent')
 
+    update_legacy_ha_files()
+
 
 @hooks.hook('upgrade-charm')
 def upgrade_charm():
     install()
     config_changed()
-    install_legacy_ha_files(update=True)
+    update_legacy_ha_files(update=True)
 
 
 @hooks.hook('shared-db-relation-joined')

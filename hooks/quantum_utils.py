@@ -152,6 +152,20 @@ EARLY_PACKAGES = {
 }
 
 LEGACY_HA_TEMPLATE_FILES = 'files'
+LEGACY_FILES_MAP = {
+    'monitor_neutron_ha.sh': {
+        'path': '/usr/lib/ocf/resource.d/canonical',
+        'permission': stat.S_IEXEC
+    },
+    'monitor.py': {
+        'path': '/usr/local/bin/',
+        'permission': stat.S_IEXEC
+    },
+    'monitor.conf': {
+        'path': '/tmp',
+        'permission': None
+    }
+}
 
 
 def get_early_packages():
@@ -629,31 +643,22 @@ def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
             raise
 
 
+def remove_file(des_dir, f):
+    if not os.path.isdir(des_dir):
+        log('Directory %s already removed.' % des_dir)
+
+    f = os.path.join(des_dir, f)
+    if os.path.isfile(f):
+        try:
+            os.remove(f)
+        except IOError:
+            log('Failed to remove file %s.' % f, level=ERROR)
+
+
 def get_external_agent_f():
     agent = 'monitor_neutron_ha.sh'
     exec_dir = '/usr/lib/ocf/resource.d/canonical'
     return os.path.join(exec_dir, agent)
-
-
-def init_external_agent_f(update=False):
-    agent = 'monitor_neutron_ha.sh'
-    exec_dir = '/usr/lib/ocf/resource.d/canonical'
-    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
-              agent, stat.S_IEXEC, update=update)
-
-
-def init_monitor_daemon(update=False):
-    service = 'monitor.py'
-    exec_dir = '/usr/local/bin/'
-    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
-              service, stat.S_IEXEC, update=update)
-
-
-def init_monitor_conf_files(update=False):
-    conf = 'monitor.conf'
-    exec_dir = '/tmp'
-    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
-              conf, update=update)
 
 
 def init_canonical_ping_file(update=False):
@@ -664,11 +669,21 @@ def init_canonical_ping_file(update=False):
 
 
 def install_legacy_ha_files(update=False):
+    for f, p in LEGACY_FILES_MAP:
+        copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'],
+                  p['permission'], update=update)
+
+
+def remove_legacy_ha_files():
+    for f, p in LEGACY_FILES_MAP:
+        remove_file(p['path'], f)
+
+
+def update_legacy_ha_files(update=False):
     if config('ha-legacy-mode'):
-        init_external_agent_f(update=update)
-        init_monitor_daemon(update=update)
-        init_monitor_conf_files(update=update)
-        #init_canonical_ping_file()
+        install_legacy_ha_files(update=update)
+    else:
+        remove_legacy_ha_files()
 
 
 def cache_env_data():
