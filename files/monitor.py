@@ -114,7 +114,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
     def get_hostname(self):
         if not self.hostname:
-            self.hostname = socket.get_hostname()
+            self.hostname = socket.gethostname()
         return self.hostname
 
     def get_root_helper(self):

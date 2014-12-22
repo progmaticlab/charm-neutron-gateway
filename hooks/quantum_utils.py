@@ -667,7 +667,7 @@ def install_legacy_ha_files(update=False):
     if config('ha-legacy-mode'):
         init_external_agent_f(update=update)
         init_monitor_daemon(update=update)
-        init_monitor_conf_files()
+        init_monitor_conf_files(update=update)
         #init_canonical_ping_file()
 
 
