@@ -12,6 +12,7 @@ cleaned resources on failed nodes.
 import os
 import signal
 import sys
+import socket
 import subprocess
 import time
 
@@ -113,12 +114,28 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
     def get_hostname(self):
         if not self.hostname:
-            hostname = subprocess.check_output(['uname', '-n'])
-            self.hostname = str(hostname).strip()
+            self.hostname = socket.get_hostname()
         return self.hostname
 
     def get_root_helper(self):
         return 'sudo'
+
+    def list_nodes(self):
+        cmd = ['crm', 'node', 'list']
+        out = subprocess.check_output(cmd)
+        nodes = []
+        for line in str(out).split('\n'):
+            if line != '':
+                nodes.append(line.split(':')[0])
+        return nodes
+
+    def get_crm_no_1_node(self):
+        nodes = self.list_nodes()
+        if nodes:
+            return nodes[0].split('(')[0] or nodes[0]
+        else:
+            LOG.error('Failed to get crm node list.')
+            return None
 
     def unplug_device(self, device):
         try:
@@ -133,6 +150,10 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 bridge.delete_port(device.name)
             else:
                 LOG.debug('Unable to find bridge for device: %s', device.name)
+
+    def cleanup(self):
+        self.cleanup_dhcp(None)
+        self.cleanup_router(None)
 
     def cleanup_dhcp(self, networks):
         namespaces = []
@@ -186,38 +207,46 @@ class MonitorNeutronAgentsDaemon(Daemon):
     def is_same_host(self, host):
         return str(host).strip() == self.get_hostname()
 
+    def validate_reschedule(self):
+        crm_no_1_node = self.get_crm_no_1_node()
+        if not crm_no_1_node:
+            LOG.error('No crm first node could be found.')
+            return False
+
+        if not self.is_same_host(crm_no_1_node):
+            LOG.warnning('Only the first crm node %s could reschedule. '
+                         % crm_no_1_node)
+            return False
+        return True
+
     def l3_agents_reschedule(self, l3_agents, routers, quantum):
-        if not self.is_same_host(l3_agents[0]['host']):
-            LOG.info('Only the first l3 agent %s could reschedule. '
-                     % l3_agents[0]['host'])
+        if not self.validate_reschedule():
             return
 
         index = 0
         for router_id in routers:
             agent = index % len(l3_agents)
             LOG.info('Moving router %s from %s to %s' %
-                     (router_id, routers[router_id], l3_agents[agent]['id']))
+                     (router_id, routers[router_id], l3_agents[agent]))
             quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
                                                 router_id=router_id)
-            quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent]['id'],
+            quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
                                            body={'router_id': router_id})
             index += 1
 
     def dhcp_agents_reschedule(self, dhcp_agents, networks, quantum):
-        if not self.is_same_host(dhcp_agents[0]['host']):
-            LOG.info('Only the first dhcp agent %s could reschedule. '
-                     % dhcp_agents[0]['host'])
+        if not self.validate_reschedule():
             return
 
         index = 0
         for network_id in networks:
             agent = index % len(dhcp_agents)
             LOG.info('Moving network %s from %s to %s' % (network_id,
-                     networks[network_id], dhcp_agents[agent]['id']))
+                     networks[network_id], dhcp_agents[agent]))
             quantum.remove_network_from_dhcp_agent(
                 dhcp_agent=networks[network_id], network_id=network_id)
             quantum.add_network_to_dhcp_agent(
-                dhcp_agent=dhcp_agents[agent]['id'],
+                dhcp_agent=dhcp_agents[agent],
                 body={'network_id': network_id})
             index += 1
 
@@ -243,7 +272,15 @@ class MonitorNeutronAgentsDaemon(Daemon):
                                 auth_url=auth_url,
                                 region_name=env['region'])
 
-        agents = quantum.list_agents(agent_type=DHCP_AGENT)
+        try:
+            agents = quantum.list_agents(agent_type=DHCP_AGENT)
+        except Exception:
+            self.cleanup()
+            LOG.error('Failed to get neutron agent list,'
+                      'might be network lost connection,'
+                      'clean up neutron resources.')
+            return
+
         dhcp_agents = []
         l3_agents = []
         networks = {}
@@ -257,7 +294,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 if self.is_same_host(agent['host']):
                     self.cleanup_dhcp(networks)
             else:
-                dhcp_agents.append(agent)
+                dhcp_agents.append(agent['id'])
                 LOG.info('Active dhcp agents: %s' % agent['id'])
                 if not hosted_networks and self.is_same_host(agent['host']):
                     self.cleanup_dhcp(None)
@@ -274,7 +311,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 if self.is_same_host(agent['host']):
                     self.cleanup_router(routers)
             else:
-                l3_agents.append(agent)
+                l3_agents.append(agent['id'])
                 LOG.info('Active l3 agents: %s' % agent['id'])
                 if not hosted_routers and self.is_same_host(agent['host']):
                     self.cleanup_router(None)
