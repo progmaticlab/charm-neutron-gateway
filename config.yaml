@@ -122,11 +122,6 @@ options:
     description: |
       Support HA ACTIVE/PASSIVE mode with pacemaker and corosync before neutron
       native HA feature landed to Juno.
-  ocf_ping_debug:
-    type: boolean
-    default: False
-  dns_hosts:
-    type: string
   ha-bindiface:
     type: string
     default: eth0

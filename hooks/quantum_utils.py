@@ -602,26 +602,6 @@ def configure_ovs():
                             promisc=True)
 
 
-def get_dns_host():
-    dns_hosts = []
-    try:
-        output = subprocess.check_output(['grep', 'nameserver',
-                                          '/etc/resolv.conf'])
-        nameservers = output.split('\n')
-        dns_hosts = [(ns.split(' ')[1].split('\n')[0].strip() + ' ')
-                     for ns in nameservers if ns.startswith('nameserver')
-                     and ns.split(' ')[1]]
-    except Exception:
-        log('Failed to get nameserver from resolv.conf !', level=ERROR)
-
-    if config('dns_hosts'):
-        dnss = config('dns_hosts').split(' ')
-        for dns in dnss:
-            dns_hosts.append(dns)
-
-    return ' '.join(dns_hosts)
-
-
 def get_quantum_gateway_cluster_nodes():
     partner_gateways = get_hostname(unit_private_ip())
     for partner_gateway in relations_of_type(reltype='cluster'):
