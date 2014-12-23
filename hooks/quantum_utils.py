@@ -164,8 +164,13 @@ LEGACY_FILES_MAP = {
     'monitor.conf': {
         'path': '/tmp',
         'permission': None
-    }
+    },
+    'NeutronAgentMon': {
+        'path': '/usr/lib/ocf/resource.d/canonical',
+        'permission': None
+    },
 }
+LEGACY_RES_MAP = ['res_monitor']
 
 
 def get_early_packages():
@@ -719,8 +724,6 @@ def delete_legacy_resources():
     def crm_op(op, res):
         cmd = 'crm -w -F %s %s' % (op, res)
         subprocess.call(cmd.split())
-
-    crm_op('resource stop', 'res_PingCheck')
-    crm_op('resource stop', 'res_ClusterMon')
-    crm_op('configure delete', 'res_PingCheck')
-    crm_op('configure delete', 'res_ClusterMon')
+    for res in LEGACY_RES_MAP:
+        crm_op('resource stop', res)
+        crm_op('configure delete', res)

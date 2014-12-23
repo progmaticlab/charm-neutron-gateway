@@ -228,29 +228,33 @@ def stop():
 def ha_relation_joined():
     if config('ha-legacy-mode'):
         cache_env_data()
-        dns_hosts = get_dns_host()
-        debug = config('ocf_ping_debug')
-        external_agent = get_external_agent_f()
+        #dns_hosts = get_dns_host()
+        #debug = config('ocf_ping_debug')
+        #external_agent = get_external_agent_f()
 
         cluster_config = get_hacluster_config(excludes_key=['vip'])
         resources = {
-            'res_ClusterMon': 'ocf:pacemaker:ClusterMon',
-            'res_PingCheck': 'ocf:pacemaker:ping',
+            'res_monitor': 'ocf:canonical:NeutronAgentMon',
+            #'res_ClusterMon': 'ocf:pacemaker:ClusterMon',
+            #'res_PingCheck': 'ocf:pacemaker:ping',
         }
         resource_params = {
-            'res_ClusterMon': 'params user="root" update="30" '
-                              'extra_options="-E {external_agent}" '
-                              'op monitor on-fail="restart" interval="10s"'
-                              .format(external_agent=external_agent),
-            'res_PingCheck': 'params host_list="{host}" dampen="5s" '
-                             'debug={debug} multiplier="1000" '
-                             'op monitor on-fail="restart" interval="10s" '
-                             'timeout="60s" '.format(host=dns_hosts,
-                                                     debug=debug),
+            'res_monitor': 'op monitor on-fail="restart" interval="10s"',
+
+            #'res_ClusterMon': 'params user="root" update="30" '
+            #                  'extra_options="-E {external_agent}" '
+            #                  'op monitor on-fail="restart" interval="10s"'
+            #                  .format(external_agent=external_agent),
+            #'res_PingCheck': 'params host_list="{host}" dampen="5s" '
+            #                 'debug={debug} multiplier="1000" '
+            #                 'op monitor on-fail="restart" interval="10s" '
+            #                 'timeout="60s" '.format(host=dns_hosts,
+            #                                         debug=debug),
         }
         clones = {
-            'cl_ClusterMon': 'res_ClusterMon meta interleave="true"',
-            'cl_PingCheck': 'res_PingCheck meta interleave="true"',
+            'cl_monitor': 'res_monitor meta interleave="true"',
+            #'cl_ClusterMon': 'res_ClusterMon meta interleave="true"',
+            #'cl_PingCheck': 'res_PingCheck meta interleave="true"',
         }
 
         relation_set(corosync_bindiface=cluster_config['ha-bindiface'],
