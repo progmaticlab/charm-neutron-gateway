@@ -660,19 +660,6 @@ def remove_file(des_dir, f):
             log('Failed to remove file %s.' % f, level=ERROR)
 
 
-def get_external_agent_f():
-    agent = 'monitor_neutron_ha.sh'
-    exec_dir = '/usr/lib/ocf/resource.d/canonical'
-    return os.path.join(exec_dir, agent)
-
-
-def init_canonical_ping_file(update=False):
-    f = 'ping'
-    exec_dir = '/usr/lib/ocf/resource.d/canonical'
-    copy_file(LEGACY_HA_TEMPLATE_FILES, exec_dir,
-              f, update=update)
-
-
 def install_legacy_ha_files(update=False):
     for f, p in LEGACY_FILES_MAP.iteritems():
         copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'], f,

@@ -214,8 +214,8 @@ class MonitorNeutronAgentsDaemon(Daemon):
             return False
 
         if not self.is_same_host(crm_no_1_node):
-            LOG.warnning('Only the first crm node %s could reschedule. '
-                         % crm_no_1_node)
+            LOG.warn('Only the first crm node %s could reschedule. '
+                     % crm_no_1_node)
             return False
         return True
 
