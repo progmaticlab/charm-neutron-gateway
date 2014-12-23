@@ -239,7 +239,7 @@ def ha_relation_joined():
             #'res_PingCheck': 'ocf:pacemaker:ping',
         }
         resource_params = {
-            'res_monitor': 'op monitor on-fail="restart" interval="10s"',
+            'res_monitor': 'op monitor interval="60s"',
 
             #'res_ClusterMon': 'params user="root" update="30" '
             #                  'extra_options="-E {external_agent}" '

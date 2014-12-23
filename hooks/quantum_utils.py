@@ -167,7 +167,7 @@ LEGACY_FILES_MAP = {
     },
     'NeutronAgentMon': {
         'path': '/usr/lib/ocf/resource.d/canonical',
-        'permission': None
+        'permission': stat.S_IEXEC
     },
 }
 LEGACY_RES_MAP = ['res_monitor']

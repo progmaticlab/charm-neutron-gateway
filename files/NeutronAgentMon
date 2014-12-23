@@ -29,10 +29,6 @@
 #
 # OCF instance parameters:
 #	OCF_RESKEY_user
-#	OCF_RESKEY_pidfile
-#	OCF_RESKEY_update
-#	OCF_RESKEY_extra_options
-#	OCF_RESKEY_htmlfile
 
 #######################################################################
 # Initialization:
@@ -65,43 +61,12 @@ The user we want to run crm_mon as
 <content type="string" default="root" />
 </parameter>
 
-<parameter name="update" unique="0">
-<longdesc lang="en">
-How frequently should we update the cluster status
-</longdesc>
-<shortdesc lang="en">Update interval</shortdesc>
-<content type="integer" default="15" />
-</parameter>
-
-<parameter name="extra_options" unique="0">
-<longdesc lang="en">
-Additional options to pass to crm_mon.  Eg. -n -r
-</longdesc>
-<shortdesc lang="en">Extra options</shortdesc>
-<content type="string" default="" />
-</parameter>
-
-<parameter name="pidfile" unique="1">
-<longdesc lang="en">
-PID file location to ensure only one instance is running
-</longdesc>
-<shortdesc lang="en">PID file</shortdesc>
-<content type="string" default="/tmp/NeutronAgentMon_${OCF_RESOURCE_INSTANCE}.pid" />
-</parameter>
-
-<parameter name="htmlfile" unique="1" required="0">
-<longdesc lang="en">
-Location to write HTML output to.
-</longdesc>
-<shortdesc lang="en">HTML output</shortdesc>
-<content type="string" default="/tmp/NeutronAgentMon_${OCF_RESOURCE_INSTANCE}.html" />
-</parameter>
 </parameters>
 
 <actions>
 <action name="start"   timeout="20" />
 <action name="stop"    timeout="20" />
-<action name="monitor" depth="0"  timeout="20" interval="10" />
+<action name="monitor" depth="0"  timeout="20" interval="60" />
 <action name="meta-data"  timeout="5" />
 <action name="validate-all"  timeout="30" />
 </actions>
@@ -120,71 +85,43 @@ END
 }
 
 NeutronAgentMon_exit() {
-	if [ $1 != 0 ]; then
-		exit $OCF_ERR_GENERIC
-	else
-		exit $OCF_SUCCESS
-	fi
+    if [ $1 != 0 ]; then
+        exit $OCF_ERR_GENERIC
+    else
+        exit $OCF_SUCCESS
+    fi
 }
 
 NeutronAgentMon_start() {
-    pid=`ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
+    pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ -z $pid ]; then
-        ocf_log warn "Start Monitor daemon."
+        ocf_log info "[NeutronAgentMon_start] Start Monitor daemon."
         sudo python /usr/local/bin/monitor.py --config-file /tmp/monitor.conf --log-file /tmp/monitor.log >> /dev/null 2>&1 & echo $!
+        sleep 5
     else
-        ocf_log warn "Monitor daemon already running."
+        ocf_log warn "[NeutronAgentMon_start] Monitor daemon already running."
     fi
     NeutronAgentMon_exit $?
 }
 
 NeutronAgentMon_stop() {
-    pid=`ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
+    pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ ! -z $pid ]; then
-        ocf_log warn "Stop Monitor daemon."
         sudo kill -s 9 $pid
+        ocf_log info "[NeutronAgentMon_stop] Pid $pid is killed."
     else
-        ocf_log warn "Monitor daemon already stopped."
+        ocf_log warn "[NeutronAgentMon_stop] Monitor daemon already stopped."
     fi
     NeutronAgentMon_exit 0
 }
 
 NeutronAgentMon_monitor() {
-    pid=`ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
+    pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ ! -z $pid ]; then
-        kill -s 0 $pid >/dev/null 2>&1; rc=$?
-        case $rc in
-	    0) exit $OCF_SUCCESS;;
-            1) exit $OCF_NOT_RUNNING;;
-	    *) exit $OCF_ERR_GENERIC;;
-	esac
+        ocf_log info "[NeutronAgentMon_monitor] success."
+        exit $OCF_SUCCESS
     fi
     exit $OCF_NOT_RUNNING
-}
-
-CheckOptions() {
-while getopts Vi:nrh:cdp: OPTION
-do
-    case $OPTION in
-    V|n|r|c|d);;
-    i)	ocf_log warn "You should not have specified the -i option, since OCF_RESKEY_update is set already!";;
-    h)	ocf_log warn "You should not have specified the -h option, since OCF_RESKEY_htmlfile is set already!";;
-    p)	ocf_log warn "You should not have specified the -p option, since OCF_RESKEY_pidfile is set already!";;
-    *)  return $OCF_ERR_ARGS;;
-    esac
-done		
-
-if [ $? -ne 0 ]; then
-    return $OCF_ERR_ARGS
-fi
-
-# We should have eaten all options at this stage
-shift $(($OPTIND -1))
-if [ $# -gt 0 ]; then
-    false
-else
-    true
-fi
 }
 
 NeutronAgentMon_validate() {
@@ -199,34 +136,6 @@ NeutronAgentMon_validate() {
 	fi
     fi
 
-# Pidfile better be an absolute path
-    case $OCF_RESKEY_pidfile in
-	/*) ;;
-	*) ocf_log warn "You should have pidfile($OCF_RESKEY_pidfile) of absolute path!" ;;
-    esac
-
-# Check the update interval
-    if ocf_is_decimal "$OCF_RESKEY_update" && [ $OCF_RESKEY_update -gt 0 ]; then
-	:
-    else
-	ocf_log err "Invalid update interval $OCF_RESKEY_update. It should be positive integer!"
-	exit $OCF_ERR_ARGS
-    fi
-
-    if CheckOptions $OCF_RESKEY_extra_options; then
-	:
-    else
-	ocf_log err "Invalid options $OCF_RESKEY_extra_options!"
-	exit $OCF_ERR_ARGS
-    fi
-
-# Htmlfile better be an absolute path
-    case $OCF_RESKEY_htmlfile in
-	/*) ;;
-	*) ocf_log warn "You should have htmlfile($OCF_RESKEY_htmlfile) of absolute path!" ;;
-    esac
-
-     
     echo "Validate OK"
     return $OCF_SUCCESS
 }
