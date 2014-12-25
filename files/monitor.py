@@ -333,17 +333,18 @@ class MonitorNeutronAgentsDaemon(Daemon):
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
 
     def check_local_agents(self):
-        services = ['neutron-metadata-agent', 'neutron-vpn-agent']
-        stop = 'neutron-vpn-agent stop/waiting'
+        services = ['neutron-dhcp-agent',
+                    'neutron-metadata-agent', 'neutron-vpn-agent']
         for s in services:
              status = ['sudo', 'service', s, 'status']
-             start = ['sudo', 'service', s, 'start']
+             restart = ['sudo', 'service', s, 'restart']
+             l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
              try:
                  output = subprocess.check_output(status)
-                 if output.strip() == stop:
-                     subprocess.check_output(start)
-             except:
-                 LOG.error("Unable to check neutron services status")
+             except Exception as e:
+                 subprocess.check_output(restart)
+                 if s == 'neutron-metadata-agent':
+                     subprocess.check_output(l3_restart)
 
     def run(self):
         while True:
