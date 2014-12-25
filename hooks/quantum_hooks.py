@@ -34,6 +34,7 @@ from charmhelpers.contrib.openstack.utils import (
     openstack_upgrade_available,
 )
 from charmhelpers.payload.execd import execd_preinstall
+from charmhelpers.core.sysctl import create as create_sysctl
 
 import sys
 from quantum_utils import (
@@ -66,6 +67,7 @@ def install():
         src = 'cloud:precise-folsom'
     configure_installation_source(src)
     apt_update(fatal=True)
+    apt_install('python-six', fatal=True)  # Force upgrade
     if valid_plugin():
         apt_install(filter_installed_packages(get_early_packages()),
                     fatal=True)
@@ -85,6 +87,11 @@ def config_changed():
     global CONFIGS
     if openstack_upgrade_available(get_common_package()):
         CONFIGS = do_openstack_upgrade()
+
+    sysctl_dict = config('sysctl')
+    if sysctl_dict:
+        create_sysctl(sysctl_dict, '/etc/sysctl.d/50-quantum-gateway.conf')
+
     # Re-run joined hooks as config might have changed
     for r_id in relation_ids('shared-db'):
         db_joined(relation_id=r_id)
