@@ -332,10 +332,24 @@ class MonitorNeutronAgentsDaemon(Daemon):
         if len(dhcp_agents) != 0:
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
 
+    def check_local_agents(self):
+        services = ['neutron-metadata-agent', 'neutron-vpn-agent']
+        stop = 'neutron-vpn-agent stop/waiting'
+        for s in services:
+             status = ['sudo', 'service', s, 'status']
+             start = ['sudo', 'service', s, 'start']
+             try:
+                 output = subprocess.check_output(status)
+                 if output.strip() == stop:
+                     subprocess.check_output(start)
+             except:
+                 LOG.error("Unable to check neutron services status")
+
     def run(self):
         while True:
             LOG.info('Monitor Neutron HA Agent Loop Start')
             self.reassign_agent_resources()
+            self.check_local_agents()
             LOG.info('sleep %s' % cfg.CONF.check_interval)
             time.sleep(float(cfg.CONF.check_interval))
 
