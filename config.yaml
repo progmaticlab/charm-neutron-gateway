@@ -116,10 +116,11 @@ options:
       This network will be used for tenant network traffic in overlay
       networks.
   sysctl:
+    type: string
     default:
     description: |
       YAML-formatted associative array of sysctl key/value pairs to be set
-      persistently e.g. '{ kernel.pid_max : 4194303 }'.>>>>>>> MERGE-SOURCE
+      persistently e.g. '{ kernel.pid_max : 4194303 }'.
   # Legacy HA
   ha-legacy-mode:
     type: boolean
