@@ -333,16 +333,20 @@ class MonitorNeutronAgentsDaemon(Daemon):
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
 
     def check_local_agents(self):
-        services = ['neutron-dhcp-agent',
+        services = ['openvswitch-switch', 'neutron-dhcp-agent',
                     'neutron-metadata-agent', 'neutron-vpn-agent']
         for s in services:
              status = ['sudo', 'service', s, 'status']
              restart = ['sudo', 'service', s, 'restart']
+             ovs_agent_restart = ['sudo', 'service',
+                                  'neutron-plugin-openvswitch-agent', 'restart']
              l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
              try:
                  output = subprocess.check_output(status)
              except Exception as e:
                  subprocess.check_output(restart)
+                 if s == 'openvswitch-switch':
+                     subprocess.check_output(ovs_agent_restart)
                  if s == 'neutron-metadata-agent':
                      subprocess.check_output(l3_restart)
 
