@@ -125,7 +125,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         out = subprocess.check_output(cmd)
         nodes = []
         for line in str(out).split('\n'):
-            if line != '':
+            if line!='' and line.find('offline')==-1:
                 nodes.append(line.split(':')[0])
         return nodes
 
