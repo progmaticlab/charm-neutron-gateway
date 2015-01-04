@@ -328,9 +328,18 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
         if len(l3_agents) != 0:
             self.l3_agents_reschedule(l3_agents, routers, quantum)
+            # new l3 node will not create a tunnel if don't restart ovs process
+            self.restart_ovs_process()
 
         if len(dhcp_agents) != 0:
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
+
+    def restart_ovs_process(selfs):
+        try:
+            cmd = ['sudo', 'service', 'openvswitch-switch', 'restart']
+            output = subprocess.check_output(cmd)
+        except Exception as e:
+            pass
 
     def check_local_agents(self):
         services = ['openvswitch-switch', 'neutron-dhcp-agent',
