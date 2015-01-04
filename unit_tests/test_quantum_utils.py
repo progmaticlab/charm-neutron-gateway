@@ -44,7 +44,10 @@ TO_PATCH = [
     'service_restart',
     'remap_plugin',
     'is_relation_made',
-    'lsb_release'
+    'lsb_release',
+    'mkdir',
+    'copy2'
+    
 ]
 
 
@@ -359,6 +362,42 @@ class TestQuantumUtils(CharmTestCase):
     def test_get_common_package_neutron(self):
         self.get_os_codename_package.return_value = None
         self.assertEquals(quantum_utils.get_common_package(), 'neutron-common')
+
+    def test_copy_file_without_update(self):
+        source_dir = 'dummy_source_dir'
+        des_dir = 'dummy_des_dir'
+        f = 'dummy_file'
+        quantum_utils.copy_file(source_dir, des_dir, f)
+        self.assertTrue(self.mkdir.called) 
+        self.assertTrue(self.copy2.called)
+
+    @patch('quantum_utils.os.path.isfile')
+    def test_copy_file_with_update(self, _isfile):
+        source_dir = 'dummy_source_dir'
+        des_dir = 'dummy_des_dir'
+        f = 'dummy_file'
+        _isfile.return_value = False
+        quantum_utils.copy_file(source_dir, des_dir, f, update=True)
+        self.assertTrue(self.mkdir.called) 
+        self.assertTrue(self.copy2.called)
+
+    @patch('quantum_utils.os.path.isfile')
+    def test_remove_file_exists(self, _isfile):
+        des_dir = 'dummy_des_dir'
+        f = 'dummy_file'
+        _isfile.return_value = False
+        quantum_utils.remove_file(des_dir, f) 
+        self.assertTrue(self.log.called) 
+
+    @patch('quantum_utils.os.remove')
+    @patch('quantum_utils.os.path.isfile')
+    def test_remove_file_non_exists(self, _isfile, _remove):
+        des_dir = 'dummy_des_dir'
+        f = 'dummy_file'
+        _isfile.return_value = True
+        _remove.return_value = MagicMock()
+        quantum_utils.remove_file(des_dir, f) 
+        self.assertTrue(self.log.called) 
 
 
 network_context = {

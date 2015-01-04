@@ -1,7 +1,7 @@
 import os
-import shutil
 import stat
 import subprocess
+from shutil import copy2
 from charmhelpers.core.host import (
     service_running,
     service_stop,
@@ -606,14 +606,6 @@ def configure_ovs():
                             promisc=True)
 
 
-def get_quantum_gateway_cluster_nodes():
-    partner_gateways = unit_private_ip()
-    for partner_gateway in relations_of_type(reltype='cluster'):
-        gateway_hostname = get_hostname(partner_gateway['private-address'])
-        partner_gateways.append(gateway_hostname.partition('.')[0])
-    return partner_gateways
-
-
 def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
     if not os.path.isdir(des_dir):
         mkdir(des_dir)
@@ -623,7 +615,7 @@ def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
         try:
             source_f = os.path.join(source_dir, f)
             des_f = os.path.join(des_dir, f)
-            shutil.copy2(source_f, des_dir)
+            copy2(source_f, des_dir)
             if f_mod:
                 os.chmod(des_f, f_mod)
         except IOError:
