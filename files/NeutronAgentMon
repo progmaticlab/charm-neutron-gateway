@@ -75,6 +75,11 @@ NeutronAgentMon_exit() {
 }
 
 NeutronAgentMon_start() {
+    hostname=`cat /etc/hostname`
+    record="127.0.0.1 $hostname"
+    is_in_hosts=`grep $hostname /etc/hosts`
+    [[ $is_in_hosts = $record ]] && echo yes || sh -c "echo $record >> /etc/hosts"
+    
     pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ -z $pid ]; then
         ocf_log info "[NeutronAgentMon_start] Start Monitor daemon."

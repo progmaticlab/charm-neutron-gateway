@@ -125,7 +125,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         out = subprocess.check_output(cmd)
         nodes = []
         for line in str(out).split('\n'):
-            if line != '':
+            if line!='' and line.find('offline')==-1:
                 nodes.append(line.split(':')[0])
         return nodes
 
@@ -328,22 +328,36 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
         if len(l3_agents) != 0:
             self.l3_agents_reschedule(l3_agents, routers, quantum)
+            # new l3 node will not create a tunnel if don't restart ovs process
+            self.restart_ovs_process()
 
         if len(dhcp_agents) != 0:
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
 
+    def restart_ovs_process(selfs):
+        try:
+            cmd = ['sudo', 'service', 'openvswitch-switch', 'restart']
+            output = subprocess.check_output(cmd)
+        except Exception as e:
+            pass
+
     def check_local_agents(self):
-        services = ['neutron-metadata-agent', 'neutron-vpn-agent']
-        stop = 'neutron-vpn-agent stop/waiting'
+        services = ['openvswitch-switch', 'neutron-dhcp-agent',
+                    'neutron-metadata-agent', 'neutron-vpn-agent']
         for s in services:
              status = ['sudo', 'service', s, 'status']
-             start = ['sudo', 'service', s, 'start']
+             restart = ['sudo', 'service', s, 'restart']
+             ovs_agent_restart = ['sudo', 'service',
+                                  'neutron-plugin-openvswitch-agent', 'restart']
+             l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
              try:
                  output = subprocess.check_output(status)
-                 if output.strip() == stop:
-                     subprocess.check_output(start)
-             except:
-                 LOG.error("Unable to check neutron services status")
+             except Exception as e:
+                 subprocess.check_output(restart)
+                 if s == 'openvswitch-switch':
+                     subprocess.check_output(ovs_agent_restart)
+                 if s == 'neutron-metadata-agent':
+                     subprocess.check_output(l3_restart)
 
     def run(self):
         while True:
