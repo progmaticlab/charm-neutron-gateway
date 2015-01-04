@@ -42,6 +42,7 @@ TO_PATCH = [
     'b64decode',
     'is_relation_made',
     'create_sysctl',
+    'update_legacy_ha_files'
 ]
 
 

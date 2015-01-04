@@ -492,7 +492,11 @@ def reassign_agent_resources():
                             auth_url=auth_url,
                             region_name=env['region'])
 
-    partner_gateways = get_quantum_gateway_cluster_nodes()
+    partner_gateways = [unit_private_ip().split('.')[0]]
+    for partner_gateway in relations_of_type(reltype='cluster'):
+        gateway_hostname = get_hostname(partner_gateway['private-address'])
+        partner_gateways.append(gateway_hostname.partition('.')[0])
+
     agents = quantum.list_agents(agent_type=DHCP_AGENT)
     dhcp_agents = []
     l3_agents = []
@@ -603,7 +607,7 @@ def configure_ovs():
 
 
 def get_quantum_gateway_cluster_nodes():
-    partner_gateways = get_hostname(unit_private_ip())
+    partner_gateways = unit_private_ip()
     for partner_gateway in relations_of_type(reltype='cluster'):
         gateway_hostname = get_hostname(partner_gateway['private-address'])
         partner_gateways.append(gateway_hostname.partition('.')[0])
