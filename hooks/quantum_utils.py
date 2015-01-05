@@ -153,10 +153,6 @@ EARLY_PACKAGES = {
 
 LEGACY_HA_TEMPLATE_FILES = 'files'
 LEGACY_FILES_MAP = {
-    'monitor_neutron_ha.sh': {
-        'path': '/usr/lib/ocf/resource.d/canonical',
-        'permission': stat.S_IEXEC
-    },
     'monitor.py': {
         'path': '/usr/local/bin/',
         'permission': stat.S_IEXEC
