@@ -329,7 +329,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         if len(l3_agents) != 0:
             self.l3_agents_reschedule(l3_agents, routers, quantum)
             # new l3 node will not create a tunnel if don't restart ovs process
-            self.restart_ovs_process()
+            #self.restart_ovs_process()
 
         if len(dhcp_agents) != 0:
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
@@ -347,17 +347,17 @@ class MonitorNeutronAgentsDaemon(Daemon):
         for s in services:
              status = ['sudo', 'service', s, 'status']
              restart = ['sudo', 'service', s, 'restart']
-             ovs_agent_restart = ['sudo', 'service',
-                                  'neutron-plugin-openvswitch-agent', 'restart']
-             l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
+             #ovs_agent_restart = ['sudo', 'service',
+             #                     'neutron-plugin-openvswitch-agent', 'restart']
+             #l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
              try:
                  output = subprocess.check_output(status)
              except Exception as e:
                  subprocess.check_output(restart)
-                 if s == 'openvswitch-switch':
-                     subprocess.check_output(ovs_agent_restart)
-                 if s == 'neutron-metadata-agent':
-                     subprocess.check_output(l3_restart)
+                 #if s == 'openvswitch-switch':
+                 #    subprocess.check_output(ovs_agent_restart)
+                 #if s == 'neutron-metadata-agent':
+                 #    subprocess.check_output(l3_restart)
 
     def run(self):
         while True:
