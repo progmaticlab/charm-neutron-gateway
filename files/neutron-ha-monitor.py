@@ -8,7 +8,6 @@ Helpers for monitoring Neutron agents, reschedule failed agents,
 cleaned resources on failed nodes.
 """
 
-
 import os
 import signal
 import sys
@@ -30,7 +29,7 @@ class Daemon(object):
     Usage: subclass the Daemon class and override the run() method
     """
     def __init__(self, stdin='/dev/null', stdout='/dev/null',
-                 stderr='/dev/null', procname='python', uuid=None):
+                 stderr='/dev/null', procname='python'):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
@@ -157,7 +156,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
     def cleanup_dhcp(self, networks):
         namespaces = []
         if networks:
-            for network, agent in networks.iteritems():
+            for network in networks.iterkeys():
                 namespaces.append('qdhcp-' + network)
         else:
             cmd = 'sudo ip netns | grep qdhcp'
@@ -165,8 +164,8 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 qns = subprocess.check_output(cmd, shell=True).strip().split(' ')
                 for qn in qns:
                     namespaces.append(qn)
-            except Exception:
-                LOG.error('No dhcp namespaces found.')
+            except Exception as e:
+                LOG.error('No dhcp namespaces found (%s)' % e)
 
         if namespaces:
             LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
@@ -175,16 +174,16 @@ class MonitorNeutronAgentsDaemon(Daemon):
     def cleanup_router(self, routers):
         namespaces = []
         if routers:
-            for router, agent in routers.iteritems():
-                namespaces.append('qrouter-' + router)
+            for router in routers.iterkeys():
+                namespaces.append('qrouter-%s' % router)
         else:
             cmd = 'sudo ip netns | grep qrouter'
             try:
                 qns = subprocess.check_output(cmd, shell=True).strip().split(' ')
                 for qn in qns:
                     namespaces.append(qn)
-            except Exception:
-                LOG.error('No router namespaces found.')
+            except Exception as e:
+                LOG.error('No router namespaces found (%s)' % e)
 
         if namespaces:
             LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
@@ -262,17 +261,18 @@ class MonitorNeutronAgentsDaemon(Daemon):
             index += 1
 
     def reassign_agent_resources(self):
-        ''' Use agent scheduler API to detect down agents and re-schedule '''
+        """Use agent scheduler API to detect down agents and re-schedule"""
         DHCP_AGENT = "DHCP Agent"
         L3_AGENT = "L3 Agent"
         env = self.get_env()
         if not env:
             LOG.info('Unable to re-assign resources at this time')
             return
+
         try:
             from quantumclient.v2_0 import client
         except ImportError:
-            ''' Try to import neutronclient instead for havana+ '''
+            # Try to import neutronclient instead for havana+
             from neutronclient.v2_0 import client
 
         auth_url = '%(auth_protocol)s://%(keystone_host)s:%(auth_port)s/v2.0' \
@@ -287,9 +287,8 @@ class MonitorNeutronAgentsDaemon(Daemon):
             agents = quantum.list_agents(agent_type=DHCP_AGENT)
         except Exception:
             self.cleanup()
-            LOG.error('Failed to get neutron agent list,'
-                      'might be network lost connection,'
-                      'clean up neutron resources.')
+            LOG.error("Failed to get neutron agent list, might be network "
+                      "lost connection, clean up neutron resources.")
             return
 
         dhcp_agents = []
@@ -337,39 +336,39 @@ class MonitorNeutronAgentsDaemon(Daemon):
                                                             len(l3_agents)))
             return
 
-        if len(l3_agents) != 0:
+        if len(l3_agents) > 0:
             self.l3_agents_reschedule(l3_agents, routers, quantum)
             # new l3 node will not create a tunnel if don't restart ovs process
             #self.restart_ovs_process()
 
-        if len(dhcp_agents) != 0:
+        if len(dhcp_agents) > 0:
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
 
-    def restart_ovs_process(selfs):
+    def restart_ovs_process(self):
         try:
             cmd = ['sudo', 'service', 'openvswitch-switch', 'restart']
-            output = subprocess.check_output(cmd)
-        except Exception as e:
+            subprocess.check_output(cmd)
+        except subprocess.CalledProcessError:
             pass
 
     def check_local_agents(self):
         services = ['openvswitch-switch', 'neutron-dhcp-agent',
                     'neutron-metadata-agent', 'neutron-vpn-agent']
         for s in services:
-             status = ['sudo', 'service', s, 'status']
-             restart = ['sudo', 'service', s, 'restart']
-             #ovs_agent_restart = ['sudo', 'service',
-             #                     'neutron-plugin-openvswitch-agent', 'restart']
-             #l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
-             try:
-                 output = subprocess.check_output(status)
-             except Exception as e:
-                 LOG.error('Restart service: %s' % s)
-                 subprocess.check_output(restart)
-                 #if s == 'openvswitch-switch':
-                 #    subprocess.check_output(ovs_agent_restart)
-                 #if s == 'neutron-metadata-agent':
-                 #    subprocess.check_output(l3_restart)
+            status = ['sudo', 'service', s, 'status']
+            restart = ['sudo', 'service', s, 'restart']
+            #ovs_agent_restart = ['sudo', 'service',
+            #                     'neutron-plugin-openvswitch-agent', 'restart']
+            #l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
+            try:
+                subprocess.check_output(status)
+            except subprocess.CalledProcessError:
+                LOG.error('Restart service: %s' % s)
+                subprocess.check_output(restart)
+                #if s == 'openvswitch-switch':
+                #    subprocess.check_output(ovs_agent_restart)
+                #if s == 'neutron-metadata-agent':
+                #    subprocess.check_output(l3_restart)
 
     def run(self):
         while True:
