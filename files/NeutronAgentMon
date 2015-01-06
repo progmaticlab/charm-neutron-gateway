@@ -29,9 +29,9 @@ meta_data() {
 
 <longdesc lang="en">
 This is a NeutronAgentMon Resource Agent.
-It monitors the 'monitor daemon' status.
+It monitors the 'neutron-ha-monitor daemon' status.
 </longdesc>
-<shortdesc lang="en">Monitor '/usr/local/bin/monitor.py' in the background.</shortdesc>
+<shortdesc lang="en">Monitor '/usr/local/bin/neutron-ha-monitor.py' in the background.</shortdesc>
 
 <parameters>
 
@@ -40,7 +40,7 @@ It monitors the 'monitor daemon' status.
 The file we want to run as a daemon.
 </longdesc>
 <shortdesc lang="en">The file we want to run as a daemon.</shortdesc>
-<content type="string" default="/usr/local/bin/monitor.py" />
+<content type="string" default="/usr/local/bin/neutron-ha-monitor.py" />
 </parameter>
 
 </parameters>
@@ -78,7 +78,8 @@ NeutronAgentMon_start() {
     pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ -z $pid ]; then
         ocf_log info "[NeutronAgentMon_start] Start Monitor daemon."
-        sudo python /usr/local/bin/monitor.py --config-file /tmp/monitor.conf --log-file /tmp/monitor.log >> /dev/null 2>&1 & echo $!
+        sudo python /usr/local/bin/neutron-ha-monitor.py --config-file /tmp/neutron-ha-monitor.conf \
+        --log-file /tmp/neutron-ha-monitor.log >> /dev/null 2>&1 & echo $!
         sleep 5
     else
         ocf_log warn "[NeutronAgentMon_start] Monitor daemon already running."

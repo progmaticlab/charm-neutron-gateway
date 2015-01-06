@@ -121,12 +121,11 @@ class MonitorNeutronAgentsDaemon(Daemon):
         return 'sudo'
 
     def list_nodes(self):
-        cmd = ['crm', 'node', 'list']
-        out = subprocess.check_output(cmd)
-        nodes = []
-        for line in str(out).split('\n'):
-            if line!='' and line.find('offline')==-1:
-                nodes.append(line.split(':')[0])
+        # List crm resource 'cl_monitor' running node
+        cmd = "crm resource show cl_monitor 2>/dev/null " \
+              "| awk -F': '  '{print $2}'"
+        out = subprocess.check_output(cmd, shell=True)
+        nodes = out.strip().split('\n')
         return nodes
 
     def get_crm_no_1_node(self):

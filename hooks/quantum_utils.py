@@ -154,11 +154,11 @@ EARLY_PACKAGES = {
 
 LEGACY_HA_TEMPLATE_FILES = 'files'
 LEGACY_FILES_MAP = {
-    'monitor.py': {
+    'neutron-ha-monitor.py': {
         'path': '/usr/local/bin/',
         'permission': stat.S_IEXEC
     },
-    'monitor.conf': {
+    'neutron-ha-monitor.conf': {
         'path': '/tmp',
         'permission': None
     },
