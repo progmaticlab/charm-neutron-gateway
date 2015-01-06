@@ -4,14 +4,16 @@ import stat
 import subprocess
 from shutil import copy2
 from charmhelpers.core.host import (
+    mkdir,
     service_running,
     service_stop,
     service_restart,
     lsb_release,
-    mkdir
 )
 from charmhelpers.core.hookenv import (
     log,
+    DEBUG,
+    INFO,
     ERROR,
     config,
     relations_of_type,
@@ -603,50 +605,47 @@ def configure_ovs():
                             promisc=True)
 
 
-def copy_file(source_dir, des_dir, f, f_mod=None, update=False):
-    if not os.path.isdir(des_dir):
-        mkdir(des_dir)
-        log('Directory created at: %s' % des_dir)
+def copy_file(src, dst, perms=None, force=False):
+    if not os.path.isdir(dst):
+        log('Creating directory %s' % dst, level=DEBUG)
+        mkdir(dst)
 
-    if not os.path.isfile(os.path.join(des_dir, f)) or update:
+    fdst = os.path.join(dst, os.path.basename(src))
+    if not os.path.isfile(fdst) or force:
         try:
-            source_f = os.path.join(source_dir, f)
-            des_f = os.path.join(des_dir, f)
-            copy2(source_f, des_dir)
-            if f_mod:
-                os.chmod(des_f, f_mod)
+            copy2(src, fdst)
+            if perms:
+                os.chmod(fdst, perms)
         except IOError:
-            log('Failed to copy file from %s to %s.' %
-                (source_f, des_dir), level=ERROR)
+            log('Failed to copy file from %s to %s.' % (src, dst), level=ERROR)
             raise
 
 
-def remove_file(des_dir, f):
-    if not os.path.isdir(des_dir):
-        log('Directory %s already removed.' % des_dir)
+def remove_file(path):
+    if not os.path.isfile(path):
+        log('File %s does not exist.' % path, level=INFO)
+        return
 
-    f = os.path.join(des_dir, f)
-    if os.path.isfile(f):
-        try:
-            os.remove(f)
-        except IOError:
-            log('Failed to remove file %s.' % f, level=ERROR)
+    try:
+        os.remove(path)
+    except IOError:
+        log('Failed to remove file %s.' % path, level=ERROR)
 
 
-def install_legacy_ha_files(update=False):
+def install_legacy_ha_files(force=False):
     for f, p in LEGACY_FILES_MAP.iteritems():
-        copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'], f,
-                  p['permission'], update=update)
+        copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'], p['permission'],
+                  force=force)
 
 
 def remove_legacy_ha_files():
     for f, p in LEGACY_FILES_MAP.iteritems():
-        remove_file(p['path'], f)
+        remove_file(os.path.join(p['path'], f))
 
 
-def update_legacy_ha_files(update=False):
+def update_legacy_ha_files(force=False):
     if config('ha-legacy-mode'):
-        install_legacy_ha_files(update=update)
+        install_legacy_ha_files(force=force)
     else:
         remove_legacy_ha_files()
 
@@ -662,8 +661,8 @@ def cache_env_data():
     if os.path.isfile(envrc_f):
         with open(envrc_f, 'r') as f:
             data = f.read()
-        data = data.strip().split('\n')
 
+        data = data.strip().split('\n')
         diff = False
         for line in data:
             k = line.split('=')[0]
@@ -680,10 +679,12 @@ def cache_env_data():
                 f.write(''.join([k, '=', v, '\n']))
 
 
+def crm_op(op, res):
+    cmd = 'crm -w -F %s %s' % (op, res)
+    subprocess.call(cmd.split())
+
+
 def delete_legacy_resources():
-    def crm_op(op, res):
-        cmd = 'crm -w -F %s %s' % (op, res)
-        subprocess.call(cmd.split())
     for res in LEGACY_RES_MAP:
         crm_op('resource stop', res)
         crm_op('configure delete', res)
@@ -692,15 +693,12 @@ def delete_legacy_resources():
 def add_hostname_to_hosts():
     # To fix bug 1405588, ovsdb-server got error when
     # running ovsdb-client monitor command start with 'sudo'.
-    hosts_f = '/etc/hosts'
-    if not os.path.isfile(hosts_f):
-        mkdir(hosts_f)
-
+    hostsfile = '/etc/hosts'
     resolve_hostname = '127.0.0.1 %s' % socket.gethostname()
-    with open(hosts_f, 'r') as f:
+    with open(hostsfile, 'r') as f:
         for line in f:
             if resolve_hostname in line:
                 return
 
-    with open(hosts_f, 'a') as f:
-        f.write('\n' + resolve_hostname + '\n')
+    with open(hostsfile, 'a') as f:
+        f.write('\n%s\n' % resolve_hostname)

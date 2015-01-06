@@ -24,7 +24,7 @@ from charmhelpers.core.host import (
 )
 from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader,
-    get_hacluster_config
+    get_hacluster_config,
 )
 from charmhelpers.contrib.hahelpers.apache import(
     install_ca_cert
@@ -52,7 +52,7 @@ from quantum_utils import (
     update_legacy_ha_files,
     remove_legacy_ha_files,
     delete_legacy_resources,
-    add_hostname_to_hosts
+    add_hostname_to_hosts,
 )
 
 hooks = Hooks()
@@ -124,7 +124,7 @@ def config_changed():
 def upgrade_charm():
     install()
     config_changed()
-    update_legacy_ha_files(update=True)
+    update_legacy_ha_files(force=True)
 
 
 @hooks.hook('shared-db-relation-joined')
@@ -237,7 +237,7 @@ def stop():
 def ha_relation_joined():
     if config('ha-legacy-mode'):
         cache_env_data()
-        cluster_config = get_hacluster_config(excludes_key=['vip'])
+        cluster_config = get_hacluster_config(exclude_keys=['vip'])
         resources = {
             'res_monitor': 'ocf:canonical:NeutronAgentMon',
         }
@@ -257,6 +257,8 @@ def ha_relation_joined():
 
 @hooks.hook('ha-relation-departed')
 def ha_relation_destroyed():
+    # If e.g. we want to upgrade to Juno and use native Neutron HA support then
+    #  we need to un-corosync-cluster to enable the transition.
     if config('ha-legacy-mode'):
         delete_legacy_resources()
         remove_legacy_ha_files()

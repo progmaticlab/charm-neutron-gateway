@@ -121,13 +121,14 @@ options:
     description: |
       YAML-formatted associative array of sysctl key/value pairs to be set
       persistently e.g. '{ kernel.pid_max : 4194303 }'.
-  # Legacy HA
+  # Legacy (Icehouse) HA
   ha-legacy-mode:
     type: boolean
     default: False
     description: |
-      Support HA ACTIVE/PASSIVE mode with pacemaker and corosync before neutron
-      native HA feature landed to Juno.
+      If True will enable ACTIVE/PASSIVE HA mode for neutron agents using
+      Pacemaker and Corosync. This is intended for < Juno which natively
+      supports HA in Neutron itself.
   ha-bindiface:
     type: string
     default: eth0
