@@ -228,10 +228,16 @@ class MonitorNeutronAgentsDaemon(Daemon):
             agent = index % len(l3_agents)
             LOG.info('Moving router %s from %s to %s' %
                      (router_id, routers[router_id], l3_agents[agent]))
-            quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
-                                                router_id=router_id)
-            quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
-                                           body={'router_id': router_id})
+            try:
+                quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
+                                                    router_id=router_id)
+            except Exception as e:
+                LOG.error('Remove router raised exception: %s' % e)
+            try:
+                quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
+                                               body={'router_id': router_id})
+            except Exception as e:
+                LOG.error('Add router raised exception: %s' % e)
             index += 1
 
     def dhcp_agents_reschedule(self, dhcp_agents, networks, quantum):
@@ -243,11 +249,17 @@ class MonitorNeutronAgentsDaemon(Daemon):
             agent = index % len(dhcp_agents)
             LOG.info('Moving network %s from %s to %s' % (network_id,
                      networks[network_id], dhcp_agents[agent]))
-            quantum.remove_network_from_dhcp_agent(
-                dhcp_agent=networks[network_id], network_id=network_id)
-            quantum.add_network_to_dhcp_agent(
-                dhcp_agent=dhcp_agents[agent],
-                body={'network_id': network_id})
+            try:
+                quantum.remove_network_from_dhcp_agent(
+                    dhcp_agent=networks[network_id], network_id=network_id)
+            except Exception as e:
+                LOG.error('Remove network raised exception: %s' % e)
+            try:
+                quantum.add_network_to_dhcp_agent(
+                    dhcp_agent=dhcp_agents[agent],
+                    body={'network_id': network_id})
+            except Exception as e:
+                LOG.error('Add network raised exception: %s' % e)
             index += 1
 
     def reassign_agent_resources(self):
@@ -353,6 +365,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
              try:
                  output = subprocess.check_output(status)
              except Exception as e:
+                 LOG.error('Restart service: %s' % s)
                  subprocess.check_output(restart)
                  #if s == 'openvswitch-switch':
                  #    subprocess.check_output(ovs_agent_restart)
