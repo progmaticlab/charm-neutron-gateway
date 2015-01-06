@@ -1,4 +1,5 @@
 import os
+import socket
 import stat
 import subprocess
 from shutil import copy2
@@ -686,3 +687,20 @@ def delete_legacy_resources():
     for res in LEGACY_RES_MAP:
         crm_op('resource stop', res)
         crm_op('configure delete', res)
+
+
+def add_hostname_to_hosts():
+    # To fix bug 1405588, ovsdb-server got error when
+    # running ovsdb-client monitor command start with 'sudo'.
+    hosts_f = '/etc/hosts'
+    if not os.path.isfile(hosts_f):
+        mkdir(hosts_f)
+
+    resolve_hostname = '127.0.0.1 %s' % socket.gethostname()
+    with open(hosts_f, 'r') as f:
+        for line in f:
+            if resolve_hostname in line:
+                return
+
+    with open(hosts_f, 'a') as f:
+        f.write('\n' + resolve_hostname + '\n')

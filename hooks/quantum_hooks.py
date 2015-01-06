@@ -51,7 +51,8 @@ from quantum_utils import (
     cache_env_data,
     update_legacy_ha_files,
     remove_legacy_ha_files,
-    delete_legacy_resources
+    delete_legacy_resources,
+    add_hostname_to_hosts
 )
 
 hooks = Hooks()
@@ -79,6 +80,9 @@ def install():
 
     # Legacy HA for Icehouse
     update_legacy_ha_files()
+
+    # Fix ovsdb-client monitor error
+    add_hostname_to_hosts()
 
 
 @hooks.hook('config-changed')

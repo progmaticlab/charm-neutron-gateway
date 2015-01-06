@@ -47,7 +47,6 @@ TO_PATCH = [
     'lsb_release',
     'mkdir',
     'copy2'
-    
 ]
 
 
@@ -368,7 +367,7 @@ class TestQuantumUtils(CharmTestCase):
         des_dir = 'dummy_des_dir'
         f = 'dummy_file'
         quantum_utils.copy_file(source_dir, des_dir, f)
-        self.assertTrue(self.mkdir.called) 
+        self.assertTrue(self.mkdir.called)
         self.assertTrue(self.copy2.called)
 
     @patch('quantum_utils.os.path.isfile')
@@ -378,7 +377,7 @@ class TestQuantumUtils(CharmTestCase):
         f = 'dummy_file'
         _isfile.return_value = False
         quantum_utils.copy_file(source_dir, des_dir, f, update=True)
-        self.assertTrue(self.mkdir.called) 
+        self.assertTrue(self.mkdir.called)
         self.assertTrue(self.copy2.called)
 
     @patch('quantum_utils.os.path.isfile')
@@ -386,8 +385,8 @@ class TestQuantumUtils(CharmTestCase):
         des_dir = 'dummy_des_dir'
         f = 'dummy_file'
         _isfile.return_value = False
-        quantum_utils.remove_file(des_dir, f) 
-        self.assertTrue(self.log.called) 
+        quantum_utils.remove_file(des_dir, f)
+        self.assertTrue(self.log.called)
 
     @patch('quantum_utils.os.remove')
     @patch('quantum_utils.os.path.isfile')
@@ -396,8 +395,8 @@ class TestQuantumUtils(CharmTestCase):
         f = 'dummy_file'
         _isfile.return_value = True
         _remove.return_value = MagicMock()
-        quantum_utils.remove_file(des_dir, f) 
-        self.assertTrue(self.log.called) 
+        quantum_utils.remove_file(des_dir, f)
+        self.assertTrue(self.log.called)
 
 
 network_context = {
