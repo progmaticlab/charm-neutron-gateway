@@ -158,15 +158,14 @@ LEGACY_HA_TEMPLATE_FILES = 'files'
 LEGACY_FILES_MAP = {
     'neutron-ha-monitor.py': {
         'path': '/usr/local/bin/',
-        'permission': stat.S_IEXEC
+        'permissions': 0o755
     },
     'neutron-ha-monitor.conf': {
-        'path': '/tmp',
-        'permission': None
+        'path': '/var/lib/juju-neutron-ha/',
     },
     'NeutronAgentMon': {
         'path': '/usr/lib/ocf/resource.d/canonical',
-        'permission': stat.S_IEXEC
+        'permissions': 0o755
     },
 }
 LEGACY_RES_MAP = ['res_monitor']
@@ -606,6 +605,10 @@ def configure_ovs():
 
 
 def copy_file(src, dst, perms=None, force=False):
+    """Copy file to destination and optionally set permissionss.
+
+    If destination does not exist it will be created.
+    """
     if not os.path.isdir(dst):
         log('Creating directory %s' % dst, level=DEBUG)
         mkdir(dst)
@@ -634,8 +637,8 @@ def remove_file(path):
 
 def install_legacy_ha_files(force=False):
     for f, p in LEGACY_FILES_MAP.iteritems():
-        copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'], p['permission'],
-                  force=force)
+        copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'],
+                  p.get('permissions', None), force=force)
 
 
 def remove_legacy_ha_files():

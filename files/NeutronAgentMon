@@ -75,11 +75,13 @@ NeutronAgentMon_exit() {
 }
 
 NeutronAgentMon_start() {
-    pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
+    pid=`sudo ps -aux | grep neutron-ha-m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ -z $pid ]; then
         ocf_log info "[NeutronAgentMon_start] Start Monitor daemon."
-        sudo python /usr/local/bin/neutron-ha-monitor.py --config-file /tmp/neutron-ha-monitor.conf \
-        --log-file /tmp/neutron-ha-monitor.log >> /dev/null 2>&1 & echo $!
+        sudo mkdir -p /var/log/neutron-ha
+        sudo python /usr/local/bin/neutron-ha-monitor.py \
+        --config-file /var/lib/juju-neutron-ha/neutron-ha-monitor.conf \
+        --log-file /var/log/neutron-ha/monitor.log >> /dev/null 2>&1 & echo $!
         sleep 5
     else
         ocf_log warn "[NeutronAgentMon_start] Monitor daemon already running."
@@ -88,7 +90,7 @@ NeutronAgentMon_start() {
 }
 
 NeutronAgentMon_stop() {
-    pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
+    pid=`sudo ps -aux | grep neutron-ha-m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ ! -z $pid ]; then
         sudo kill -s 9 $pid
         ocf_log info "[NeutronAgentMon_stop] Pid $pid is killed."
@@ -99,7 +101,7 @@ NeutronAgentMon_stop() {
 }
 
 NeutronAgentMon_monitor() {
-    pid=`sudo ps -aux | grep m\[o\]nitor.py | awk -F' ' '{print $2}'`
+    pid=`sudo ps -aux | grep neutron-ha-m\[o\]nitor.py | awk -F' ' '{print $2}'`
     if [ ! -z $pid ]; then
         ocf_log info "[NeutronAgentMon_monitor] success."
         exit $OCF_SUCCESS
