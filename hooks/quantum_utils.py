@@ -1,6 +1,5 @@
 import os
 import socket
-import stat
 import subprocess
 from shutil import copy2
 from charmhelpers.core.host import (
@@ -637,8 +636,8 @@ def remove_file(path):
 
 def install_legacy_ha_files(force=False):
     for f, p in LEGACY_FILES_MAP.iteritems():
-        copy_file(LEGACY_HA_TEMPLATE_FILES, p['path'],
-                  p.get('permissions', None), force=force)
+        srcfile = os.path.join(LEGACY_HA_TEMPLATE_FILES, f)
+        copy_file(srcfile, p['path'], p.get('permissions', None), force=force)
 
 
 def remove_legacy_ha_files():
