@@ -2,6 +2,8 @@
 #
 # Authors: Hui Xiang <hui.xiang@canonical.com>
 #          Joshua Zhang <joshua.zhang@canonical.com>
+#          Edward Hope-Morley <edward.hope-morley@canonical.com>
+#
 
 """
 Helpers for monitoring Neutron agents, reschedule failed agents,
@@ -149,9 +151,23 @@ class MonitorNeutronAgentsDaemon(Daemon):
             else:
                 LOG.debug('Unable to find bridge for device: %s', device.name)
 
-    def cleanup(self):
-        self.cleanup_dhcp(None)
-        self.cleanup_router(None)
+    def try_to_cleanup(self):
+        dns_server = []
+        with open('/etc/resolv.conf', 'r') as f:
+            for line in f:
+                if line.startswith('nameserver'):
+                    server = line.split(' ')[1]
+                    dns_server.append(server)
+
+        if dns_server:
+            network_good = False
+            for server in dns_server:
+                res = subprocess.call(['ping', '-c', '1', server])
+                network_good = not res
+
+        if not network_good:
+            self.cleanup_dhcp(None)
+            self.cleanup_router(None)
 
     def cleanup_dhcp(self, networks):
         namespaces = []
@@ -286,7 +302,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         try:
             agents = quantum.list_agents(agent_type=DHCP_AGENT)
         except Exception:
-            self.cleanup()
+            self.try_to_cleanup()
             LOG.error("Failed to get neutron agent list, might be network "
                       "lost connection, clean up neutron resources.")
             return
@@ -339,17 +355,32 @@ class MonitorNeutronAgentsDaemon(Daemon):
         if len(l3_agents) > 0:
             self.l3_agents_reschedule(l3_agents, routers, quantum)
             # new l3 node will not create a tunnel if don't restart ovs process
-            #self.restart_ovs_process()
 
         if len(dhcp_agents) > 0:
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
 
-    def restart_ovs_process(self):
-        try:
-            cmd = ['sudo', 'service', 'openvswitch-switch', 'restart']
-            subprocess.check_output(cmd)
-        except subprocess.CalledProcessError:
-            pass
+    def check_ovs_tunnel(self):
+        ns_output = subprocess.check_output(['ip', 'netns'])
+        if not ns_output:
+            return
+
+        ovs_output = subprocess.check_output(['ovs-vsctl', 
+                                              'list-ports', 'br-tun'])
+        ports = ovs_output.strip().split('\n')
+        look_up_gre_port = False
+        for port in ports:
+            if port.startswith('gre-'):
+                look_up_gre_port =  True
+                break
+        if not look_up_gre_port:
+            try:
+                LOG.error('Found namespace, but no ovs tunnel is created,'
+                          'restart ovs agent.')
+                cmd = ['sudo', 'service', 'neutron-plugin-openvswitch-agent',
+                       'restart']
+                subprocess.call(cmd)
+            except subprocess.CalledProcessError:
+                LOG.error('Failed to restart neutron-plugin-openvswitch-agent.')
 
     def check_local_agents(self):
         services = ['openvswitch-switch', 'neutron-dhcp-agent',
@@ -374,6 +405,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         while True:
             LOG.info('Monitor Neutron HA Agent Loop Start')
             self.reassign_agent_resources()
+            self.check_ovs_tunnel()
             self.check_local_agents()
             LOG.info('sleep %s' % cfg.CONF.check_interval)
             time.sleep(float(cfg.CONF.check_interval))
