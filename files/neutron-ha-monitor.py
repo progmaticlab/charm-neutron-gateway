@@ -374,32 +374,34 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
         try:
             OVS_AGENT = 'Open vSwitch agent'
-            agent = quantum.show_agent(agent_type=OVS_AGENT,
-                                       host=self.get_hostname)
+            agents = quantum.list_agents(agent_type=OVS_AGENT)
         except Exception as e:
             LOG.error('No ovs agent found on localhost, error:%s.' % e)
             return
 
-        conf = agent['configurations']
-        if conf['tunnel_types'] == 'gre' and conf['l2_population'] \
-            and conf['devices']:
-            ovs_output = subprocess.check_output(['ovs-vsctl', 
-                                                  'list-ports', 'br-tun'])
-            ports = ovs_output.strip().split('\n')
-            look_up_gre_port = False
-            for port in ports:
-                if port.startswith('gre-'):
-                    look_up_gre_port = True
-                    break
-            if not look_up_gre_port:
-                try:
-                    LOG.error('Found namespace, but no ovs tunnel is created,'
-                              'restart ovs agent.')
-                    cmd = ['sudo', 'service', 'neutron-plugin-openvswitch-agent',
-                           'restart']
-                    subprocess.call(cmd)
-                except subprocess.CalledProcessError:
-                    LOG.error('Failed to restart neutron-plugin-openvswitch-agent.')
+        for agent in agents['agents']:
+            if self.is_same_host(agent['host']):
+                conf = agent['configurations']
+                if 'gre' in conf['tunnel_types'] and conf['l2_population'] \
+                        and conf['devices']:
+                    LOG.warning('local ovs agent:%s' % agent)
+                    ovs_output = subprocess.check_output(['ovs-vsctl',
+                                                          'list-ports', 'br-tun'])
+                    ports = ovs_output.strip().split('\n')
+                    look_up_gre_port = False
+                    for port in ports:
+                        if port.startswith('gre-'):
+                            look_up_gre_port = True
+                            break
+                    if not look_up_gre_port:
+                        try:
+                            LOG.error('Found namespace, but no ovs tunnel is created,'
+                                      'restart ovs agent.')
+                            cmd = ['sudo', 'service', 'neutron-plugin-openvswitch-agent',
+                                   'restart']
+                            subprocess.call(cmd)
+                        except subprocess.CalledProcessError:
+                            LOG.error('Failed to restart neutron-plugin-openvswitch-agent.')
 
     def check_local_agents(self):
         services = ['openvswitch-switch', 'neutron-dhcp-agent',

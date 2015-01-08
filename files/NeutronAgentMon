@@ -8,6 +8,7 @@
 #       Copyright 2014 Canonical Ltd.
 #
 #       Authors: Hui Xiang <hui.xiang@canonical.com>
+#                Edward Hope-Morley <edward.hope-morley@canonical.com>
 #
 # OCF instance parameters:
 #	OCF_RESKEY_file
