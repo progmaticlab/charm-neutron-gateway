@@ -162,10 +162,13 @@ class MonitorNeutronAgentsDaemon(Daemon):
         if dns_server:
             network_good = False
             for server in dns_server:
-                res = subprocess.call(['ping', '-c', '1', server])
-                network_good = not res
+                if server != '127.0.0.1':
+                    res = subprocess.call(['ping', '-c', '1', server])
+                    network_good = not res
 
         if not network_good:
+            LOG.error("Failed to get neutron agent list, can't access dns server "
+                      "network is not good, clean up neutron resources.")
             self.cleanup_dhcp(None)
             self.cleanup_router(None)
 
@@ -276,14 +279,11 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 LOG.error('Add network raised exception: %s' % e)
             index += 1
 
-    def reassign_agent_resources(self):
-        """Use agent scheduler API to detect down agents and re-schedule"""
-        DHCP_AGENT = "DHCP Agent"
-        L3_AGENT = "L3 Agent"
+    def get_quantum_client(self):
         env = self.get_env()
         if not env:
             LOG.info('Unable to re-assign resources at this time')
-            return
+            return None
 
         try:
             from quantumclient.v2_0 import client
@@ -298,13 +298,20 @@ class MonitorNeutronAgentsDaemon(Daemon):
                                 tenant_name=env['service_tenant'],
                                 auth_url=auth_url,
                                 region_name=env['region'])
+        return quantum
+
+    def reassign_agent_resources(self, quantum=None):
+        """Use agent scheduler API to detect down agents and re-schedule"""
+        if not quantum:
+            LOG.error('Failed to get quantum client.')
+            return
 
         try:
+            DHCP_AGENT = "DHCP Agent"
+            L3_AGENT = "L3 Agent"
             agents = quantum.list_agents(agent_type=DHCP_AGENT)
         except Exception:
             self.try_to_cleanup()
-            LOG.error("Failed to get neutron agent list, might be network "
-                      "lost connection, clean up neutron resources.")
             return
 
         dhcp_agents = []
@@ -359,28 +366,40 @@ class MonitorNeutronAgentsDaemon(Daemon):
         if len(dhcp_agents) > 0:
             self.dhcp_agents_reschedule(dhcp_agents, networks, quantum)
 
-    def check_ovs_tunnel(self):
-        ns_output = subprocess.check_output(['ip', 'netns'])
-        if not ns_output:
+
+    def check_ovs_tunnel(self, quantum=None):
+        if not quantum:
+            LOG.error('Failed to get quantum client.')
             return
 
-        ovs_output = subprocess.check_output(['ovs-vsctl', 
-                                              'list-ports', 'br-tun'])
-        ports = ovs_output.strip().split('\n')
-        look_up_gre_port = False
-        for port in ports:
-            if port.startswith('gre-'):
-                look_up_gre_port =  True
-                break
-        if not look_up_gre_port:
-            try:
-                LOG.error('Found namespace, but no ovs tunnel is created,'
-                          'restart ovs agent.')
-                cmd = ['sudo', 'service', 'neutron-plugin-openvswitch-agent',
-                       'restart']
-                subprocess.call(cmd)
-            except subprocess.CalledProcessError:
-                LOG.error('Failed to restart neutron-plugin-openvswitch-agent.')
+        try:
+            OVS_AGENT = 'Open vSwitch agent'
+            agent = quantum.show_agent(agent_type=OVS_AGENT,
+                                       host=self.get_hostname)
+        except Exception as e:
+            LOG.error('No ovs agent found on localhost, error:%s.' % e)
+            return
+
+        conf = agent['configurations']
+        if conf['tunnel_types'] == 'gre' and conf['l2_population'] \
+            and conf['devices']:
+            ovs_output = subprocess.check_output(['ovs-vsctl', 
+                                                  'list-ports', 'br-tun'])
+            ports = ovs_output.strip().split('\n')
+            look_up_gre_port = False
+            for port in ports:
+                if port.startswith('gre-'):
+                    look_up_gre_port = True
+                    break
+            if not look_up_gre_port:
+                try:
+                    LOG.error('Found namespace, but no ovs tunnel is created,'
+                              'restart ovs agent.')
+                    cmd = ['sudo', 'service', 'neutron-plugin-openvswitch-agent',
+                           'restart']
+                    subprocess.call(cmd)
+                except subprocess.CalledProcessError:
+                    LOG.error('Failed to restart neutron-plugin-openvswitch-agent.')
 
     def check_local_agents(self):
         services = ['openvswitch-switch', 'neutron-dhcp-agent',
@@ -404,8 +423,9 @@ class MonitorNeutronAgentsDaemon(Daemon):
     def run(self):
         while True:
             LOG.info('Monitor Neutron HA Agent Loop Start')
-            self.reassign_agent_resources()
-            self.check_ovs_tunnel()
+            quantum = self.get_quantum_client()
+            self.reassign_agent_resources(quantum=quantum)
+            self.check_ovs_tunnel(quantum=quantum)
             self.check_local_agents()
             LOG.info('sleep %s' % cfg.CONF.check_interval)
             time.sleep(float(cfg.CONF.check_interval))
@@ -414,7 +434,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
 if __name__ == '__main__':
     opts = [
         cfg.StrOpt('check_interval',
-                   default=15,
+                   default=8,
                    help='Check Neutron Agents interval.'),
     ]
 
