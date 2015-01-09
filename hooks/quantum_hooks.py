@@ -53,6 +53,7 @@ from quantum_utils import (
     remove_legacy_ha_files,
     delete_legacy_resources,
     add_hostname_to_hosts,
+    install_legacy_ha_files
 )
 
 hooks = Hooks()
@@ -236,6 +237,8 @@ def stop():
 @hooks.hook('ha-relation-changed')
 def ha_relation_joined():
     if config('ha-legacy-mode'):
+        log('ha-relation-changed update_legacy_ha_files')
+        install_legacy_ha_files()
         cache_env_data()
         cluster_config = get_hacluster_config(exclude_keys=['vip'])
         resources = {
