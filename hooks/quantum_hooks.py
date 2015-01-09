@@ -118,7 +118,10 @@ def config_changed():
         else:
             apt_purge('neutron-l3-agent')
 
+    # Setup legacy ha configurations
     update_legacy_ha_files()
+    for r_id in relation_ids('ha'):
+        ha_relation_joined()
 
 
 @hooks.hook('upgrade-charm')

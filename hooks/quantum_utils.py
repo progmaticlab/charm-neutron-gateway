@@ -649,6 +649,7 @@ def update_legacy_ha_files(force=False):
     if config('ha-legacy-mode'):
         install_legacy_ha_files(force=force)
     else:
+        delete_legacy_resources()
         remove_legacy_ha_files()
 
 
