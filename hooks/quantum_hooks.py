@@ -120,8 +120,6 @@ def config_changed():
 
     # Setup legacy ha configurations
     update_legacy_ha_files()
-    for r_id in relation_ids('ha'):
-        ha_relation_joined()
 
 
 @hooks.hook('upgrade-charm')
