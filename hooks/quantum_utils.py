@@ -683,7 +683,10 @@ def cache_env_data():
 
 def crm_op(op, res):
     cmd = 'crm -w -F %s %s' % (op, res)
-    subprocess.call(cmd.split())
+    try:
+        subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        log('crmd not found.')
 
 
 def delete_legacy_resources():
