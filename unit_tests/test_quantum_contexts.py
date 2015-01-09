@@ -117,11 +117,11 @@ class TestNetworkServiceContext(_TestQuantumContext):
         }
 
 
-class TestExternalPortContext(CharmTestCase):
+class TestNeutronPortContext(CharmTestCase):
 
     def setUp(self):
-        super(TestExternalPortContext, self).setUp(quantum_contexts,
-                                                   TO_PATCH)
+        super(TestNeutronPortContext, self).setUp(quantum_contexts,
+                                                  TO_PATCH)
         self.machine_macs = {
             'eth0': 'fe:c5:ce:8e:2b:00',
             'eth1': 'fe:c5:ce:8e:2b:01',
@@ -174,6 +174,11 @@ class TestExternalPortContext(CharmTestCase):
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
                           {'ext_port': 'eth2'})
 
+    def test_data_port_eth(self):
+        self.config.return_value = 'eth1010'
+        self.assertEquals(quantum_contexts.DataPortContext()(),
+                          {'data_port': 'eth1010'})
+
 
 class TestL3AgentContext(CharmTestCase):
 
@@ -187,7 +192,8 @@ class TestL3AgentContext(CharmTestCase):
         self.test_config.set('external-network-id', '')
         self.eligible_leader.return_value = False
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': False})
+                          {'handle_internal_only_router': False,
+                           'plugin': 'ovs'})
 
     def test_hior_leader(self):
         self.test_config.set('run-internal-router', 'leader')
@@ -195,7 +201,8 @@ class TestL3AgentContext(CharmTestCase):
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
                           {'handle_internal_only_router': True,
-                           'ext_net_id': 'netid'})
+                           'ext_net_id': 'netid',
+                           'plugin': 'ovs'})
 
     def test_hior_all(self):
         self.test_config.set('run-internal-router', 'all')
@@ -203,7 +210,8 @@ class TestL3AgentContext(CharmTestCase):
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
                           {'handle_internal_only_router': True,
-                           'ext_net_id': 'netid'})
+                           'ext_net_id': 'netid',
+                           'plugin': 'ovs'})
 
 
 class TestQuantumGatewayContext(CharmTestCase):

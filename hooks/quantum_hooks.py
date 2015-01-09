@@ -19,6 +19,7 @@ from charmhelpers.fetch import (
     apt_update,
     apt_install,
     filter_installed_packages,
+    apt_purge,
 )
 from charmhelpers.core.host import (
     restart_on_change,
@@ -35,6 +36,7 @@ from charmhelpers.contrib.openstack.utils import (
     openstack_upgrade_available,
 )
 from charmhelpers.payload.execd import execd_preinstall
+from charmhelpers.core.sysctl import create as create_sysctl
 
 from charmhelpers.contrib.charmsupport.nrpe import NRPE
 
@@ -66,6 +68,7 @@ def install():
         src = 'cloud:precise-folsom'
     configure_installation_source(src)
     apt_update(fatal=True)
+    apt_install('python-six', fatal=True)  # Force upgrade
     if valid_plugin():
         apt_install(filter_installed_packages(get_early_packages()),
                     fatal=True)
@@ -83,6 +86,11 @@ def config_changed():
     if openstack_upgrade_available(get_common_package()):
         CONFIGS = do_openstack_upgrade()
     update_nrpe_config()
+
+    sysctl_dict = config('sysctl')
+    if sysctl_dict:
+        create_sysctl(sysctl_dict, '/etc/sysctl.d/50-quantum-gateway.conf')
+
     # Re-run joined hooks as config might have changed
     for r_id in relation_ids('shared-db'):
         db_joined(relation_id=r_id)
@@ -98,6 +106,11 @@ def config_changed():
     else:
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)
+    if config('plugin') == 'n1kv':
+        if config('enable-l3-agent'):
+            apt_install(filter_installed_packages('neutron-l3-agent'))
+        else:
+            apt_purge('neutron-l3-agent')
 
 
 @hooks.hook('upgrade-charm')
@@ -191,6 +204,10 @@ def cluster_departed():
     if config('plugin') in ['nvp', 'nsx']:
         log('Unable to re-assign agent resources for'
             ' failed nodes with nvp|nsx',
+            level=WARNING)
+        return
+    if config('plugin') == 'n1kv':
+        log('Unable to re-assign agent resources for failed nodes with n1kv',
             level=WARNING)
         return
     if eligible_leader(None):

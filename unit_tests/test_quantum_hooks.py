@@ -19,6 +19,7 @@ TO_PATCH = [
     'valid_plugin',
     'apt_update',
     'apt_install',
+    'apt_purge',
     'filter_installed_packages',
     'get_early_packages',
     'get_packages',
@@ -39,7 +40,8 @@ TO_PATCH = [
     'lsb_release',
     'stop_services',
     'b64decode',
-    'is_relation_made'
+    'is_relation_made',
+    'create_sysctl',
 ]
 
 
@@ -97,6 +99,7 @@ class TestQuantumHooks(CharmTestCase):
     def test_config_changed(self):
         def mock_relids(rel):
             return ['relid']
+        self.test_config.set('sysctl', '{ kernel.max_pid: "1337"}')
         self.openstack_upgrade_available.return_value = True
         self.valid_plugin.return_value = True
         self.relation_ids.side_effect = mock_relids
@@ -111,6 +114,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_pgsql_db_joined.called)
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
+        self.create_sysctl.assert_called()
 
     def test_config_changed_upgrade(self):
         self.openstack_upgrade_available.return_value = True
@@ -118,6 +122,17 @@ class TestQuantumHooks(CharmTestCase):
         self._call_hook('config-changed')
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.configure_ovs.called)
+
+    def test_config_changed_n1kv(self):
+        self.openstack_upgrade_available.return_value = False
+        self.valid_plugin.return_value = True
+        self.filter_installed_packages.side_effect = lambda p: p
+        self.test_config.set('plugin', 'n1kv')
+        self._call_hook('config-changed')
+        self.apt_install.assert_called_with('neutron-l3-agent')
+        self.test_config.set('enable-l3-agent', False)
+        self._call_hook('config-changed')
+        self.apt_purge.assert_called_with('neutron-l3-agent')
 
     @patch('sys.exit')
     def test_config_changed_invalid_plugin(self, _exit):
