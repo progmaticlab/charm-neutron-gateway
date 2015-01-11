@@ -151,27 +151,6 @@ class MonitorNeutronAgentsDaemon(Daemon):
             else:
                 LOG.debug('Unable to find bridge for device: %s', device.name)
 
-    def try_to_cleanup(self):
-        dns_server = []
-        with open('/etc/resolv.conf', 'r') as f:
-            for line in f:
-                if line.startswith('nameserver'):
-                    server = line.split(' ')[1]
-                    dns_server.append(server)
-
-        if dns_server:
-            network_good = False
-            for server in dns_server:
-                if server != '127.0.0.1':
-                    res = subprocess.call(['ping', '-c', '1', server])
-                    network_good = not res
-
-        if not network_good:
-            LOG.error("Failed to get neutron agent list, can't access dns server "
-                      "network is not good, clean up neutron resources.")
-            self.cleanup_dhcp(None)
-            self.cleanup_router(None)
-
     def cleanup_dhcp(self, networks):
         namespaces = []
         if networks:
@@ -311,7 +290,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
             L3_AGENT = "L3 Agent"
             agents = quantum.list_agents(agent_type=DHCP_AGENT)
         except Exception:
-            self.try_to_cleanup()
+            LOG.error('Failed to get quantum agents.')
             return
 
         dhcp_agents = []
@@ -409,18 +388,23 @@ class MonitorNeutronAgentsDaemon(Daemon):
         for s in services:
             status = ['sudo', 'service', s, 'status']
             restart = ['sudo', 'service', s, 'restart']
-            #ovs_agent_restart = ['sudo', 'service',
-            #                     'neutron-plugin-openvswitch-agent', 'restart']
-            #l3_restart = ['sudo', 'service', 'neutron-vpn-agent', 'restart']
+            start = ['sudo', 'service', s, 'start']
+            stop = 'neutron-vpn-agent stop/waiting'
             try:
-                subprocess.check_output(status)
+                output = subprocess.check_output(status)
+                if output.strip() == stop:
+                    subprocess.check_output(start)
+                    if s == 'neutron-metadata-agent':
+                        subprocess.check_output(['sudo', 'service',
+                                                 'neutron-vpn-agent',
+                                                 'restart'])
             except subprocess.CalledProcessError:
                 LOG.error('Restart service: %s' % s)
                 subprocess.check_output(restart)
-                #if s == 'openvswitch-switch':
-                #    subprocess.check_output(ovs_agent_restart)
-                #if s == 'neutron-metadata-agent':
-                #    subprocess.check_output(l3_restart)
+                if s == 'neutron-metadata-agent':
+                    subprocess.check_output(['sudo', 'service',
+                                             'neutron-vpn-agent',
+                                             'restart'])
 
     def run(self):
         while True:
