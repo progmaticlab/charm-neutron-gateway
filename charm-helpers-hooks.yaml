@@ -9,3 +9,4 @@ include:
     - contrib.python.packages
     - contrib.storage.linux
     - payload.execd
+    - contrib.charmsupport
