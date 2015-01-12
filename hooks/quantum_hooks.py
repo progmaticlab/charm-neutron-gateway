@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 from base64 import b64decode
-import os
 
 from charmhelpers.core.hookenv import (
     log, ERROR, WARNING,
@@ -10,8 +9,6 @@ from charmhelpers.core.hookenv import (
     relation_get,
     relation_set,
     relation_ids,
-    relations_of_type,
-    local_unit,
     unit_get,
     Hooks, UnregisteredHookError
 )
@@ -38,7 +35,7 @@ from charmhelpers.contrib.openstack.utils import (
 from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
 
-from charmhelpers.contrib.charmsupport.nrpe import NRPE
+from charmhelpers.contrib.charmsupport import nrpe
 
 import sys
 from quantum_utils import (
@@ -224,61 +221,27 @@ def stop():
 @hooks.hook('nrpe-external-master-relation-joined',
             'nrpe-external-master-relation-changed')
 def update_nrpe_config():
-    # Find out if nrpe set nagios_hostname
-    hostname = None
-    host_context = None
-    for rel in relations_of_type('nrpe-external-master'):
-        if 'nagios_hostname' in rel:
-            hostname = rel['nagios_hostname']
-            host_context = rel['nagios_host_context']
-            break
-    nrpe = NRPE(hostname=hostname)
+    # python-dbus is used by check_upstart_job
     apt_install('python-dbus')
-
-    if host_context:
-        current_unit = "%s:%s" % (host_context, local_unit())
-    else:
-        current_unit = local_unit()
-
-    services_to_monitor = services()
-    for service in services_to_monitor:
-        upstart_init = '/etc/init/%s.conf' % service
-        sysv_init = '/etc/init.d/%s' % service
-
-        if os.path.exists(upstart_init):
-            nrpe.add_check(
-                shortname=service,
-                description='process check {%s}' % current_unit,
-                check_cmd='check_upstart_job %s' % service,
-                )
-        elif os.path.exists(sysv_init):
-            cronpath = '/etc/cron.d/nagios-service-check-%s' % service
-            cron_template = '*/5 * * * * root \
-/usr/local/lib/nagios/plugins/check_exit_status.pl -s /etc/init.d/%s \
-status > /var/lib/nagios/service-check-%s.txt\n' % (service, service)
-            f = open(cronpath, 'w')
-            f.write(cron_template)
-            f.close()
-            nrpe.add_check(
-                shortname=service,
-                description='process check {%s}' % current_unit,
-                check_cmd='check_status_file.py -f \
-/var/lib/nagios/service-check-%s.txt' % service,
-                )
+    hostname = nrpe.get_nagios_hostname()
+    current_unit = nrpe.get_nagios_unit_name()
+    nrpe_setup = nrpe.NRPE(hostname=hostname)
+    nrpe.add_init_service_checks(nrpe_setup, services(), current_unit)
 
     cronpath = '/etc/cron.d/nagios-netns-check'
-    cron_template = '*/5 * * * * root \
-/usr/local/lib/nagios/plugins/check_netns.sh \
-> /var/lib/nagios/netns-check.txt\n'
+    cron_template = ('*/5 * * * * root '
+                     '/usr/local/lib/nagios/plugins/check_netns.sh '
+                     '> /var/lib/nagios/netns-check.txt\n'
+                     )
     f = open(cronpath, 'w')
     f.write(cron_template)
     f.close()
-    nrpe.add_check(
+    nrpe_setup.add_check(
         shortname="netns",
         description='Network Namespace check {%s}' % current_unit,
         check_cmd='check_status_file.py -f /var/lib/nagios/netns-check.txt'
         )
-    nrpe.write()
+    nrpe_setup.write()
 
 
 if __name__ == '__main__':
