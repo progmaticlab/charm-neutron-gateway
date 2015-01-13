@@ -11,8 +11,9 @@ cleaned resources on failed nodes.
 """
 
 import os
-import signal
+import re
 import sys
+import signal
 import socket
 import subprocess
 import time
@@ -20,6 +21,7 @@ import time
 from oslo.config import cfg
 from neutron.agent.linux import ovs_lib
 from neutron.agent.linux import ip_lib
+from neutron.common import exceptions
 from neutron.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -121,20 +123,21 @@ class MonitorNeutronAgentsDaemon(Daemon):
     def get_root_helper(self):
         return 'sudo'
 
-    def list_nodes(self):
+    def list_monitor_res(self):
         # List crm resource 'cl_monitor' running node
-        cmd = "crm resource show cl_monitor 2>/dev/null " \
-              "| awk -F': '  '{print $2}'"
-        out = subprocess.check_output(cmd, shell=True)
-        nodes = out.strip().split('\n')
+        nodes = []
+        cmd = ['crm', 'resource', 'show', 'cl_monitor']
+        output = subprocess.check_output(cmd)
+        pattern = re.compile('resource cl_monitor is running on: (.*) ')
+        nodes = pattern.findall(output)
         return nodes
 
-    def get_crm_no_1_node(self):
-        nodes = self.list_nodes()
+    def get_crm_res_lead_node(self):
+        nodes = self.list_monitor_res()
         if nodes:
-            return nodes[0].split('(')[0] or nodes[0]
+            return nodes[0].strip()
         else:
-            LOG.error('Failed to get crm node list.')
+            LOG.error('Failed to get crm resource.')
             return None
 
     def unplug_device(self, device):
@@ -151,41 +154,36 @@ class MonitorNeutronAgentsDaemon(Daemon):
             else:
                 LOG.debug('Unable to find bridge for device: %s', device.name)
 
-    def cleanup_dhcp(self, networks):
+    def get_pattern(self, key, text):
+        if not key or not text:
+            raise Exception('Invalid key(%s) or text(%s)' % (key, text))
+
+        pattern = re.compile(key)
+        result = pattern.findall(text)
+        return result
+
+    def _cleanup(self, key1, key2):
         namespaces = []
-        if networks:
-            for network in networks.iterkeys():
-                namespaces.append('qdhcp-' + network)
+        if key1:
+            for k in key1.iterkeys():
+                namespaces.append(key2 + '-' + k)
         else:
-            cmd = 'sudo ip netns | grep qdhcp'
             try:
-                qns = subprocess.check_output(cmd, shell=True).strip().split(' ')
-                for qn in qns:
-                    namespaces.append(qn)
-            except Exception as e:
-                LOG.error('No dhcp namespaces found (%s)' % e)
+                cmd = ['sudo', 'ip', 'netns']
+                ns = subprocess.check_output(cmd)
+                namespaces = self.get_pattern('(%s.*)' % key2, ns)
+            except RuntimeError as e:
+                LOG.error('Failed to list namespace, (%s)' % e)
 
         if namespaces:
             LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
             self.destroy_namespaces(namespaces)
+
+    def cleanup_dhcp(self, networks):
+        self._cleanup(networks, 'qdhcp')
 
     def cleanup_router(self, routers):
-        namespaces = []
-        if routers:
-            for router in routers.iterkeys():
-                namespaces.append('qrouter-%s' % router)
-        else:
-            cmd = 'sudo ip netns | grep qrouter'
-            try:
-                qns = subprocess.check_output(cmd, shell=True).strip().split(' ')
-                for qn in qns:
-                    namespaces.append(qn)
-            except Exception as e:
-                LOG.error('No router namespaces found (%s)' % e)
-
-        if namespaces:
-            LOG.info('Namespaces: %s is going to be deleted.' % namespaces)
-            self.destroy_namespaces(namespaces)
+        self._cleanup(routers, 'qrouter')
 
     def destroy_namespaces(self, namespaces):
         try:
@@ -204,7 +202,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         return str(host).strip() == self.get_hostname()
 
     def validate_reschedule(self):
-        crm_no_1_node = self.get_crm_no_1_node()
+        crm_no_1_node = self.get_crm_res_lead_node()
         if not crm_no_1_node:
             LOG.error('No crm first node could be found.')
             return False
@@ -227,12 +225,12 @@ class MonitorNeutronAgentsDaemon(Daemon):
             try:
                 quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
                                                     router_id=router_id)
-            except Exception as e:
+            except exceptions.NeutronException as e:
                 LOG.error('Remove router raised exception: %s' % e)
             try:
                 quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
                                                body={'router_id': router_id})
-            except Exception as e:
+            except exceptions.NeutronException as e:
                 LOG.error('Add router raised exception: %s' % e)
             index += 1
 
@@ -248,13 +246,13 @@ class MonitorNeutronAgentsDaemon(Daemon):
             try:
                 quantum.remove_network_from_dhcp_agent(
                     dhcp_agent=networks[network_id], network_id=network_id)
-            except Exception as e:
+            except exceptions.NeutronException as e:
                 LOG.error('Remove network raised exception: %s' % e)
             try:
                 quantum.add_network_to_dhcp_agent(
                     dhcp_agent=dhcp_agents[agent],
                     body={'network_id': network_id})
-            except Exception as e:
+            except exceptions.NeutronException as e:
                 LOG.error('Add network raised exception: %s' % e)
             index += 1
 
@@ -289,8 +287,8 @@ class MonitorNeutronAgentsDaemon(Daemon):
             DHCP_AGENT = "DHCP Agent"
             L3_AGENT = "L3 Agent"
             agents = quantum.list_agents(agent_type=DHCP_AGENT)
-        except Exception:
-            LOG.error('Failed to get quantum agents.')
+        except exceptions.NeutronException as e:
+            LOG.error('Failed to get quantum agents, %s' % e)
             return
 
         dhcp_agents = []
@@ -354,7 +352,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
         try:
             OVS_AGENT = 'Open vSwitch agent'
             agents = quantum.list_agents(agent_type=OVS_AGENT)
-        except Exception as e:
+        except exceptions.NeutronException as e:
             LOG.error('No ovs agent found on localhost, error:%s.' % e)
             return
 
