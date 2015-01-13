@@ -34,11 +34,15 @@ from charmhelpers.contrib.openstack.utils import (
     os_requires_version,
 )
 from charmhelpers.payload.execd import execd_preinstall
+from charmhelpers.core.sysctl import create as create_sysctl
+
+from charmhelpers.contrib.charmsupport import nrpe
 
 import sys
 from quantum_utils import (
     register_configs,
     restart_map,
+    services,
     do_openstack_upgrade,
     get_packages,
     get_early_packages,
@@ -63,6 +67,7 @@ def install():
         src = 'cloud:precise-folsom'
     configure_installation_source(src)
     apt_update(fatal=True)
+    apt_install('python-six', fatal=True)  # Force upgrade
     if valid_plugin():
         apt_install(filter_installed_packages(get_early_packages()),
                     fatal=True)
@@ -79,6 +84,12 @@ def config_changed():
     global CONFIGS
     if openstack_upgrade_available(get_common_package()):
         CONFIGS = do_openstack_upgrade()
+    update_nrpe_config()
+
+    sysctl_dict = config('sysctl')
+    if sysctl_dict:
+        create_sysctl(sysctl_dict, '/etc/sysctl.d/50-quantum-gateway.conf')
+
     # Re-run joined hooks as config might have changed
     for r_id in relation_ids('shared-db'):
         db_joined(relation_id=r_id)
@@ -211,6 +222,7 @@ def stop():
     stop_services()
 
 
+<<<<<<< TREE
 @hooks.hook('zeromq-configuration-relation-joined')
 @os_requires_version('juno', 'neutron-common')
 def zeromq_configuration_relation_joined(relid=None):
@@ -223,6 +235,32 @@ def zeromq_configuration_relation_joined(relid=None):
 @restart_on_change(restart_map(), stopstart=True)
 def zeromq_configuration_relation_changed():
     CONFIGS.write_all()
+
+
+@hooks.hook('nrpe-external-master-relation-joined',
+            'nrpe-external-master-relation-changed')
+def update_nrpe_config():
+    # python-dbus is used by check_upstart_job
+    apt_install('python-dbus')
+    hostname = nrpe.get_nagios_hostname()
+    current_unit = nrpe.get_nagios_unit_name()
+    nrpe_setup = nrpe.NRPE(hostname=hostname)
+    nrpe.add_init_service_checks(nrpe_setup, services(), current_unit)
+
+    cronpath = '/etc/cron.d/nagios-netns-check'
+    cron_template = ('*/5 * * * * root '
+                     '/usr/local/lib/nagios/plugins/check_netns.sh '
+                     '> /var/lib/nagios/netns-check.txt\n'
+                     )
+    f = open(cronpath, 'w')
+    f.write(cron_template)
+    f.close()
+    nrpe_setup.add_check(
+        shortname="netns",
+        description='Network Namespace check {%s}' % current_unit,
+        check_cmd='check_status_file.py -f /var/lib/nagios/netns-check.txt'
+        )
+    nrpe_setup.write()
 
 
 if __name__ == '__main__':

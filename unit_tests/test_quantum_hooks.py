@@ -40,7 +40,9 @@ TO_PATCH = [
     'lsb_release',
     'stop_services',
     'b64decode',
-    'is_relation_made'
+    'is_relation_made',
+    'create_sysctl',
+    'update_nrpe_config',
 ]
 
 
@@ -98,6 +100,7 @@ class TestQuantumHooks(CharmTestCase):
     def test_config_changed(self):
         def mock_relids(rel):
             return ['relid']
+        self.test_config.set('sysctl', '{ kernel.max_pid: "1337"}')
         self.openstack_upgrade_available.return_value = True
         self.valid_plugin.return_value = True
         self.relation_ids.side_effect = mock_relids
@@ -114,6 +117,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
         self.assertTrue(_zmq_joined.called)
+        self.create_sysctl.assert_called()
 
     def test_config_changed_upgrade(self):
         self.openstack_upgrade_available.return_value = True
