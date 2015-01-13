@@ -156,9 +156,10 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
     def get_pattern(self, key, text):
         if not key or not text:
-            raise Exception('Invalid key(%s) or text(%s)' % (key, text))
+            LOG.debug('Invalid key(%s) or text(%s)' % (key, text))
+            return None
 
-        pattern = re.compile(key)
+        pattern = re.compile('%s' % key)
         result = pattern.findall(text)
         return result
 
