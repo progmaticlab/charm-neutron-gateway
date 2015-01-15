@@ -16,6 +16,9 @@ description: |
 categories:
     - openstack
 provides:
+  nrpe-external-master:
+    interface: nrpe-external-master
+    scope: container
   quantum-network-service:
     interface: quantum
 requires:

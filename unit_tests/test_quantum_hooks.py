@@ -42,6 +42,7 @@ TO_PATCH = [
     'b64decode',
     'is_relation_made',
     'create_sysctl',
+    'update_nrpe_config',
     'update_legacy_ha_files',
     'add_hostname_to_hosts'
 ]
