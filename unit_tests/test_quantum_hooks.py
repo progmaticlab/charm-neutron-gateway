@@ -44,7 +44,12 @@ TO_PATCH = [
     'create_sysctl',
     'update_nrpe_config',
     'update_legacy_ha_files',
-    'add_hostname_to_hosts'
+    'add_hostname_to_hosts',
+    'install_legacy_ha_files',
+    'cache_env_data',
+    'get_hacluster_config',
+    'delete_legacy_resources',
+    'remove_legacy_ha_files'
 ]
 
 
@@ -263,3 +268,21 @@ class TestQuantumHooks(CharmTestCase):
     def test_stop(self):
         self._call_hook('stop')
         self.assertTrue(self.stop_services.called)
+
+    def test_ha_relation_joined(self):
+        self.test_config.set('ha-legacy-mode', True)
+        self._call_hook('ha_relation_joined')
+        self.assertTrue(self.cache_env_data.called)
+        self.assertTrue(self.get_hacluster_config.called)
+        self.assertTrue(self.install_legacy_ha_files.called)
+
+    def test_ha_relation_departed(self):
+        self.test_config.set('ha-legacy-mode', True)
+        self._call_hook('ha-relation-departed')
+        self.assertTrue(self.remove_legacy_ha_files.called)
+        self.assertTrue(self.delete_legacy_resources.called)
+
+    def test_quantum_network_service_relation_changed(self):
+        self.test_config.set('ha-legacy-mode', True)
+        self._call_hook('quantum-network-service-relation-changed')
+        self.assertTrue(self.cache_env_data.called)

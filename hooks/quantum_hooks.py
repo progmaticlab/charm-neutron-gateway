@@ -292,7 +292,7 @@ def ha_relation_joined():
 @hooks.hook('ha-relation-departed')
 def ha_relation_destroyed():
     # If e.g. we want to upgrade to Juno and use native Neutron HA support then
-    #  we need to un-corosync-cluster to enable the transition.
+    # we need to un-corosync-cluster to enable the transition.
     if config('ha-legacy-mode'):
         delete_legacy_resources()
         remove_legacy_ha_files()
