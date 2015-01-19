@@ -362,7 +362,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                 conf = agent['configurations']
                 if 'gre' in conf['tunnel_types'] and conf['l2_population'] \
                         and conf['devices']:
-                    LOG.warning('local ovs agent:%s' % agent)
+                    LOG.debug('local ovs agent:%s' % agent)
                     ovs_output = subprocess.check_output(['ovs-vsctl',
                                                           'list-ports', 'br-tun'])
                     ports = ovs_output.strip().split('\n')
@@ -388,15 +388,17 @@ class MonitorNeutronAgentsDaemon(Daemon):
             status = ['sudo', 'service', s, 'status']
             restart = ['sudo', 'service', s, 'restart']
             start = ['sudo', 'service', s, 'start']
-            stop = 'neutron-vpn-agent stop/waiting'
+            stop = '%s stop/waiting' % s
             try:
                 output = subprocess.check_output(status)
                 if output.strip() == stop:
                     subprocess.check_output(start)
+                    LOG.error('Restart service: %s' % s)
                     if s == 'neutron-metadata-agent':
                         subprocess.check_output(['sudo', 'service',
                                                  'neutron-vpn-agent',
                                                  'restart'])
+                        LOG.error('Restart neutron-vpn-agent')
             except subprocess.CalledProcessError:
                 LOG.error('Restart service: %s' % s)
                 subprocess.check_output(restart)
