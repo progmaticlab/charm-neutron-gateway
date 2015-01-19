@@ -1,9 +1,10 @@
-branch: lp:charm-helpers
+branch: lp:~openstack-charmers/charm-helpers/0mq
 destination: hooks/charmhelpers
 include:
     - core
     - fetch
     - contrib.openstack
+    - contrib.openstack.templates|inc=*
     - contrib.hahelpers
     - contrib.network
     - contrib.python.packages
