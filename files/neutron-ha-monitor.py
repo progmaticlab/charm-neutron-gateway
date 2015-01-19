@@ -346,6 +346,10 @@ class MonitorNeutronAgentsDaemon(Daemon):
 
 
     def check_ovs_tunnel(self, quantum=None):
+        '''
+        Work around for Bug #1411163
+        No fdb entries added when failover dhcp and l3 agent together.
+        '''
         if not quantum:
             LOG.error('Failed to get quantum client.')
             return
@@ -358,7 +362,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
             return
 
         for agent in agents['agents']:
-            if self.is_same_host(agent['host']):
+            if self.is_same_host(agent['host']) and agent['alive']:
                 conf = agent['configurations']
                 if 'gre' in conf['tunnel_types'] and conf['l2_population'] \
                         and conf['devices']:
@@ -373,7 +377,7 @@ class MonitorNeutronAgentsDaemon(Daemon):
                             break
                     if not look_up_gre_port:
                         try:
-                            LOG.error('Found namespace, but no ovs tunnel is created,'
+                            LOG.error('Local agent has devices, but no ovs tunnel is created,'
                                       'restart ovs agent.')
                             cmd = ['sudo', 'service', 'neutron-plugin-openvswitch-agent',
                                    'restart']

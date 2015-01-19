@@ -136,9 +136,12 @@ options:
     type: boolean
     default: False
     description: |
-      If True will enable ACTIVE/PASSIVE HA mode for neutron agents using
-      Pacemaker and Corosync. This is intended for < Juno which natively
-      supports HA in Neutron itself.
+      If True will enable Pacemaker to monitor the neutron-ha-monitor daemon
+      on every neutron-gateway unit, which detects neutron agents status and
+      reschedule resources hosting on failed agents, detects local errors and
+      release resources when network is unreachable or do neccessary recover
+      tasks. This feature targets to < Juno which doesn't natively support HA
+      in Neutron itself.
   ha-bindiface:
     type: string
     default: eth0
