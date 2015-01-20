@@ -686,8 +686,8 @@ def crm_op(op, res):
     cmd = 'crm -w -F %s %s' % (op, res)
     try:
         subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
-        log('crmd not found.')
+    except OSError as e:
+        log('crmd not found, %s' % e)
 
 
 def delete_legacy_resources():
