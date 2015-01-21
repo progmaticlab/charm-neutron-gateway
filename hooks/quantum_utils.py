@@ -167,8 +167,8 @@ def get_packages():
     if plugin == 'ovs':
         if (source >= 'icehouse' and
                 lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
-            # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for icehouse
-            # but openswan was removed in utopic.
+            # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for
+            # icehouse but openswan was removed in utopic.
             packages.remove('neutron-l3-agent')
             packages.append('neutron-vpn-agent')
             packages.append('openswan')
