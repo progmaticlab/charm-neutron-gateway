@@ -23,7 +23,6 @@ from charmhelpers.core.host import (
     lsb_release,
 )
 from charmhelpers.contrib.hahelpers.cluster import(
-    eligible_leader,
     get_hacluster_config,
 )
 from charmhelpers.contrib.hahelpers.apache import(
@@ -49,14 +48,14 @@ from quantum_utils import (
     get_common_package,
     valid_plugin,
     configure_ovs,
-    reassign_agent_resources,
     stop_services,
     cache_env_data,
     update_legacy_ha_files,
     remove_legacy_ha_files,
-    delete_legacy_resources,
     add_hostname_to_hosts,
-    install_legacy_ha_files
+    install_legacy_ha_files,
+    cleanup_ovs_netns,
+    stop_neutron_ha_monitor_daemon
 )
 
 hooks = Hooks()
@@ -227,9 +226,6 @@ def cluster_departed():
         log('Unable to re-assign agent resources for failed nodes with n1kv',
             level=WARNING)
         return
-    if eligible_leader(None):
-        reassign_agent_resources()
-        CONFIGS.write_all()
 
 
 @hooks.hook('cluster-relation-broken')
@@ -294,8 +290,9 @@ def ha_relation_destroyed():
     # If e.g. we want to upgrade to Juno and use native Neutron HA support then
     # we need to un-corosync-cluster to enable the transition.
     if config('ha-legacy-mode'):
-        delete_legacy_resources()
+        stop_neutron_ha_monitor_daemon()
         remove_legacy_ha_files()
+        cleanup_ovs_netns()
 
 
 if __name__ == '__main__':

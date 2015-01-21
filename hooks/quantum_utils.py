@@ -649,7 +649,6 @@ def update_legacy_ha_files(force=False):
     if config('ha-legacy-mode'):
         install_legacy_ha_files(force=force)
     else:
-        delete_legacy_resources()
         remove_legacy_ha_files()
 
 
@@ -682,20 +681,6 @@ def cache_env_data():
                 f.write(''.join([k, '=', v, '\n']))
 
 
-def crm_op(op, res):
-    cmd = 'crm -w -F %s %s' % (op, res)
-    try:
-        subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
-    except OSError as e:
-        log('crmd not found, %s' % e)
-
-
-def delete_legacy_resources():
-    for res in LEGACY_RES_MAP:
-        crm_op('resource stop', res)
-        crm_op('configure delete', res)
-
-
 def add_hostname_to_hosts():
     # To fix bug 1405588, ovsdb-server got error when
     # running ovsdb-client monitor command start with 'sudo'.
@@ -708,3 +693,22 @@ def add_hostname_to_hosts():
 
     with open(hostsfile, 'a') as f:
         f.write('\n%s\n' % resolve_hostname)
+
+
+def stop_neutron_ha_monitor_daemon():
+    try:
+        cmd = ['pgrep', '-f', 'neutron-ha-monitor.py']
+        res = subprocess.check_output(cmd).decode('UTF-8')
+        pid = res.strip()
+        if pid:
+            subprocess.call(['sudo', 'kill', '-9', pid])
+    except subprocess.CalledProcessError as e:
+        log('Faild to kill neutron-ha-monitor daemon, %s' % e, level=ERROR)
+
+
+def cleanup_ovs_netns():
+    try:
+        subprocess.call('neutron-ovs-cleanup')
+        subprocess.call('neutron-netns-cleanup')
+    except subprocess.CalledProcessError as e:
+        log('Faild to cleanup ovs and netns, %s' % e, level=ERROR)
