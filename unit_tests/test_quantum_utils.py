@@ -132,6 +132,11 @@ class TestQuantumUtils(CharmTestCase):
         self.assertTrue('neutron-vpn-agent' in quantum_utils.get_packages())
         self.assertFalse('neutron-l3-agent' in quantum_utils.get_packages())
 
+    def test_get_packages_ovs_kilo(self):
+        self.config.return_value = 'ovs'
+        self.get_os_codename_install_source.return_value = 'kilo'
+        self.assertTrue('python-neutron-fwaas' in quantum_utils.get_packages())
+
     def test_configure_ovs_starts_service_if_required(self):
         self.config.return_value = 'ovs'
         self.service_running.return_value = False
