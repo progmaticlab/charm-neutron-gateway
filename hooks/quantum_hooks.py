@@ -232,6 +232,9 @@ def cluster_departed():
 @hooks.hook('stop')
 def stop():
     stop_services()
+    if config('ha-legacy-mode'):
+        # Cleanup ovs and netns for destroyed units.
+        cleanup_ovs_netns()
 
 
 @hooks.hook('nrpe-external-master-relation-joined',
@@ -292,7 +295,6 @@ def ha_relation_destroyed():
     if config('ha-legacy-mode'):
         stop_neutron_ha_monitor_daemon()
         remove_legacy_ha_files()
-        cleanup_ovs_netns()
 
 
 if __name__ == '__main__':
