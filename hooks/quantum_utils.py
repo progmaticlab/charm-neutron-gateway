@@ -1,5 +1,4 @@
 import os
-import socket
 import subprocess
 from shutil import copy2
 from charmhelpers.core.host import (
@@ -679,20 +678,6 @@ def cache_env_data():
         with open(envrc_f, 'w') as f:
             for k, v in env.items():
                 f.write(''.join([k, '=', v, '\n']))
-
-
-def add_hostname_to_hosts():
-    # To fix bug 1405588, ovsdb-server got error when
-    # running ovsdb-client monitor command start with 'sudo'.
-    hostsfile = '/etc/hosts'
-    resolve_hostname = '127.0.0.1 %s' % socket.gethostname()
-    with open(hostsfile, 'r') as f:
-        for line in f:
-            if resolve_hostname in line:
-                return
-
-    with open(hostsfile, 'a') as f:
-        f.write('\n%s\n' % resolve_hostname)
 
 
 def stop_neutron_ha_monitor_daemon():

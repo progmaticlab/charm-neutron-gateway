@@ -42,7 +42,6 @@ TO_PATCH = [
     'create_sysctl',
     'update_nrpe_config',
     'update_legacy_ha_files',
-    'add_hostname_to_hosts',
     'install_legacy_ha_files',
     'cache_env_data',
     'get_hacluster_config',

@@ -24,6 +24,7 @@ from charmhelpers.core.host import (
 )
 from charmhelpers.contrib.hahelpers.cluster import(
     get_hacluster_config,
+    eligible_leader
 )
 from charmhelpers.contrib.hahelpers.apache import(
     install_ca_cert
@@ -52,9 +53,9 @@ from quantum_utils import (
     cache_env_data,
     update_legacy_ha_files,
     remove_legacy_ha_files,
-    add_hostname_to_hosts,
     install_legacy_ha_files,
     cleanup_ovs_netns,
+    reassign_agent_resources,
     stop_neutron_ha_monitor_daemon
 )
 
@@ -83,9 +84,6 @@ def install():
 
     # Legacy HA for Icehouse
     update_legacy_ha_files()
-
-    # Fix ovsdb-client monitor error
-    add_hostname_to_hosts()
 
 
 @hooks.hook('config-changed')
@@ -226,6 +224,9 @@ def cluster_departed():
         log('Unable to re-assign agent resources for failed nodes with n1kv',
             level=WARNING)
         return
+    if not config('ha-legacy-mode') and eligible_leader(None):
+        reassign_agent_resources()
+        CONFIGS.write_all()
 
 
 @hooks.hook('cluster-relation-broken')
