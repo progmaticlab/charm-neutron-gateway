@@ -186,14 +186,17 @@ def get_packages():
     '''Return a list of packages for install based on the configured plugin'''
     plugin = remap_plugin(config('plugin'))
     packages = deepcopy(GATEWAY_PKGS[networking_name()][plugin])
-    if (get_os_codename_install_source(config('openstack-origin'))
-            >= 'icehouse' and plugin == 'ovs'
-            and lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
-        # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for icehouse
-        # but openswan was removed in utopic.
-        packages.remove('neutron-l3-agent')
-        packages.append('neutron-vpn-agent')
-        packages.append('openswan')
+    source = get_os_codename_install_source(config('openstack-origin'))
+    if plugin == 'ovs':
+        if (source >= 'icehouse' and
+                lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
+            # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for
+            # icehouse but openswan was removed in utopic.
+            packages.remove('neutron-l3-agent')
+            packages.append('neutron-vpn-agent')
+            packages.append('openswan')
+        if source >= 'kilo':
+            packages.append('python-neutron-fwaas')
     return packages
 
 
