@@ -33,8 +33,6 @@ TO_PATCH = [
     'unit_get',
     'relation_get',
     'install_ca_cert',
-    'eligible_leader',
-    'reassign_agent_resources',
     'get_common_package',
     'execd_preinstall',
     'lsb_release',
@@ -43,6 +41,13 @@ TO_PATCH = [
     'is_relation_made',
     'create_sysctl',
     'update_nrpe_config',
+    'update_legacy_ha_files',
+    'install_legacy_ha_files',
+    'cache_env_data',
+    'get_hacluster_config',
+    'remove_legacy_ha_files',
+    'cleanup_ovs_netns',
+    'stop_neutron_ha_monitor_daemon'
 ]
 
 
@@ -245,19 +250,25 @@ class TestQuantumHooks(CharmTestCase):
         self.test_config.set('plugin', 'nvp')
         self._call_hook('cluster-relation-departed')
         self.assertTrue(self.log.called)
-        self.assertFalse(self.eligible_leader.called)
-        self.assertFalse(self.reassign_agent_resources.called)
-
-    def test_cluster_departed_ovs_not_leader(self):
-        self.eligible_leader.return_value = False
-        self._call_hook('cluster-relation-departed')
-        self.assertFalse(self.reassign_agent_resources.called)
-
-    def test_cluster_departed_ovs_leader(self):
-        self.eligible_leader.return_value = True
-        self._call_hook('cluster-relation-departed')
-        self.assertTrue(self.reassign_agent_resources.called)
 
     def test_stop(self):
         self._call_hook('stop')
         self.assertTrue(self.stop_services.called)
+
+    def test_ha_relation_joined(self):
+        self.test_config.set('ha-legacy-mode', True)
+        self._call_hook('ha_relation_joined')
+        self.assertTrue(self.cache_env_data.called)
+        self.assertTrue(self.get_hacluster_config.called)
+        self.assertTrue(self.install_legacy_ha_files.called)
+
+    def test_ha_relation_departed(self):
+        self.test_config.set('ha-legacy-mode', True)
+        self._call_hook('ha-relation-departed')
+        self.assertTrue(self.remove_legacy_ha_files.called)
+        self.assertTrue(self.stop_neutron_ha_monitor_daemon.called)
+
+    def test_quantum_network_service_relation_changed(self):
+        self.test_config.set('ha-legacy-mode', True)
+        self._call_hook('quantum-network-service-relation-changed')
+        self.assertTrue(self.cache_env_data.called)

@@ -32,6 +32,9 @@ requires:
     interface: rabbitmq
   neutron-plugin-api:
     interface: neutron-plugin-api
+  ha:
+    interface: hacluster
+    scope: container
 peers:
   cluster:
     interface: quantum-gateway-ha

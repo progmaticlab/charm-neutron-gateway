@@ -131,3 +131,27 @@ options:
     description: |
       YAML-formatted associative array of sysctl key/value pairs to be set
       persistently e.g. '{ kernel.pid_max : 4194303 }'.
+  # Legacy (Icehouse) HA
+  ha-legacy-mode:
+    type: boolean
+    default: False
+    description: |
+      If True will enable Pacemaker to monitor the neutron-ha-monitor daemon
+      on every neutron-gateway unit, which detects neutron agents status and
+      reschedule resources hosting on failed agents, detects local errors and
+      release resources when network is unreachable or do neccessary recover
+      tasks. This feature targets to < Juno which doesn't natively support HA
+      in Neutron itself.
+  ha-bindiface:
+    type: string
+    default: eth0
+    description: |
+      Default network interface on which HA cluster will bind to communicate
+      with the other members of the HA Cluster.
+  ha-mcastport:
+    type: int
+    default: 5409
+    description: |
+      Default multicast port number that will be used to communicate between
+      HA Cluster nodes.
+

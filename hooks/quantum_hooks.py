@@ -23,6 +23,7 @@ from charmhelpers.core.host import (
     lsb_release,
 )
 from charmhelpers.contrib.hahelpers.cluster import(
+    get_hacluster_config,
     eligible_leader
 )
 from charmhelpers.contrib.hahelpers.apache import(
@@ -48,8 +49,14 @@ from quantum_utils import (
     get_common_package,
     valid_plugin,
     configure_ovs,
+    stop_services,
+    cache_env_data,
+    update_legacy_ha_files,
+    remove_legacy_ha_files,
+    install_legacy_ha_files,
+    cleanup_ovs_netns,
     reassign_agent_resources,
-    stop_services
+    stop_neutron_ha_monitor_daemon
 )
 
 hooks = Hooks()
@@ -74,6 +81,9 @@ def install():
     else:
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)
+
+    # Legacy HA for Icehouse
+    update_legacy_ha_files()
 
 
 @hooks.hook('config-changed')
@@ -109,11 +119,15 @@ def config_changed():
         else:
             apt_purge('neutron-l3-agent')
 
+    # Setup legacy ha configurations
+    update_legacy_ha_files()
+
 
 @hooks.hook('upgrade-charm')
 def upgrade_charm():
     install()
     config_changed()
+    update_legacy_ha_files(force=True)
 
 
 @hooks.hook('shared-db-relation-joined')
@@ -194,6 +208,9 @@ def nm_changed():
         ca_crt = b64decode(relation_get('ca_cert'))
         install_ca_cert(ca_crt)
 
+    if config('ha-legacy-mode'):
+        cache_env_data()
+
 
 @hooks.hook("cluster-relation-departed")
 @restart_on_change(restart_map())
@@ -207,7 +224,7 @@ def cluster_departed():
         log('Unable to re-assign agent resources for failed nodes with n1kv',
             level=WARNING)
         return
-    if eligible_leader(None):
+    if not config('ha-legacy-mode') and eligible_leader(None):
         reassign_agent_resources()
         CONFIGS.write_all()
 
@@ -216,6 +233,9 @@ def cluster_departed():
 @hooks.hook('stop')
 def stop():
     stop_services()
+    if config('ha-legacy-mode'):
+        # Cleanup ovs and netns for destroyed units.
+        cleanup_ovs_netns()
 
 
 @hooks.hook('nrpe-external-master-relation-joined',
@@ -242,6 +262,40 @@ def update_nrpe_config():
         check_cmd='check_status_file.py -f /var/lib/nagios/netns-check.txt'
         )
     nrpe_setup.write()
+
+
+@hooks.hook('ha-relation-joined')
+@hooks.hook('ha-relation-changed')
+def ha_relation_joined():
+    if config('ha-legacy-mode'):
+        log('ha-relation-changed update_legacy_ha_files')
+        install_legacy_ha_files()
+        cache_env_data()
+        cluster_config = get_hacluster_config(exclude_keys=['vip'])
+        resources = {
+            'res_monitor': 'ocf:canonical:NeutronAgentMon',
+        }
+        resource_params = {
+            'res_monitor': 'op monitor interval="60s"',
+        }
+        clones = {
+            'cl_monitor': 'res_monitor meta interleave="true"',
+        }
+
+        relation_set(corosync_bindiface=cluster_config['ha-bindiface'],
+                     corosync_mcastport=cluster_config['ha-mcastport'],
+                     resources=resources,
+                     resource_params=resource_params,
+                     clones=clones)
+
+
+@hooks.hook('ha-relation-departed')
+def ha_relation_destroyed():
+    # If e.g. we want to upgrade to Juno and use native Neutron HA support then
+    # we need to un-corosync-cluster to enable the transition.
+    if config('ha-legacy-mode'):
+        stop_neutron_ha_monitor_daemon()
+        remove_legacy_ha_files()
 
 
 if __name__ == '__main__':
