@@ -32,6 +32,7 @@ from charmhelpers.contrib.hahelpers.apache import(
 from charmhelpers.contrib.openstack.utils import (
     configure_installation_source,
     openstack_upgrade_available,
+    sync_db_with_multi_ipv6_addresses,
 )
 from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
@@ -138,10 +139,15 @@ def db_joined(relation_id=None):
              'associated a postgresql one')
         log(e, level=ERROR)
         raise Exception(e)
-    relation_set(username=config('database-user'),
-                 database=config('database'),
-                 hostname=unit_get('private-address'),
-                 relation_id=relation_id)
+
+    if config('prefer-ipv6'):
+        sync_db_with_multi_ipv6_addresses(config('database'),
+                                          config('database-user'))
+    else:
+        relation_set(username=config('database-user'),
+                     database=config('database'),
+                     hostname=unit_get('private-address'),
+                     relation_id=relation_id)
 
 
 @hooks.hook('pgsql-db-relation-joined')
