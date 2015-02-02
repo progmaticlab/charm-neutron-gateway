@@ -111,6 +111,7 @@ def _neutron_api_settings():
     '''
     neutron_settings = {
         'l2_population': False,
+        'enable_dvr': False,
         'overlay_network_type': 'gre',
 
     }
@@ -119,10 +120,11 @@ def _neutron_api_settings():
             rdata = relation_get(rid=rid, unit=unit)
             if 'l2-population' not in rdata:
                 continue
-            neutron_settings = {
-                'l2_population': rdata['l2-population'],
-                'overlay_network_type': rdata['overlay-network-type'],
-            }
+            neutron_settings['l2_population'] = rdata['l2-population']
+            if 'overlay-network-type' in rdata:
+                neutron_settings['overlay_network_type'] = rdata['overlay-network-type']
+            if 'enable-dvr' in rdata:
+                neutron_settings['enable_dvr'] = rdata['enable-dvr']
             return neutron_settings
     return neutron_settings
 
@@ -158,6 +160,7 @@ class NetworkServiceContext(OSContextGenerator):
 class L3AgentContext(OSContextGenerator):
 
     def __call__(self):
+        neutron_api_settings = _neutron_api_settings()
         ctxt = {}
         if config('run-internal-router') == 'leader':
             ctxt['handle_internal_only_router'] = eligible_leader(None)
@@ -170,9 +173,12 @@ class L3AgentContext(OSContextGenerator):
 
         if config('external-network-id'):
             ctxt['ext_net_id'] = config('external-network-id')
-
         if config('plugin'):
             ctxt['plugin'] = config('plugin')
+        if neutron_api_settings['enable_dvr'] == 'True':
+            ctxt['agent_mode'] = 'dvr_snat'
+        else:
+            ctxt['agent_mode'] = 'legacy'
         return ctxt
 
 
@@ -243,6 +249,7 @@ class QuantumGatewayContext(OSContextGenerator):
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
             'l2_population': neutron_api_settings['l2_population'],
+            'enable_dvr': neutron_api_settings['enable_dvr'],
             'overlay_network_type':
             neutron_api_settings['overlay_network_type'],
         }

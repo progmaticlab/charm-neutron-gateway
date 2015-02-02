@@ -413,6 +413,9 @@ def register_configs():
         drop_config = NEUTRON_ML2_PLUGIN_CONF
         if release >= 'icehouse':
             drop_config = NEUTRON_OVS_PLUGIN_CONF
+            # NOTE(gnuoy) neutron-vpn-agent supercedes l3-agent for icehouse
+            CONFIG_FILES[name][plugin][NEUTRON_L3_AGENT_CONF]['services'] = \
+                ['neutron-vpn-agent']
         if drop_config in CONFIG_FILES[name][plugin]:
             CONFIG_FILES[name][plugin].pop(drop_config)
 
