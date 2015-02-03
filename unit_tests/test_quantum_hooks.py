@@ -47,7 +47,8 @@ TO_PATCH = [
     'get_hacluster_config',
     'remove_legacy_ha_files',
     'cleanup_ovs_netns',
-    'stop_neutron_ha_monitor_daemon'
+    'stop_neutron_ha_monitor_daemon',
+    'configure_phy_nic_mtu'
 ]
 
 
@@ -87,6 +88,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.get_early_packages.called)
         self.assertTrue(self.get_packages.called)
         self.assertTrue(self.execd_preinstall.called)
+        self.assertTrue(self.configure_phy_nic_mtu.called)
 
     def test_install_hook_precise_nocloudarchive(self):
         self.test_config.set('openstack-origin', 'distro')
@@ -121,6 +123,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
         self.create_sysctl.assert_called()
+        self.assertTrue(self.configure_phy_nic_mtu.called)
 
     def test_config_changed_upgrade(self):
         self.openstack_upgrade_available.return_value = True
@@ -128,6 +131,7 @@ class TestQuantumHooks(CharmTestCase):
         self._call_hook('config-changed')
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.configure_ovs.called)
+        self.assertTrue(self.configure_phy_nic_mtu.called)
 
     def test_config_changed_n1kv(self):
         self.openstack_upgrade_available.return_value = False
