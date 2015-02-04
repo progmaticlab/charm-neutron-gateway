@@ -307,7 +307,8 @@ NEUTRON_OVS_CONFIG_FILES = {
                      'neutron-metering-agent',
                      'neutron-lbaas-agent',
                      'neutron-plugin-vpn-agent',
-                     'neutron-vpn-agent']
+                     'neutron-vpn-agent',
+                     'neutron-openvswitch-agent']
     },
     NEUTRON_L3_AGENT_CONF: {
         'hook_contexts': [NetworkServiceContext(),
@@ -339,7 +340,8 @@ NEUTRON_OVS_CONFIG_FILES = {
     },
     NEUTRON_ML2_PLUGIN_CONF: {
         'hook_contexts': [QuantumGatewayContext()],
-        'services': ['neutron-plugin-openvswitch-agent']
+        'services': ['neutron-plugin-openvswitch-agent',
+                     'neutron-openvswitch-agent']
     },
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
