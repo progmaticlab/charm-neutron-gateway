@@ -2,10 +2,6 @@
 import os
 import uuid
 import socket
-from charmhelpers.core.host import (
-    list_nics,
-    get_nic_hwaddr
-)
 from charmhelpers.core.hookenv import (
     config,
     relation_ids,
@@ -20,6 +16,7 @@ from charmhelpers.fetch import (
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
     context_complete,
+    NeutronPortContext,
 )
 from charmhelpers.contrib.openstack.utils import (
     get_os_codename_install_source
@@ -27,12 +24,8 @@ from charmhelpers.contrib.openstack.utils import (
 from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader
 )
-import re
 from charmhelpers.contrib.network.ip import (
     get_address_in_network,
-    get_ipv4_addr,
-    get_ipv6_addr,
-    is_bridge_member,
 )
 
 DB_USER = "quantum"
@@ -111,8 +104,8 @@ def _neutron_api_settings():
     '''
     neutron_settings = {
         'l2_population': False,
-        'network_device_mtu': 1500,
         'overlay_network_type': 'gre',
+        'network_device_mtu': 1500,
     }
     for rid in relation_ids('neutron-plugin-api'):
         for unit in related_units(rid):
@@ -122,8 +115,7 @@ def _neutron_api_settings():
             neutron_settings = {
                 'l2_population': rdata['l2-population'],
                 'overlay_network_type': rdata['overlay-network-type'],
-                'network_device_mtu': rdata['network-device-mtu']
-                if 'network-device-mtu' in rdata else 1500,
+                'network_device_mtu': rdata.get('network-device-mtu', 1500)
             }
             return neutron_settings
     return neutron_settings
@@ -178,44 +170,13 @@ class L3AgentContext(OSContextGenerator):
         return ctxt
 
 
-class NeutronPortContext(OSContextGenerator):
-
-    def _resolve_port(self, config_key):
-        if not config(config_key):
-            return None
-        hwaddr_to_nic = {}
-        hwaddr_to_ip = {}
-        for nic in list_nics(['eth', 'bond']):
-            hwaddr = get_nic_hwaddr(nic)
-            hwaddr_to_nic[hwaddr] = nic
-            addresses = get_ipv4_addr(nic, fatal=False) + \
-                get_ipv6_addr(iface=nic, fatal=False)
-            hwaddr_to_ip[hwaddr] = addresses
-        mac_regex = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
-        for entry in config(config_key).split():
-            entry = entry.strip()
-            if re.match(mac_regex, entry):
-                if entry in hwaddr_to_nic and len(hwaddr_to_ip[entry]) == 0:
-                    # If the nic is part of a bridge then don't use it
-                    if is_bridge_member(hwaddr_to_nic[entry]):
-                        continue
-                    # Entry is a MAC address for a valid interface that doesn't
-                    # have an IP address assigned yet.
-                    return hwaddr_to_nic[entry]
-            else:
-                # If the passed entry is not a MAC address, assume it's a valid
-                # interface, and that the user put it there on purpose (we can
-                # trust it to be the real external network).
-                return entry
-        return None
-
-
 class ExternalPortContext(NeutronPortContext):
 
     def __call__(self):
-        port = self._resolve_port('ext-port')
+        port = self.resolve_port('ext-port')
         if port:
-            return {"ext_port": port}
+            return {"ext_port": port,
+                    "mtu": config('phy-nic-mtu')}
         else:
             return None
 
@@ -223,7 +184,7 @@ class ExternalPortContext(NeutronPortContext):
 class DataPortContext(NeutronPortContext):
 
     def __call__(self):
-        port = self._resolve_port('data-port')
+        port = self.resolve_port('data-port')
         if port:
             return {"data_port": port}
         else:

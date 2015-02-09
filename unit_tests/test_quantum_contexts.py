@@ -16,11 +16,7 @@ TO_PATCH = [
     'config',
     'context_complete',
     'eligible_leader',
-    'get_ipv4_addr',
-    'get_ipv6_addr',
-    'get_nic_hwaddr',
     'get_os_codename_install_source',
-    'list_nics',
     'relation_get',
     'relation_ids',
     'related_units',
@@ -131,14 +127,12 @@ class TestNeutronPortContext(CharmTestCase):
         }
         self.absent_macs = "aa:a5:ae:ae:ab:a4 "
 
-    def test_no_ext_port(self):
-        self.config.return_value = None
-        self.assertIsNone(quantum_contexts.ExternalPortContext()())
+    def fake_config(self, cfgdict):
 
-    def test_ext_port_eth(self):
-        self.config.return_value = 'eth1010'
-        self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          {'ext_port': 'eth1010'})
+        def _fake_config(key):
+            return cfgdict.get(key)
+
+        return _fake_config
 
     def _fake_get_hwaddr(self, arg):
         return self.machine_macs[arg]
@@ -146,31 +140,77 @@ class TestNeutronPortContext(CharmTestCase):
     def _fake_get_ipv4(self, arg, fatal=False):
         return self.machine_nics[arg]
 
-    def test_ext_port_mac(self):
-        config_macs = self.absent_macs + " " + self.machine_macs['eth2']
-        self.get_ipv4_addr.side_effect = self._fake_get_ipv4
-        self.get_ipv6_addr.return_value = []
-        self.config.return_value = config_macs
-        self.list_nics.return_value = self.machine_macs.keys()
-        self.get_nic_hwaddr.side_effect = self._fake_get_hwaddr
-        self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          {'ext_port': 'eth2'})
-        self.config.return_value = self.absent_macs
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_no_ext_port(self, mock_config):
+        self.config.side_effect = config = self.fake_config({})
+        mock_config.side_effect = config
         self.assertIsNone(quantum_contexts.ExternalPortContext()())
 
-    def test_ext_port_mac_one_used_nic(self):
-        config_macs = self.machine_macs['eth1'] + " " + \
-            self.machine_macs['eth2']
-        self.get_ipv4_addr.side_effect = self._fake_get_ipv4
-        self.get_ipv6_addr.return_value = []
-        self.config.return_value = config_macs
-        self.list_nics.return_value = self.machine_macs.keys()
-        self.get_nic_hwaddr.side_effect = self._fake_get_hwaddr
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_ext_port_eth(self, mock_config):
+        config = self.fake_config({'ext-port': 'eth1010'})
+        self.config.side_effect = config
+        mock_config.side_effect = config
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          {'ext_port': 'eth2'})
+                          {'ext_port': 'eth1010', 'mtu': None})
 
-    def test_data_port_eth(self):
-        self.config.return_value = 'eth1010'
+    @patch('charmhelpers.contrib.openstack.context.get_nic_hwaddr')
+    @patch('charmhelpers.contrib.openstack.context.list_nics')
+    @patch('charmhelpers.contrib.openstack.context.get_ipv6_addr')
+    @patch('charmhelpers.contrib.openstack.context.get_ipv4_addr')
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_ext_port_mac(self, mock_config, mock_get_ipv4_addr,
+                          mock_get_ipv6_addr, mock_list_nics,
+                          mock_get_nic_hwaddr):
+        config_macs = self.absent_macs + " " + self.machine_macs['eth2']
+        config = self.fake_config({'ext-port': config_macs})
+        self.config.side_effect = config
+        mock_config.side_effect = config
+
+        mock_get_ipv4_addr.side_effect = self._fake_get_ipv4
+        mock_get_ipv6_addr.return_value = []
+        mock_list_nics.return_value = self.machine_macs.keys()
+        mock_get_nic_hwaddr.side_effect = self._fake_get_hwaddr
+
+        self.assertEquals(quantum_contexts.ExternalPortContext()(),
+                          {'ext_port': 'eth2', 'mtu': None})
+
+        config = self.fake_config({'ext-port': self.absent_macs})
+        self.config.side_effect = config
+        mock_config.side_effect = config
+
+        self.assertIsNone(quantum_contexts.ExternalPortContext()())
+        self.assertTrue(mock_config.called)
+
+    @patch('charmhelpers.contrib.openstack.context.get_nic_hwaddr')
+    @patch('charmhelpers.contrib.openstack.context.list_nics')
+    @patch('charmhelpers.contrib.openstack.context.get_ipv6_addr')
+    @patch('charmhelpers.contrib.openstack.context.get_ipv4_addr')
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_ext_port_mac_one_used_nic(self, mock_config,
+                                       mock_get_ipv4_addr,
+                                       mock_get_ipv6_addr, mock_list_nics,
+                                       mock_get_nic_hwaddr):
+
+        config_macs = "%s %s" % (self.machine_macs['eth1'],
+                                 self.machine_macs['eth2'])
+
+        mock_get_ipv4_addr.side_effect = self._fake_get_ipv4
+        mock_get_ipv6_addr.return_value = []
+        mock_list_nics.return_value = self.machine_macs.keys()
+        mock_get_nic_hwaddr.side_effect = self._fake_get_hwaddr
+
+        config = self.fake_config({'ext-port': config_macs,
+                                   'phy-nic-mtu': 1234})
+        self.config.side_effect = config
+        mock_config.side_effect = config
+        self.assertEquals(quantum_contexts.ExternalPortContext()(),
+                          {'ext_port': 'eth2', 'mtu': 1234})
+
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_data_port_eth(self, mock_config):
+        config = self.fake_config({'data-port': 'eth1010'})
+        mock_config.side_effect = config
         self.assertEquals(quantum_contexts.DataPortContext()(),
                           {'data_port': 'eth1010'})
 
