@@ -157,5 +157,6 @@ options:
   phy-nic-mtu:
     type: int
     default: 1500
+    description: |
       To improve network performance of VM, sometimes we should keep VM MTU as 1500
       and use charm to modify MTU of tunnel nic more than 1500 (e.g. 1546 for GRE)
