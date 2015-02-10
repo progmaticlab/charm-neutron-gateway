@@ -53,6 +53,7 @@ from quantum_contexts import (
     NetworkServiceContext,
     L3AgentContext,
     ExternalPortContext,
+    PhyNICMTUContext,
     DataPortContext,
     remap_plugin
 )
@@ -207,6 +208,7 @@ def get_common_package():
         return 'neutron-common'
 
 EXT_PORT_CONF = '/etc/init/ext-port.conf'
+PHY_NIC_MTU_CONF = 'os-charm-phy-nic-mtu.conf'
 TEMPLATES = 'templates'
 
 QUANTUM_CONF = "/etc/quantum/quantum.conf"
@@ -290,6 +292,10 @@ QUANTUM_OVS_CONFIG_FILES = {
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
         'services': ['ext-port']
+    },
+    PHY_NIC_MTU_CONF: {
+        'hook_contexts': [PhyNICMTUContext()],
+        'services': ['os-charm-phy-nic-mtu']
     }
 }
 QUANTUM_OVS_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
@@ -344,6 +350,10 @@ NEUTRON_OVS_CONFIG_FILES = {
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
         'services': ['ext-port']
+    },
+    PHY_NIC_MTU_CONF: {
+        'hook_contexts': [PhyNICMTUContext()],
+        'services': ['os-charm-phy-nic-mtu']
     }
 }
 NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)

@@ -192,6 +192,20 @@ class ExternalPortContext(NeutronPortContext):
         return ctxt
 
 
+class PhyNICMTUContext(NeutronPortContext):
+
+    def __call__(self):
+        ctxt = {}
+        port = config('phy-nics')
+        if port:
+            ctxt = {"devs": port.replace(' ', '\n')}
+            mtu = config('phy-nic-mtu')
+            if mtu:
+                ctxt['mtu'] = mtu
+
+        return ctxt
+
+
 class DataPortContext(NeutronPortContext):
 
     def __call__(self):

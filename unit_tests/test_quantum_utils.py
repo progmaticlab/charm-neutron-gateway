@@ -268,6 +268,7 @@ class TestQuantumUtils(CharmTestCase):
             ['neutron-metering-agent', 'neutron-plugin-metering-agent'],
             quantum_utils.NOVA_CONF: ['nova-api-metadata'],
             quantum_utils.EXT_PORT_CONF: ['ext-port'],
+            quantum_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
         }
 
         self.assertDictEqual(quantum_utils.restart_map(), ex_map)
