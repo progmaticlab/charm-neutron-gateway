@@ -289,7 +289,7 @@ QUANTUM_OVS_CONFIG_FILES = {
     },
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
-        'services': []
+        'services': ['ext-port']
     }
 }
 QUANTUM_OVS_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
