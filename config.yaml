@@ -156,8 +156,8 @@ options:
       HA Cluster nodes.
   phy-nic-mtu:
     type: int
-    default: 1500
+    default: 0
     description: |
       To improve network performance of VM, sometimes we should keep VM MTU as
       1500 and use charm to modify MTU of tunnel nic more than 1500 (e.g. 1546
-      for GRE).
+      for GRE). A value of zero means no mtu will be set/modified.

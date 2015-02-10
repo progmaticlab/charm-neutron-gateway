@@ -144,7 +144,7 @@ class TestNeutronPortContext(CharmTestCase):
     def test_no_ext_port(self, mock_config):
         self.config.side_effect = config = self.fake_config({})
         mock_config.side_effect = config
-        self.assertIsNone(quantum_contexts.ExternalPortContext()())
+        self.assertEquals(quantum_contexts.ExternalPortContext()(), {})
 
     @patch('charmhelpers.contrib.openstack.context.config')
     def test_ext_port_eth(self, mock_config):
@@ -152,7 +152,7 @@ class TestNeutronPortContext(CharmTestCase):
         self.config.side_effect = config
         mock_config.side_effect = config
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          {'ext_port': 'eth1010', 'mtu': None})
+                          {'ext_port': 'eth1010'})
 
     @patch('charmhelpers.contrib.openstack.context.get_nic_hwaddr')
     @patch('charmhelpers.contrib.openstack.context.list_nics')
@@ -173,13 +173,13 @@ class TestNeutronPortContext(CharmTestCase):
         mock_get_nic_hwaddr.side_effect = self._fake_get_hwaddr
 
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          {'ext_port': 'eth2', 'mtu': None})
+                          {'ext_port': 'eth2'})
 
         config = self.fake_config({'ext-port': self.absent_macs})
         self.config.side_effect = config
         mock_config.side_effect = config
 
-        self.assertIsNone(quantum_contexts.ExternalPortContext()())
+        self.assertEquals(quantum_contexts.ExternalPortContext()(), {})
         self.assertTrue(mock_config.called)
 
     @patch('charmhelpers.contrib.openstack.context.get_nic_hwaddr')
@@ -205,7 +205,7 @@ class TestNeutronPortContext(CharmTestCase):
         self.config.side_effect = config
         mock_config.side_effect = config
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
-                          {'ext_port': 'eth2', 'mtu': 1234})
+                          {'ext_port': 'eth2', 'ext_port_mtu': 1234})
 
     @patch('charmhelpers.contrib.openstack.context.config')
     def test_data_port_eth(self, mock_config):
