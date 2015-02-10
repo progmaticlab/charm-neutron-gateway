@@ -343,7 +343,7 @@ NEUTRON_OVS_CONFIG_FILES = {
     },
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
-        'services': []
+        'services': ['ext-port']
     }
 }
 NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
