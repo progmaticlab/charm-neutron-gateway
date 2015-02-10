@@ -263,11 +263,13 @@ class TestQuantumGatewayContext(CharmTestCase):
         self.test_config.set('debug', False)
         self.test_config.set('verbose', True)
         self.test_config.set('instance-mtu', 1420)
+        self.test_config.set('network-device-mtu', 1500)
         self.get_os_codename_install_source.return_value = 'folsom'
         _host_ip.return_value = '10.5.0.1'
         _secret.return_value = 'testsecret'
         self.assertEquals(quantum_contexts.QuantumGatewayContext()(), {
             'shared_secret': 'testsecret',
+            'network_device_mtu': 1500,
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
             'core_plugin': "quantum.plugins.openvswitch.ovs_quantum_plugin."
@@ -276,7 +278,6 @@ class TestQuantumGatewayContext(CharmTestCase):
             'debug': False,
             'verbose': True,
             'l2_population': False,
-            'network_device_mtu': 1500,
             'overlay_network_type': 'gre',
         })
 
@@ -422,6 +423,7 @@ class TestMisc(CharmTestCase):
                            'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings_no_apiplugin(self):
+        self.config.return_value = 1500
         self.relation_ids.return_value = []
         self.assertEquals(quantum_contexts._neutron_api_settings(),
                           {'l2_population': False,
