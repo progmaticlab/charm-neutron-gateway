@@ -208,7 +208,7 @@ def get_common_package():
         return 'neutron-common'
 
 EXT_PORT_CONF = '/etc/init/ext-port.conf'
-PHY_NIC_MTU_CONF = 'os-charm-phy-nic-mtu.conf'
+PHY_NIC_MTU_CONF = '/etc/init/os-charm-phy-nic-mtu.conf'
 TEMPLATES = 'templates'
 
 QUANTUM_CONF = "/etc/quantum/quantum.conf"
