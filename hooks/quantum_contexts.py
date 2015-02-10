@@ -116,9 +116,9 @@ def _neutron_api_settings():
                 'l2_population': rdata['l2-population'],
                 'overlay_network_type': rdata['overlay-network-type'],
             }
-            mtu = rdata.get('network-device-mtu')
-            if mtu:
-                neutron_settings['network_device_mtu'] = mtu
+            net_dev_mtu = rdata.get('network-device-mtu')
+            if net_dev_mtu:
+                neutron_settings['network_device_mtu'] = net_dev_mtu
 
             return neutron_settings
     return neutron_settings
@@ -209,10 +209,14 @@ class QuantumGatewayContext(OSContextGenerator):
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
             'l2_population': neutron_api_settings['l2_population'],
-            'network_device_mtu': neutron_api_settings['network_device_mtu'],
             'overlay_network_type':
             neutron_api_settings['overlay_network_type'],
         }
+
+        net_dev_mtu = neutron_api_settings.get('network_device_mtu')
+        if net_dev_mtu:
+            ctxt['network_device_mtu'] = net_dev_mtu
+
         return ctxt
 
 
