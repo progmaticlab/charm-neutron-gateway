@@ -154,6 +154,11 @@ options:
     description: |
       Default multicast port number that will be used to communicate between
       HA Cluster nodes.
+  phy-nics:
+    type: string
+    default:
+    description: |
+      A space-separated list of NICs that we want phy-nic-mtu applied to.
   phy-nic-mtu:
     type: int
     default: 0
