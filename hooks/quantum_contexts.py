@@ -105,7 +105,14 @@ def _neutron_api_settings():
     neutron_settings = {
         'l2_population': False,
         'overlay_network_type': 'gre',
+
     }
+
+    # Override if locally provided
+    cfg_net_dev_mtu = config('network-device-mtu')
+    if cfg_net_dev_mtu:
+        neutron_settings['network_device_mtu'] = cfg_net_dev_mtu
+
     for rid in relation_ids('neutron-plugin-api'):
         for unit in related_units(rid):
             rdata = relation_get(rid=rid, unit=unit)
@@ -115,17 +122,12 @@ def _neutron_api_settings():
                 'l2_population': rdata['l2-population'],
                 'overlay_network_type': rdata['overlay-network-type'],
             }
+            # Don't override locally provided  value if there is one.
             net_dev_mtu = rdata.get('network-device-mtu')
-            if net_dev_mtu:
+            if net_dev_mtu and 'network_device_mtu' not in neutron_settings:
                 neutron_settings['network_device_mtu'] = net_dev_mtu
 
             return neutron_settings
-
-    # Override if locally provided
-    cfg_net_dev_mtu = config('network-device-mtu')
-    if cfg_net_dev_mtu:
-        neutron_settings['network_device_mtu'] = cfg_net_dev_mtu
-
     return neutron_settings
 
 
@@ -235,9 +237,9 @@ class QuantumGatewayContext(OSContextGenerator):
             neutron_api_settings['overlay_network_type'],
         }
 
-        if 'network_device_mtu' in neutron_api_settings:
-            ctxt['network_device_mtu'] = \
-                neutron_api_settings['network_device_mtu']
+        net_dev_mtu = neutron_api_settings.get('network_device_mtu')
+        if net_dev_mtu:
+            ctxt['network_device_mtu'] = net_dev_mtu
 
         return ctxt
 
