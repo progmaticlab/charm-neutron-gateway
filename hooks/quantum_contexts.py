@@ -237,6 +237,10 @@ class QuantumGatewayContext(OSContextGenerator):
             neutron_api_settings['overlay_network_type'],
         }
 
+        mappings = config('bridge-mappings')
+        if mappings:
+            ctxt['bridge_mappings'] = mappings
+
         net_dev_mtu = neutron_api_settings.get('network_device_mtu')
         if net_dev_mtu:
             ctxt['network_device_mtu'] = net_dev_mtu

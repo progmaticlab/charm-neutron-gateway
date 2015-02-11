@@ -114,6 +114,12 @@ options:
           juju-myservice-0
       If you're running multiple environments with the same services in them
       this allows you to differentiate between them.
+  bridge-mappings:
+    type: string
+    default: 'physnet1:br-data'
+    description: |
+      Space-separated list of ML2 data bridge mappings with format
+      <provider>:<bridge>.
   # Network configuration options
   # by default all access is over 'private-address'
   os-data-network:
