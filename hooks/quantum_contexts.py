@@ -200,7 +200,7 @@ class PhyNICMTUContext(NeutronPortContext):
         ctxt = {}
         port = config('phy-nics')
         if port:
-            ctxt = {"devs": port.replace(' ', '\n')}
+            ctxt = {"devs": port.replace(' ', '\\n')}
             mtu = config('phy-nic-mtu')
             if mtu:
                 ctxt['mtu'] = mtu
