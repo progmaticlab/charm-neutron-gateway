@@ -21,8 +21,8 @@ options:
     type: string
     default:
     description: |
-      The data port will be added to br-data and will allow usage of flat or VLAN
-      network types with Neutron.
+      The data port will be added to bridges provided in bridge-mappings and
+      will allow usage of flat or VLAN network types with Neutron.
   openstack-origin:
     type: string
     default: distro

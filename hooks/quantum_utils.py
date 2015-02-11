@@ -475,7 +475,6 @@ def restart_map():
 
 INT_BRIDGE = "br-int"
 EXT_BRIDGE = "br-ex"
-DATA_BRIDGE = 'br-data'
 
 DHCP_AGENT = "DHCP Agent"
 L3_AGENT = "L3 Agent"
@@ -598,6 +597,23 @@ def do_openstack_upgrade():
     return configs
 
 
+def get_bridges_from_mapping():
+    """If a bridge mapping is provided, extract the bridge names.
+
+    Returns list of bridges from mapping.
+    """
+    bridges = []
+    mappings = config('bridge-mappings')
+    if mappings:
+        mappings = mappings.split(' ')
+        for m in mappings:
+            p = m.partition(':')
+            if p[1] == ':':
+                bridges.append(p[2])
+
+    return bridges
+
+
 def configure_ovs():
     if config('plugin') == OVS:
         if not service_running('openvswitch-switch'):
@@ -608,11 +624,15 @@ def configure_ovs():
         if ext_port_ctx and ext_port_ctx['ext_port']:
             add_bridge_port(EXT_BRIDGE, ext_port_ctx['ext_port'])
 
-        add_bridge(DATA_BRIDGE)
-        data_port_ctx = DataPortContext()()
-        if data_port_ctx and data_port_ctx['data_port']:
-            add_bridge_port(DATA_BRIDGE, data_port_ctx['data_port'],
-                            promisc=True)
+        for br in get_bridges_from_mapping():
+            add_bridge(br)
+            data_port_ctx = DataPortContext()()
+            if data_port_ctx and data_port_ctx['data_port']:
+                add_bridge_port(br, data_port_ctx['data_port'],
+                                promisc=True)
+
+        # Ensure this runs so that any new bridges have correct mtu
+        service_restart('os-charm-phy-nic-mtu')
 
 
 def copy_file(src, dst, perms=None, force=False):
