@@ -279,7 +279,8 @@ class TestQuantumGatewayContext(CharmTestCase):
             'verbose': True,
             'l2_population': False,
             'overlay_network_type': 'gre',
-            'bridge_mappings': 'physnet1:br-data'
+            'bridge_mappings': 'physnet1:br-data',
+            'veth_mtu': 1500,
         })
 
 
