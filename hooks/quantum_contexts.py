@@ -244,6 +244,7 @@ class QuantumGatewayContext(OSContextGenerator):
         net_dev_mtu = neutron_api_settings.get('network_device_mtu')
         if net_dev_mtu:
             ctxt['network_device_mtu'] = net_dev_mtu
+            ctxt['veth_mtu'] = net_dev_mtu
 
         return ctxt
 
