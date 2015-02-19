@@ -122,7 +122,8 @@ def _neutron_api_settings():
                 continue
             neutron_settings['l2_population'] = rdata['l2-population']
             if 'overlay-network-type' in rdata:
-                neutron_settings['overlay_network_type'] = rdata['overlay-network-type']
+                neutron_settings['overlay_network_type'] = \
+                    rdata['overlay-network-type']
             if 'enable-dvr' in rdata:
                 neutron_settings['enable_dvr'] = rdata['enable-dvr']
             return neutron_settings

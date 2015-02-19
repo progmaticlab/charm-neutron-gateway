@@ -192,7 +192,8 @@ class TestL3AgentContext(CharmTestCase):
         self.test_config.set('external-network-id', '')
         self.eligible_leader.return_value = False
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': False,
+                          {'agent_mode': 'legacy',
+                           'handle_internal_only_router': False,
                            'plugin': 'ovs'})
 
     def test_hior_leader(self):
@@ -200,7 +201,8 @@ class TestL3AgentContext(CharmTestCase):
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': True,
+                          {'agent_mode': 'legacy',
+                           'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
@@ -209,7 +211,8 @@ class TestL3AgentContext(CharmTestCase):
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': True,
+                          {'agent_mode': 'legacy',
+                           'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
@@ -233,6 +236,7 @@ class TestQuantumGatewayContext(CharmTestCase):
         _secret.return_value = 'testsecret'
         self.assertEquals(quantum_contexts.QuantumGatewayContext()(), {
             'shared_secret': 'testsecret',
+            'enable_dvr': False,
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
             'core_plugin': "quantum.plugins.openvswitch.ovs_quantum_plugin."
@@ -370,7 +374,8 @@ class TestMisc(CharmTestCase):
                                 'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
         self.assertEquals(quantum_contexts._neutron_api_settings(),
-                          {'l2_population': True,
+                          {'enable_dvr': False,
+                           'l2_population': True,
                            'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings2(self):
@@ -380,11 +385,13 @@ class TestMisc(CharmTestCase):
                                 'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
         self.assertEquals(quantum_contexts._neutron_api_settings(),
-                          {'l2_population': True,
+                          {'enable_dvr': False,
+                           'l2_population': True,
                            'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings_no_apiplugin(self):
         self.relation_ids.return_value = []
         self.assertEquals(quantum_contexts._neutron_api_settings(),
-                          {'l2_population': False,
+                          {'enable_dvr': False,
+                           'l2_population': False,
                            'overlay_network_type': 'gre', })
