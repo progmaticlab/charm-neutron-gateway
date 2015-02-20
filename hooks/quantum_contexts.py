@@ -112,6 +112,7 @@ def _neutron_api_settings():
     neutron_settings = {
         'l2_population': False,
         'enable_dvr': False,
+        'enable_l3ha': False,
         'overlay_network_type': 'gre',
 
     }
@@ -126,6 +127,8 @@ def _neutron_api_settings():
                     rdata['overlay-network-type']
             if 'enable-dvr' in rdata:
                 neutron_settings['enable_dvr'] = rdata['enable-dvr']
+            if 'enable-l3ha' in rdata:
+                neutron_settings['enable_l3ha'] = rdata['enable-l3ha']
             return neutron_settings
     return neutron_settings
 
@@ -251,6 +254,7 @@ class QuantumGatewayContext(OSContextGenerator):
             'instance_mtu': config('instance-mtu'),
             'l2_population': neutron_api_settings['l2_population'],
             'enable_dvr': neutron_api_settings['enable_dvr'],
+            'enable_l3ha': neutron_api_settings['enable_l3ha'],
             'overlay_network_type':
             neutron_api_settings['overlay_network_type'],
         }

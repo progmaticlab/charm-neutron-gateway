@@ -197,6 +197,8 @@ def get_packages():
             packages.append('openswan')
         if source >= 'kilo':
             packages.append('python-neutron-fwaas')
+    if QuantumGatewayContext()()['enable_l3ha']:
+        packages.append('keepalived')
     return packages
 
 
