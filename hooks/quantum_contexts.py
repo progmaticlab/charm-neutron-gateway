@@ -104,7 +104,7 @@ def core_plugin():
         return CORE_PLUGIN[networking_name()][plugin]
 
 
-def _neutron_api_settings():
+def neutron_api_settings():
     '''
     Inspects current neutron-plugin-api relation for neutron settings. Return
     defaults if it is not present
@@ -164,7 +164,7 @@ class NetworkServiceContext(OSContextGenerator):
 class L3AgentContext(OSContextGenerator):
 
     def __call__(self):
-        neutron_api_settings = _neutron_api_settings()
+        api_settings = neutron_api_settings()
         ctxt = {}
         if config('run-internal-router') == 'leader':
             ctxt['handle_internal_only_router'] = eligible_leader(None)
@@ -179,7 +179,7 @@ class L3AgentContext(OSContextGenerator):
             ctxt['ext_net_id'] = config('external-network-id')
         if config('plugin'):
             ctxt['plugin'] = config('plugin')
-        if neutron_api_settings['enable_dvr'] == 'True':
+        if api_settings['enable_dvr'] == 'True':
             ctxt['agent_mode'] = 'dvr_snat'
         else:
             ctxt['agent_mode'] = 'legacy'
@@ -241,7 +241,7 @@ class DataPortContext(NeutronPortContext):
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
-        neutron_api_settings = _neutron_api_settings()
+        api_settings = neutron_api_settings()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
@@ -252,11 +252,11 @@ class QuantumGatewayContext(OSContextGenerator):
             'debug': config('debug'),
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
-            'l2_population': neutron_api_settings['l2_population'],
-            'enable_dvr': neutron_api_settings['enable_dvr'],
-            'enable_l3ha': neutron_api_settings['enable_l3ha'],
+            'l2_population': api_settings['l2_population'],
+            'enable_dvr': api_settings['enable_dvr'],
+            'enable_l3ha': api_settings['enable_l3ha'],
             'overlay_network_type':
-            neutron_api_settings['overlay_network_type'],
+            api_settings['overlay_network_type'],
         }
         return ctxt
 

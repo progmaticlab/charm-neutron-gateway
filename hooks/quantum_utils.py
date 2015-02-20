@@ -54,7 +54,8 @@ from quantum_contexts import (
     L3AgentContext,
     ExternalPortContext,
     DataPortContext,
-    remap_plugin
+    remap_plugin,
+    neutron_api_settings,
 )
 
 from copy import deepcopy
@@ -197,7 +198,7 @@ def get_packages():
             packages.append('openswan')
         if source >= 'kilo':
             packages.append('python-neutron-fwaas')
-    if QuantumGatewayContext()()['enable_l3ha']:
+    if neutron_api_settings()['enable_l3ha']:
         packages.append('keepalived')
     return packages
 
