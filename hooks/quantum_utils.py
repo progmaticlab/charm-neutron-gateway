@@ -1,11 +1,18 @@
+import os
+import subprocess
+from shutil import copy2
 from charmhelpers.core.host import (
+    mkdir,
     service_running,
     service_stop,
     service_restart,
-    lsb_release
+    lsb_release,
 )
 from charmhelpers.core.hookenv import (
     log,
+    DEBUG,
+    INFO,
+    ERROR,
     config,
     relations_of_type,
     unit_private_ip,
@@ -145,6 +152,22 @@ EARLY_PACKAGES = {
     N1KV: []
 }
 
+LEGACY_HA_TEMPLATE_FILES = 'files'
+LEGACY_FILES_MAP = {
+    'neutron-ha-monitor.py': {
+        'path': '/usr/local/bin/',
+        'permissions': 0o755
+    },
+    'neutron-ha-monitor.conf': {
+        'path': '/var/lib/juju-neutron-ha/',
+    },
+    'NeutronAgentMon': {
+        'path': '/usr/lib/ocf/resource.d/canonical',
+        'permissions': 0o755
+    },
+}
+LEGACY_RES_MAP = ['res_monitor']
+
 
 def get_early_packages():
     '''Return a list of package for pre-install based on configured plugin'''
@@ -163,14 +186,17 @@ def get_packages():
     '''Return a list of packages for install based on the configured plugin'''
     plugin = remap_plugin(config('plugin'))
     packages = deepcopy(GATEWAY_PKGS[networking_name()][plugin])
-    if (get_os_codename_install_source(config('openstack-origin'))
-            >= 'icehouse' and plugin == 'ovs'
-            and lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
-        # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for icehouse
-        # but openswan was removed in utopic.
-        packages.remove('neutron-l3-agent')
-        packages.append('neutron-vpn-agent')
-        packages.append('openswan')
+    source = get_os_codename_install_source(config('openstack-origin'))
+    if plugin == 'ovs':
+        if (source >= 'icehouse' and
+                lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
+            # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for
+            # icehouse but openswan was removed in utopic.
+            packages.remove('neutron-l3-agent')
+            packages.append('neutron-vpn-agent')
+            packages.append('openswan')
+        if source >= 'kilo':
+            packages.append('python-neutron-fwaas')
     return packages
 
 
@@ -582,6 +608,103 @@ def configure_ovs():
         if data_port_ctx and data_port_ctx['data_port']:
             add_bridge_port(DATA_BRIDGE, data_port_ctx['data_port'],
                             promisc=True)
+
+
+def copy_file(src, dst, perms=None, force=False):
+    """Copy file to destination and optionally set permissionss.
+
+    If destination does not exist it will be created.
+    """
+    if not os.path.isdir(dst):
+        log('Creating directory %s' % dst, level=DEBUG)
+        mkdir(dst)
+
+    fdst = os.path.join(dst, os.path.basename(src))
+    if not os.path.isfile(fdst) or force:
+        try:
+            copy2(src, fdst)
+            if perms:
+                os.chmod(fdst, perms)
+        except IOError:
+            log('Failed to copy file from %s to %s.' % (src, dst), level=ERROR)
+            raise
+
+
+def remove_file(path):
+    if not os.path.isfile(path):
+        log('File %s does not exist.' % path, level=INFO)
+        return
+
+    try:
+        os.remove(path)
+    except IOError:
+        log('Failed to remove file %s.' % path, level=ERROR)
+
+
+def install_legacy_ha_files(force=False):
+    for f, p in LEGACY_FILES_MAP.iteritems():
+        srcfile = os.path.join(LEGACY_HA_TEMPLATE_FILES, f)
+        copy_file(srcfile, p['path'], p.get('permissions', None), force=force)
+
+
+def remove_legacy_ha_files():
+    for f, p in LEGACY_FILES_MAP.iteritems():
+        remove_file(os.path.join(p['path'], f))
+
+
+def update_legacy_ha_files(force=False):
+    if config('ha-legacy-mode'):
+        install_legacy_ha_files(force=force)
+    else:
+        remove_legacy_ha_files()
+
+
+def cache_env_data():
+    env = NetworkServiceContext()()
+    if not env:
+        log('Unable to get NetworkServiceContext at this time', level=ERROR)
+        return
+
+    no_envrc = False
+    envrc_f = '/etc/legacy_ha_envrc'
+    if os.path.isfile(envrc_f):
+        with open(envrc_f, 'r') as f:
+            data = f.read()
+
+        data = data.strip().split('\n')
+        diff = False
+        for line in data:
+            k = line.split('=')[0]
+            v = line.split('=')[1]
+            if k not in env or v != env[k]:
+                diff = True
+                break
+    else:
+        no_envrc = True
+
+    if no_envrc or diff:
+        with open(envrc_f, 'w') as f:
+            for k, v in env.items():
+                f.write(''.join([k, '=', v, '\n']))
+
+
+def stop_neutron_ha_monitor_daemon():
+    try:
+        cmd = ['pgrep', '-f', 'neutron-ha-monitor.py']
+        res = subprocess.check_output(cmd).decode('UTF-8')
+        pid = res.strip()
+        if pid:
+            subprocess.call(['sudo', 'kill', '-9', pid])
+    except subprocess.CalledProcessError as e:
+        log('Faild to kill neutron-ha-monitor daemon, %s' % e, level=ERROR)
+
+
+def cleanup_ovs_netns():
+    try:
+        subprocess.call('neutron-ovs-cleanup')
+        subprocess.call('neutron-netns-cleanup')
+    except subprocess.CalledProcessError as e:
+        log('Faild to cleanup ovs and netns, %s' % e, level=ERROR)
 
 
 def get_topics():
