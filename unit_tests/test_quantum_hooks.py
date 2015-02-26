@@ -246,6 +246,12 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.CONFIGS.write_all.called)
         self.install_ca_cert.assert_called_with('cert')
 
+    def test_neutron_plugin_changed(self):
+        self.filter_installed_packages.return_value = ['foo']
+        self._call_hook('neutron-plugin-api-relation-changed')
+        self.apt_install.assert_called_with(['foo'], fatal=True)
+        self.assertTrue(self.CONFIGS.write_all.called)
+
     def test_cluster_departed_nvp(self):
         self.test_config.set('plugin', 'nvp')
         self._call_hook('cluster-relation-departed')

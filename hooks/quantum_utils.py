@@ -316,7 +316,7 @@ NEUTRON_OVS_CONFIG_FILES = {
         'hook_contexts': [NetworkServiceContext(),
                           L3AgentContext(),
                           QuantumGatewayContext()],
-        'services': ['neutron-l3-agent']
+        'services': ['neutron-l3-agent', 'neutron-vpn-agent']
     },
     NEUTRON_METERING_AGENT_CONF: {
         'hook_contexts': [QuantumGatewayContext()],
@@ -334,7 +334,7 @@ NEUTRON_OVS_CONFIG_FILES = {
     },
     NEUTRON_FWAAS_CONF: {
         'hook_contexts': [QuantumGatewayContext()],
-        'services': ['neutron-l3-agent']
+        'services': ['neutron-l3-agent', 'neutron-vpn-agent']
     },
     NEUTRON_OVS_PLUGIN_CONF: {
         'hook_contexts': [QuantumGatewayContext()],
@@ -342,8 +342,7 @@ NEUTRON_OVS_CONFIG_FILES = {
     },
     NEUTRON_ML2_PLUGIN_CONF: {
         'hook_contexts': [QuantumGatewayContext()],
-        'services': ['neutron-plugin-openvswitch-agent',
-                     'neutron-openvswitch-agent']
+        'services': ['neutron-plugin-openvswitch-agent']
     },
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
@@ -417,9 +416,6 @@ def register_configs():
         drop_config = NEUTRON_ML2_PLUGIN_CONF
         if release >= 'icehouse':
             drop_config = NEUTRON_OVS_PLUGIN_CONF
-            # NOTE(gnuoy) neutron-vpn-agent supercedes l3-agent for icehouse
-            CONFIG_FILES[name][plugin][NEUTRON_L3_AGENT_CONF]['services'] = \
-                ['neutron-vpn-agent']
         if drop_config in CONFIG_FILES[name][plugin]:
             CONFIG_FILES[name][plugin].pop(drop_config)
 

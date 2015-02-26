@@ -46,7 +46,8 @@ TO_PATCH = [
     'is_relation_made',
     'lsb_release',
     'mkdir',
-    'copy2'
+    'copy2',
+    'neutron_api_settings',
 ]
 
 
@@ -138,6 +139,11 @@ class TestQuantumUtils(CharmTestCase):
         self.config.return_value = 'ovs'
         self.get_os_codename_install_source.return_value = 'kilo'
         self.assertTrue('python-neutron-fwaas' in quantum_utils.get_packages())
+
+    def test_get_packages_l3ha(self):
+        self.config.return_value = 'ovs'
+        self.get_os_codename_install_source.return_value = 'juno'
+        self.assertTrue('keepalived' in quantum_utils.get_packages())
 
     def test_configure_ovs_starts_service_if_required(self):
         self.config.return_value = 'ovs'
@@ -241,6 +247,7 @@ class TestQuantumUtils(CharmTestCase):
 
     def test_restart_map_ovs(self):
         self.config.return_value = 'ovs'
+        self.get_os_codename_install_source.return_value = 'havana'
         ex_map = {
             quantum_utils.NEUTRON_CONF: ['neutron-l3-agent',
                                          'neutron-dhcp-agent',
@@ -261,9 +268,11 @@ class TestQuantumUtils(CharmTestCase):
             quantum_utils.NEUTRON_VPNAAS_AGENT_CONF: [
                 'neutron-plugin-vpn-agent',
                 'neutron-vpn-agent'],
-            quantum_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent'],
+            quantum_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent',
+                                                  'neutron-vpn-agent'],
             quantum_utils.NEUTRON_DHCP_AGENT_CONF: ['neutron-dhcp-agent'],
-            quantum_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent'],
+            quantum_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent',
+                                               'neutron-vpn-agent'],
             quantum_utils.NEUTRON_METERING_AGENT_CONF:
             ['neutron-metering-agent', 'neutron-plugin-metering-agent'],
             quantum_utils.NOVA_CONF: ['nova-api-metadata'],

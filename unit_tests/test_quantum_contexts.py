@@ -216,6 +216,12 @@ class TestL3AgentContext(CharmTestCase):
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
+    @patch.object(quantum_contexts, 'neutron_api_settings')
+    def test_dvr(self, _napi_settings):
+        _napi_settings.return_value = {'enable_dvr': True}
+        self.assertEquals(quantum_contexts.L3AgentContext()()['agent_mode'],
+                          'dvr_snat')
+
 
 class TestQuantumGatewayContext(CharmTestCase):
 
@@ -224,9 +230,14 @@ class TestQuantumGatewayContext(CharmTestCase):
                                                      TO_PATCH)
         self.config.side_effect = self.test_config.get
 
+    @patch.object(quantum_contexts, 'neutron_api_settings')
     @patch.object(quantum_contexts, 'get_shared_secret')
     @patch.object(quantum_contexts, 'get_host_ip')
-    def test_all(self, _host_ip, _secret):
+    def test_all(self, _host_ip, _secret, napi_settings):
+        napi_settings.return_value = {'l2_population': True,
+                                      'enable_dvr': True,
+                                      'overlay_network_type': 'gre',
+                                      'enable_l3ha': True}
         self.test_config.set('plugin', 'ovs')
         self.test_config.set('debug', False)
         self.test_config.set('verbose', True)
@@ -236,7 +247,8 @@ class TestQuantumGatewayContext(CharmTestCase):
         _secret.return_value = 'testsecret'
         self.assertEquals(quantum_contexts.QuantumGatewayContext()(), {
             'shared_secret': 'testsecret',
-            'enable_dvr': False,
+            'enable_dvr': True,
+            'enable_l3ha': True,
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
             'core_plugin': "quantum.plugins.openvswitch.ovs_quantum_plugin."
@@ -244,7 +256,7 @@ class TestQuantumGatewayContext(CharmTestCase):
             'plugin': 'ovs',
             'debug': False,
             'verbose': True,
-            'l2_population': False,
+            'l2_population': True,
             'overlay_network_type': 'gre',
         })
 
@@ -370,28 +382,55 @@ class TestMisc(CharmTestCase):
     def test_neutron_api_settings(self):
         self.relation_ids.return_value = ['foo']
         self.related_units.return_value = ['bar']
-        self.test_relation.set({'l2-population': True,
+        self.test_relation.set({'l2-population': 'True',
                                 'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
-        self.assertEquals(quantum_contexts._neutron_api_settings(),
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
                           {'enable_dvr': False,
+                           'enable_l3ha': False,
                            'l2_population': True,
                            'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings2(self):
         self.relation_ids.return_value = ['foo']
         self.related_units.return_value = ['bar']
-        self.test_relation.set({'l2-population': True,
+        self.test_relation.set({'l2-population': 'True',
                                 'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
-        self.assertEquals(quantum_contexts._neutron_api_settings(),
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
                           {'enable_dvr': False,
+                           'enable_l3ha': False,
                            'l2_population': True,
                            'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings_no_apiplugin(self):
         self.relation_ids.return_value = []
-        self.assertEquals(quantum_contexts._neutron_api_settings(),
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
                           {'enable_dvr': False,
+                           'enable_l3ha': False,
                            'l2_population': False,
                            'overlay_network_type': 'gre', })
+
+    def test_neutron_api_dvr(self):
+        self.relation_ids.return_value = ['foo']
+        self.related_units.return_value = ['bar']
+        self.test_relation.set({'l2-population': 'True',
+                                'enable-dvr': 'True'})
+        self.relation_get.side_effect = self.test_relation.get
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
+                          {'enable_dvr': True,
+                           'enable_l3ha': False,
+                           'l2_population': True,
+                           'overlay_network_type': 'gre'})
+
+    def test_neutron_api_l3ha(self):
+        self.relation_ids.return_value = ['foo']
+        self.related_units.return_value = ['bar']
+        self.test_relation.set({'l2-population': 'False',
+                                'enable-l3ha': 'True'})
+        self.relation_get.side_effect = self.test_relation.get
+        self.assertEquals(quantum_contexts.neutron_api_settings(),
+                          {'enable_dvr': False,
+                           'enable_l3ha': True,
+                           'l2_population': False,
+                           'overlay_network_type': 'gre'})

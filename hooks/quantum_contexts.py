@@ -34,6 +34,7 @@ from charmhelpers.contrib.network.ip import (
     get_ipv6_addr,
     is_bridge_member,
 )
+from charmhelpers.core.strutils import bool_from_string
 
 DB_USER = "quantum"
 QUANTUM_DB = "quantum"
@@ -121,14 +122,17 @@ def neutron_api_settings():
             rdata = relation_get(rid=rid, unit=unit)
             if 'l2-population' not in rdata:
                 continue
-            neutron_settings['l2_population'] = rdata['l2-population']
+            neutron_settings['l2_population'] = \
+                bool_from_string(rdata['l2-population'])
             if 'overlay-network-type' in rdata:
                 neutron_settings['overlay_network_type'] = \
                     rdata['overlay-network-type']
             if 'enable-dvr' in rdata:
-                neutron_settings['enable_dvr'] = rdata['enable-dvr']
+                neutron_settings['enable_dvr'] = \
+                    bool_from_string(rdata['enable-dvr'])
             if 'enable-l3ha' in rdata:
-                neutron_settings['enable_l3ha'] = rdata['enable-l3ha']
+                neutron_settings['enable_l3ha'] = \
+                    bool_from_string(rdata['enable-l3ha'])
             return neutron_settings
     return neutron_settings
 
@@ -179,7 +183,7 @@ class L3AgentContext(OSContextGenerator):
             ctxt['ext_net_id'] = config('external-network-id')
         if config('plugin'):
             ctxt['plugin'] = config('plugin')
-        if api_settings['enable_dvr'] == 'True':
+        if api_settings['enable_dvr']:
             ctxt['agent_mode'] = 'dvr_snat'
         else:
             ctxt['agent_mode'] = 'legacy'
