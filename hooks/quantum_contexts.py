@@ -30,6 +30,9 @@ from charmhelpers.contrib.network.ip import (
 from charmhelpers.contrib.openstack.neutron import (
     parse_data_port_mappings,
 )
+from charmhelpers.core.host import (
+    get_nic_hwaddr,
+)
 
 DB_USER = "quantum"
 QUANTUM_DB = "quantum"
@@ -214,10 +217,15 @@ class DataPortContext(NeutronPortContext):
         ports = config('data-port')
         if ports:
             portmap = parse_data_port_mappings(ports)
-            ports = self.resolve_ports(portmap.values())
-            if ports:
-                return {provider: port for provider, port in
-                        portmap.iteritems() if port in ports}
+            ports = portmap.values()
+            resolved = self.resolve_ports(ports)
+            normalized = {get_nic_hwaddr(port): port for port in resolved
+                          if port not in ports}
+            normalized.update({port: port for port in resolved
+                               if port in ports})
+            if resolved:
+                return {provider: normalized[port] for provider, port in
+                        portmap.iteritems() if port in normalized.keys()}
 
         return None
 

@@ -209,7 +209,8 @@ class TestNeutronPortContext(CharmTestCase):
     @patch('charmhelpers.contrib.openstack.context.NeutronPortContext.'
            'resolve_ports')
     def test_data_port_eth(self, mock_resolve):
-        self.config.side_effect = self.fake_config({'data-port': 'phybr1:eth1010'})
+        self.config.side_effect = self.fake_config({'data-port':
+                                                    'phybr1:eth1010'})
         mock_resolve.side_effect = lambda ports: ports
         self.assertEquals(quantum_contexts.DataPortContext()(),
                           {'phybr1': 'eth1010'})
