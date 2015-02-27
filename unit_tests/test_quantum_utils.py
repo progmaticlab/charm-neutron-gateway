@@ -180,8 +180,7 @@ class TestQuantumUtils(CharmTestCase):
             call('br-ex'),
             call('br-data')
         ])
-        self.add_bridge_port.assert_called_with('br-data', 'eth0',
-                                                promisc=True)
+        self.assertFalse(self.add_bridge_port.called)
 
     def test_do_openstack_upgrade(self):
         self.config.side_effect = self.test_config.get

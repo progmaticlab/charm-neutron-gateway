@@ -27,6 +27,9 @@ from charmhelpers.contrib.hahelpers.cluster import(
 from charmhelpers.contrib.network.ip import (
     get_address_in_network,
 )
+from charmhelpers.contrib.openstack.neutron import (
+    parse_data_port_mappings,
+)
 
 DB_USER = "quantum"
 QUANTUM_DB = "quantum"
@@ -108,11 +111,6 @@ def _neutron_api_settings():
 
     }
 
-    # Override if locally provided
-    cfg_net_dev_mtu = config('network-device-mtu')
-    if cfg_net_dev_mtu:
-        neutron_settings['network_device_mtu'] = cfg_net_dev_mtu
-
     for rid in relation_ids('neutron-plugin-api'):
         for unit in related_units(rid):
             rdata = relation_get(rid=rid, unit=unit)
@@ -122,9 +120,8 @@ def _neutron_api_settings():
                 'l2_population': rdata['l2-population'],
                 'overlay_network_type': rdata['overlay-network-type'],
             }
-            # Don't override locally provided  value if there is one.
             net_dev_mtu = rdata.get('network-device-mtu')
-            if net_dev_mtu and 'network_device_mtu' not in neutron_settings:
+            if net_dev_mtu:
                 neutron_settings['network_device_mtu'] = net_dev_mtu
 
             return neutron_settings
@@ -184,17 +181,20 @@ class ExternalPortContext(NeutronPortContext):
 
     def __call__(self):
         ctxt = {}
-        port = self.resolve_port('ext-port')
-        if port:
-            ctxt = {"ext_port": port}
-            mtu = config('phy-nic-mtu')
-            if mtu:
-                ctxt['ext_port_mtu'] = mtu
+        ports = config('ext-port')
+        if ports:
+            ports = [p.strip() for p in ports.split()]
+            ports = self.resolve_ports(ports)
+            if ports:
+                ctxt = {"ext_port": ports[0]}
+                mtu = config('phy-nic-mtu')
+                if mtu:
+                    ctxt['ext_port_mtu'] = mtu
 
         return ctxt
 
 
-class PhyNICMTUContext(NeutronPortContext):
+class PhyNICMTUContext(OSContextGenerator):
 
     def __call__(self):
         ctxt = {}
@@ -211,11 +211,15 @@ class PhyNICMTUContext(NeutronPortContext):
 class DataPortContext(NeutronPortContext):
 
     def __call__(self):
-        port = self.resolve_port('data-port')
-        if port:
-            return {"data_port": port}
-        else:
-            return None
+        ports = config('data-port')
+        if ports:
+            portmap = parse_data_port_mappings(ports)
+            ports = self.resolve_ports(portmap.values())
+            if ports:
+                return {provider: port for provider, port in
+                        portmap.iteritems() if port in ports}
+
+        return None
 
 
 class QuantumGatewayContext(OSContextGenerator):

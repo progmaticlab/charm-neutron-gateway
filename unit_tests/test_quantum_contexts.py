@@ -180,7 +180,6 @@ class TestNeutronPortContext(CharmTestCase):
         mock_config.side_effect = config
 
         self.assertEquals(quantum_contexts.ExternalPortContext()(), {})
-        self.assertTrue(mock_config.called)
 
     @patch('charmhelpers.contrib.openstack.context.get_nic_hwaddr')
     @patch('charmhelpers.contrib.openstack.context.list_nics')
@@ -207,12 +206,13 @@ class TestNeutronPortContext(CharmTestCase):
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
                           {'ext_port': 'eth2', 'ext_port_mtu': 1234})
 
-    @patch('charmhelpers.contrib.openstack.context.config')
-    def test_data_port_eth(self, mock_config):
-        config = self.fake_config({'data-port': 'eth1010'})
-        mock_config.side_effect = config
+    @patch('charmhelpers.contrib.openstack.context.NeutronPortContext.'
+           'resolve_ports')
+    def test_data_port_eth(self, mock_resolve):
+        self.config.side_effect = self.fake_config({'data-port': 'phybr1:eth1010'})
+        mock_resolve.side_effect = lambda ports: ports
         self.assertEquals(quantum_contexts.DataPortContext()(),
-                          {'data_port': 'eth1010'})
+                          {'phybr1': 'eth1010'})
 
 
 class TestL3AgentContext(CharmTestCase):
@@ -263,13 +263,11 @@ class TestQuantumGatewayContext(CharmTestCase):
         self.test_config.set('debug', False)
         self.test_config.set('verbose', True)
         self.test_config.set('instance-mtu', 1420)
-        self.test_config.set('network-device-mtu', 1500)
         self.get_os_codename_install_source.return_value = 'folsom'
         _host_ip.return_value = '10.5.0.1'
         _secret.return_value = 'testsecret'
         self.assertEquals(quantum_contexts.QuantumGatewayContext()(), {
             'shared_secret': 'testsecret',
-            'network_device_mtu': 1500,
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
             'core_plugin': "quantum.plugins.openvswitch.ovs_quantum_plugin."
@@ -280,7 +278,6 @@ class TestQuantumGatewayContext(CharmTestCase):
             'l2_population': False,
             'overlay_network_type': 'gre',
             'bridge_mappings': 'physnet1:br-data',
-            'veth_mtu': 1500,
         })
 
 
@@ -406,12 +403,10 @@ class TestMisc(CharmTestCase):
         self.relation_ids.return_value = ['foo']
         self.related_units.return_value = ['bar']
         self.test_relation.set({'l2-population': True,
-                                'network-device-mtu': 1500,
                                 'overlay-network-type': 'gre', })
         self.relation_get.side_effect = self.test_relation.get
         self.assertEquals(quantum_contexts._neutron_api_settings(),
                           {'l2_population': True,
-                           'network_device_mtu': 1500,
                            'overlay_network_type': 'gre'})
 
     def test_neutron_api_settings2(self):
@@ -429,5 +424,4 @@ class TestMisc(CharmTestCase):
         self.relation_ids.return_value = []
         self.assertEquals(quantum_contexts._neutron_api_settings(),
                           {'l2_population': False,
-                           'network_device_mtu': 1500,
                            'overlay_network_type': 'gre', })
