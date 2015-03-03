@@ -29,6 +29,7 @@ from charmhelpers.contrib.network.ip import (
 )
 from charmhelpers.contrib.openstack.neutron import (
     parse_data_port_mappings,
+    parse_vlan_range_mappings,
 )
 from charmhelpers.core.host import (
     get_nic_hwaddr,
@@ -252,6 +253,12 @@ class QuantumGatewayContext(OSContextGenerator):
         mappings = config('bridge-mappings')
         if mappings:
             ctxt['bridge_mappings'] = mappings
+
+        vlan_ranges = config('vlan-ranges')
+        vlan_range_mappings = parse_vlan_range_mappings(config('vlan-ranges'))
+        if vlan_ranges:
+            ctxt['network_providers'] = ' '.join(vlan_range_mappings.keys())
+            ctxt['vlan_ranges'] = vlan_ranges
 
         net_dev_mtu = neutron_api_settings.get('network_device_mtu')
         if net_dev_mtu:
