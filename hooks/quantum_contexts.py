@@ -224,7 +224,7 @@ class DataPortContext(NeutronPortContext):
             normalized.update({port: port for port in resolved
                                if port in ports})
             if resolved:
-                return {provider: normalized[port] for provider, port in
+                return {bridge: normalized[port] for bridge, port in
                         portmap.iteritems() if port in normalized.keys()}
 
         return None

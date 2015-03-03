@@ -615,10 +615,10 @@ def configure_ovs():
         for provider, br in bridgemaps.iteritems():
             add_bridge(br)
 
-            if not portmaps or provider not in portmaps:
+            if not portmaps or br not in portmaps:
                 continue
 
-            add_bridge_port(br, portmaps[provider], promisc=True)
+            add_bridge_port(br, portmaps[br], promisc=True)
 
         # Ensure this runs so that any new bridges have correct mtu
         service_restart('os-charm-phy-nic-mtu')
