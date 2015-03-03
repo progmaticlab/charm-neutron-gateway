@@ -170,6 +170,7 @@ LEGACY_FILES_MAP = {
 LEGACY_RES_MAP = ['res_monitor']
 L3HA_PACKAGES = ['keepalived']
 
+
 def get_early_packages():
     '''Return a list of package for pre-install based on configured plugin'''
     if config('plugin') in [OVS]:
@@ -181,6 +182,7 @@ def get_early_packages():
     if [p for p in pkgs if 'dkms' in p]:
         return pkgs + [headers_package()]
     return pkgs
+
 
 def get_packages():
     '''Return a list of packages for install based on the configured plugin'''
@@ -200,16 +202,19 @@ def get_packages():
     packages.extend(determine_l3ha_packages())
     return packages
 
+
 def determine_l3ha_packages():
     if use_l3ha():
         return L3HA_PACKAGES
     return []
+
 
 def get_common_package():
     if get_os_codename_package('quantum-common', fatal=False) is not None:
         return 'quantum-common'
     else:
         return 'neutron-common'
+
 
 def use_l3ha():
     return neutron_api_settings()['enable_l3ha']

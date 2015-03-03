@@ -47,7 +47,8 @@ TO_PATCH = [
     'get_hacluster_config',
     'remove_legacy_ha_files',
     'cleanup_ovs_netns',
-    'stop_neutron_ha_monitor_daemon'
+    'stop_neutron_ha_monitor_daemon',
+    'use_l3ha',
 ]
 
 
@@ -247,9 +248,9 @@ class TestQuantumHooks(CharmTestCase):
         self.install_ca_cert.assert_called_with('cert')
 
     def test_neutron_plugin_changed(self):
-        self.filter_installed_packages.return_value = ['foo']
+        self.use_l3ha.return_value = True
         self._call_hook('neutron-plugin-api-relation-changed')
-        self.apt_install.assert_called_with(['foo'], fatal=True)
+        self.apt_install.assert_called_with(['keepalived'], fatal=True)
         self.assertTrue(self.CONFIGS.write_all.called)
 
     def test_cluster_departed_nvp(self):
