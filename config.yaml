@@ -13,7 +13,7 @@ options:
     type: string
     default:
     description: |
-      A space-separated list of external ports to use for routing of instance
+      Space-delimited list of external ports to use for routing of instance
       traffic to the external public network. Valid values are either MAC
       addresses (in which case only MAC addresses for interfaces without an IP
       address already assigned will be used), or interfaces (eth0)
@@ -21,8 +21,10 @@ options:
     type: string
     default:
     description: |
-      The data port will be added to bridges provided in bridge-mappings and
-      will allow usage of flat or VLAN network types with Neutron.
+      Space-delimited list of bridge:port mappings. Ports will be added to
+      their corresponding bridge. The bridges will allow usage of flat or
+      VLAN network types with Neutron and should match this defined in
+      bridge-mappings.
   openstack-origin:
     type: string
     default: distro
