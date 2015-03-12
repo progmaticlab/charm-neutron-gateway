@@ -191,23 +191,10 @@ class ExternalPortContext(NeutronPortContext):
             ports = self.resolve_ports(ports)
             if ports:
                 ctxt = {"ext_port": ports[0]}
-                mtu = config('phy-nic-mtu')
+                neutron_api_settings = _neutron_api_settings()
+                mtu = neutron_api_settings.get('network_device_mtu')
                 if mtu:
                     ctxt['ext_port_mtu'] = mtu
-
-        return ctxt
-
-
-class PhyNICMTUContext(OSContextGenerator):
-
-    def __call__(self):
-        ctxt = {}
-        port = config('phy-nics')
-        if port:
-            ctxt = {"devs": port.replace(' ', '\\n')}
-            mtu = config('phy-nic-mtu')
-            if mtu:
-                ctxt['mtu'] = mtu
 
         return ctxt
 
@@ -229,6 +216,22 @@ class DataPortContext(NeutronPortContext):
                         portmap.iteritems() if port in normalized.keys()}
 
         return None
+
+
+class PhyNICMTUContext(DataPortContext):
+
+    def __call__(self):
+        ctxt = {}
+        mappings = super(PhyNICMTUContext, self).__call__()
+        if mappings and mappings.values():
+            ports = mappings.values()
+            neutron_api_settings = _neutron_api_settings()
+            mtu = neutron_api_settings.get('network_device_mtu')
+            if mtu:
+                ctxt["devs"] = '\\n'.join(ports)
+                ctxt['mtu'] = mtu
+
+        return ctxt
 
 
 class QuantumGatewayContext(OSContextGenerator):

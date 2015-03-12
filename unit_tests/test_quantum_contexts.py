@@ -181,6 +181,7 @@ class TestNeutronPortContext(CharmTestCase):
 
         self.assertEquals(quantum_contexts.ExternalPortContext()(), {})
 
+    @patch.object(quantum_contexts, '_neutron_api_settings')
     @patch('charmhelpers.contrib.openstack.context.get_nic_hwaddr')
     @patch('charmhelpers.contrib.openstack.context.list_nics')
     @patch('charmhelpers.contrib.openstack.context.get_ipv6_addr')
@@ -189,8 +190,10 @@ class TestNeutronPortContext(CharmTestCase):
     def test_ext_port_mac_one_used_nic(self, mock_config,
                                        mock_get_ipv4_addr,
                                        mock_get_ipv6_addr, mock_list_nics,
-                                       mock_get_nic_hwaddr):
+                                       mock_get_nic_hwaddr,
+                                       mock_neutron_api_settings):
 
+        mock_neutron_api_settings.return_value = {'network_device_mtu': 1234}
         config_macs = "%s %s" % (self.machine_macs['eth1'],
                                  self.machine_macs['eth2'])
 
@@ -199,8 +202,7 @@ class TestNeutronPortContext(CharmTestCase):
         mock_list_nics.return_value = self.machine_macs.keys()
         mock_get_nic_hwaddr.side_effect = self._fake_get_hwaddr
 
-        config = self.fake_config({'ext-port': config_macs,
-                                   'phy-nic-mtu': 1234})
+        config = self.fake_config({'ext-port': config_macs})
         self.config.side_effect = config
         mock_config.side_effect = config
         self.assertEquals(quantum_contexts.ExternalPortContext()(),
