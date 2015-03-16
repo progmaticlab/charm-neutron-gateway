@@ -620,7 +620,8 @@ def configure_ovs():
 
             add_bridge_port(br, portmaps[br], promisc=True)
 
-        # Ensure this runs so that any new bridges have correct mtu
+        # Ensure this runs so that mtu is applied to data-port interfaces if
+        # provided.
         service_restart('os-charm-phy-nic-mtu')
 
 

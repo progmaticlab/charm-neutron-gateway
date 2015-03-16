@@ -266,10 +266,19 @@ class TestQuantumGatewayContext(CharmTestCase):
         self.test_config.set('debug', False)
         self.test_config.set('verbose', True)
         self.test_config.set('instance-mtu', 1420)
+        self.test_config.set('vlan-ranges',
+                             'physnet1:1000:2000 physnet2:2001:3000')
+        # Provided by neutron-api relation
+        self.relation_ids.return_value = ['neutron-plugin-api:0']
+        self.related_units.return_value = ['neutron-api/0']
+        rdata = {'network-device-mtu': 9000}
+        self.relation_get.side_effect = lambda *args, **kwargs: rdata
         self.get_os_codename_install_source.return_value = 'folsom'
         _host_ip.return_value = '10.5.0.1'
         _secret.return_value = 'testsecret'
-        self.assertEquals(quantum_contexts.QuantumGatewayContext()(), {
+        ctxt = quantum_contexts.QuantumGatewayContext()()
+        self.relation_ids.assert_called_with('neutron-plugin-api')
+        self.assertEquals(ctxt, {
             'shared_secret': 'testsecret',
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
@@ -281,8 +290,10 @@ class TestQuantumGatewayContext(CharmTestCase):
             'l2_population': False,
             'overlay_network_type': 'gre',
             'bridge_mappings': 'physnet1:br-data',
-            'network_providers': 'physnet1',
-            'vlan_ranges': 'physnet1:1000:2000'
+            'network_providers': 'physnet1 physnet2',
+            'vlan_ranges': 'physnet1:1000:2000 physnet2:2001:3000',
+            'network_device_mtu': 9000,
+            'veth_mtu': 9000,
         })
 
 

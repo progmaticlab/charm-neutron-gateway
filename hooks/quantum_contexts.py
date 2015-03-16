@@ -118,17 +118,16 @@ def _neutron_api_settings():
     for rid in relation_ids('neutron-plugin-api'):
         for unit in related_units(rid):
             rdata = relation_get(rid=rid, unit=unit)
-            if 'l2-population' not in rdata:
-                continue
-            neutron_settings = {
-                'l2_population': rdata['l2-population'],
-                'overlay_network_type': rdata['overlay-network-type'],
-            }
+            if 'l2-population' in rdata:
+                neutron_settings.update({
+                    'l2_population': rdata['l2-population'],
+                    'overlay_network_type': rdata['overlay-network-type'],
+                })
+
             net_dev_mtu = rdata.get('network-device-mtu')
             if net_dev_mtu:
                 neutron_settings['network_device_mtu'] = net_dev_mtu
 
-            return neutron_settings
     return neutron_settings
 
 
@@ -258,9 +257,10 @@ class QuantumGatewayContext(OSContextGenerator):
             ctxt['bridge_mappings'] = mappings
 
         vlan_ranges = config('vlan-ranges')
-        vlan_range_mappings = parse_vlan_range_mappings(config('vlan-ranges'))
-        if vlan_ranges:
-            ctxt['network_providers'] = ' '.join(vlan_range_mappings.keys())
+        vlan_range_mappings = parse_vlan_range_mappings(vlan_ranges)
+        if vlan_range_mappings:
+            providers = sorted(vlan_range_mappings.keys())
+            ctxt['network_providers'] = ' '.join(providers)
             ctxt['vlan_ranges'] = vlan_ranges
 
         net_dev_mtu = neutron_api_settings.get('network_device_mtu')
