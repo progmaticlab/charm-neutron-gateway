@@ -2,10 +2,6 @@
 import os
 import uuid
 import socket
-from charmhelpers.core.host import (
-    list_nics,
-    get_nic_hwaddr
-)
 from charmhelpers.core.hookenv import (
     config,
     relation_ids,
@@ -20,6 +16,7 @@ from charmhelpers.fetch import (
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
     context_complete,
+    NeutronPortContext,
 )
 from charmhelpers.contrib.openstack.utils import (
     get_os_codename_install_source
@@ -27,12 +24,15 @@ from charmhelpers.contrib.openstack.utils import (
 from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader
 )
-import re
 from charmhelpers.contrib.network.ip import (
     get_address_in_network,
-    get_ipv4_addr,
-    get_ipv6_addr,
-    is_bridge_member,
+)
+from charmhelpers.contrib.openstack.neutron import (
+    parse_data_port_mappings,
+    parse_vlan_range_mappings,
+)
+from charmhelpers.core.host import (
+    get_nic_hwaddr,
 )
 
 DB_USER = "quantum"
@@ -114,16 +114,20 @@ def _neutron_api_settings():
         'overlay_network_type': 'gre',
 
     }
+
     for rid in relation_ids('neutron-plugin-api'):
         for unit in related_units(rid):
             rdata = relation_get(rid=rid, unit=unit)
-            if 'l2-population' not in rdata:
-                continue
-            neutron_settings = {
-                'l2_population': rdata['l2-population'],
-                'overlay_network_type': rdata['overlay-network-type'],
-            }
-            return neutron_settings
+            if 'l2-population' in rdata:
+                neutron_settings.update({
+                    'l2_population': rdata['l2-population'],
+                    'overlay_network_type': rdata['overlay-network-type'],
+                })
+
+            net_dev_mtu = rdata.get('network-device-mtu')
+            if net_dev_mtu:
+                neutron_settings['network_device_mtu'] = net_dev_mtu
+
     return neutron_settings
 
 
@@ -176,56 +180,57 @@ class L3AgentContext(OSContextGenerator):
         return ctxt
 
 
-class NeutronPortContext(OSContextGenerator):
-
-    def _resolve_port(self, config_key):
-        if not config(config_key):
-            return None
-        hwaddr_to_nic = {}
-        hwaddr_to_ip = {}
-        for nic in list_nics(['eth', 'bond']):
-            hwaddr = get_nic_hwaddr(nic)
-            hwaddr_to_nic[hwaddr] = nic
-            addresses = get_ipv4_addr(nic, fatal=False) + \
-                get_ipv6_addr(iface=nic, fatal=False)
-            hwaddr_to_ip[hwaddr] = addresses
-        mac_regex = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
-        for entry in config(config_key).split():
-            entry = entry.strip()
-            if re.match(mac_regex, entry):
-                if entry in hwaddr_to_nic and len(hwaddr_to_ip[entry]) == 0:
-                    # If the nic is part of a bridge then don't use it
-                    if is_bridge_member(hwaddr_to_nic[entry]):
-                        continue
-                    # Entry is a MAC address for a valid interface that doesn't
-                    # have an IP address assigned yet.
-                    return hwaddr_to_nic[entry]
-            else:
-                # If the passed entry is not a MAC address, assume it's a valid
-                # interface, and that the user put it there on purpose (we can
-                # trust it to be the real external network).
-                return entry
-        return None
-
-
 class ExternalPortContext(NeutronPortContext):
 
     def __call__(self):
-        port = self._resolve_port('ext-port')
-        if port:
-            return {"ext_port": port}
-        else:
-            return None
+        ctxt = {}
+        ports = config('ext-port')
+        if ports:
+            ports = [p.strip() for p in ports.split()]
+            ports = self.resolve_ports(ports)
+            if ports:
+                ctxt = {"ext_port": ports[0]}
+                neutron_api_settings = _neutron_api_settings()
+                mtu = neutron_api_settings.get('network_device_mtu')
+                if mtu:
+                    ctxt['ext_port_mtu'] = mtu
+
+        return ctxt
 
 
 class DataPortContext(NeutronPortContext):
 
     def __call__(self):
-        port = self._resolve_port('data-port')
-        if port:
-            return {"data_port": port}
-        else:
-            return None
+        ports = config('data-port')
+        if ports:
+            portmap = parse_data_port_mappings(ports)
+            ports = portmap.values()
+            resolved = self.resolve_ports(ports)
+            normalized = {get_nic_hwaddr(port): port for port in resolved
+                          if port not in ports}
+            normalized.update({port: port for port in resolved
+                               if port in ports})
+            if resolved:
+                return {bridge: normalized[port] for bridge, port in
+                        portmap.iteritems() if port in normalized.keys()}
+
+        return None
+
+
+class PhyNICMTUContext(DataPortContext):
+
+    def __call__(self):
+        ctxt = {}
+        mappings = super(PhyNICMTUContext, self).__call__()
+        if mappings and mappings.values():
+            ports = mappings.values()
+            neutron_api_settings = _neutron_api_settings()
+            mtu = neutron_api_settings.get('network_device_mtu')
+            if mtu:
+                ctxt["devs"] = '\\n'.join(ports)
+                ctxt['mtu'] = mtu
+
+        return ctxt
 
 
 class QuantumGatewayContext(OSContextGenerator):
@@ -246,6 +251,23 @@ class QuantumGatewayContext(OSContextGenerator):
             'overlay_network_type':
             neutron_api_settings['overlay_network_type'],
         }
+
+        mappings = config('bridge-mappings')
+        if mappings:
+            ctxt['bridge_mappings'] = mappings
+
+        vlan_ranges = config('vlan-ranges')
+        vlan_range_mappings = parse_vlan_range_mappings(vlan_ranges)
+        if vlan_range_mappings:
+            providers = sorted(vlan_range_mappings.keys())
+            ctxt['network_providers'] = ' '.join(providers)
+            ctxt['vlan_ranges'] = vlan_ranges
+
+        net_dev_mtu = neutron_api_settings.get('network_device_mtu')
+        if net_dev_mtu:
+            ctxt['network_device_mtu'] = net_dev_mtu
+            ctxt['veth_mtu'] = net_dev_mtu
+
         return ctxt
 
 

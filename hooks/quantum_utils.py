@@ -53,8 +53,12 @@ from quantum_contexts import (
     NetworkServiceContext,
     L3AgentContext,
     ExternalPortContext,
+    PhyNICMTUContext,
     DataPortContext,
     remap_plugin
+)
+from charmhelpers.contrib.openstack.neutron import (
+    parse_bridge_mappings,
 )
 
 from copy import deepcopy
@@ -207,6 +211,7 @@ def get_common_package():
         return 'neutron-common'
 
 EXT_PORT_CONF = '/etc/init/ext-port.conf'
+PHY_NIC_MTU_CONF = '/etc/init/os-charm-phy-nic-mtu.conf'
 TEMPLATES = 'templates'
 
 QUANTUM_CONF = "/etc/quantum/quantum.conf"
@@ -289,7 +294,11 @@ QUANTUM_OVS_CONFIG_FILES = {
     },
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
-        'services': []
+        'services': ['ext-port']
+    },
+    PHY_NIC_MTU_CONF: {
+        'hook_contexts': [PhyNICMTUContext()],
+        'services': ['os-charm-phy-nic-mtu']
     }
 }
 QUANTUM_OVS_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
@@ -343,7 +352,11 @@ NEUTRON_OVS_CONFIG_FILES = {
     },
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
-        'services': []
+        'services': ['ext-port']
+    },
+    PHY_NIC_MTU_CONF: {
+        'hook_contexts': [PhyNICMTUContext()],
+        'services': ['os-charm-phy-nic-mtu']
     }
 }
 NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
@@ -465,7 +478,6 @@ def restart_map():
 
 INT_BRIDGE = "br-int"
 EXT_BRIDGE = "br-ex"
-DATA_BRIDGE = 'br-data'
 
 DHCP_AGENT = "DHCP Agent"
 L3_AGENT = "L3 Agent"
@@ -598,11 +610,19 @@ def configure_ovs():
         if ext_port_ctx and ext_port_ctx['ext_port']:
             add_bridge_port(EXT_BRIDGE, ext_port_ctx['ext_port'])
 
-        add_bridge(DATA_BRIDGE)
-        data_port_ctx = DataPortContext()()
-        if data_port_ctx and data_port_ctx['data_port']:
-            add_bridge_port(DATA_BRIDGE, data_port_ctx['data_port'],
-                            promisc=True)
+        portmaps = DataPortContext()()
+        bridgemaps = parse_bridge_mappings(config('bridge-mappings'))
+        for provider, br in bridgemaps.iteritems():
+            add_bridge(br)
+
+            if not portmaps or br not in portmaps:
+                continue
+
+            add_bridge_port(br, portmaps[br], promisc=True)
+
+        # Ensure this runs so that mtu is applied to data-port interfaces if
+        # provided.
+        service_restart('os-charm-phy-nic-mtu')
 
 
 def copy_file(src, dst, perms=None, force=False):

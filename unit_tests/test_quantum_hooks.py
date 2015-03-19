@@ -47,7 +47,7 @@ TO_PATCH = [
     'get_hacluster_config',
     'remove_legacy_ha_files',
     'cleanup_ovs_netns',
-    'stop_neutron_ha_monitor_daemon'
+    'stop_neutron_ha_monitor_daemon',
 ]
 
 

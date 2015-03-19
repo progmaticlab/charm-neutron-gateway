@@ -8,5 +8,6 @@ include:
     - contrib.network
     - contrib.python.packages
     - contrib.storage.linux
+    - contrib.python
     - payload.execd
     - contrib.charmsupport
