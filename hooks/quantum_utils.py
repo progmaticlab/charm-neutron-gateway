@@ -41,7 +41,12 @@ from charmhelpers.contrib.openstack.neutron import (
 
 import charmhelpers.contrib.openstack.context as context
 from charmhelpers.contrib.openstack.context import (
-    SyslogContext
+    SyslogContext,
+    NeutronAPIContext,
+    ExternalPortContext,
+    PhyNICMTUContext,
+    DataPortContext,
+    NetworkServiceContext,
 )
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
@@ -50,13 +55,8 @@ from quantum_contexts import (
     NEUTRON, QUANTUM,
     networking_name,
     QuantumGatewayContext,
-    NetworkServiceContext,
     L3AgentContext,
-    ExternalPortContext,
-    PhyNICMTUContext,
-    DataPortContext,
     remap_plugin,
-    neutron_api_settings,
 )
 from charmhelpers.contrib.openstack.neutron import (
     parse_bridge_mappings,
@@ -221,7 +221,7 @@ def get_common_package():
 
 
 def use_l3ha():
-    return neutron_api_settings()['enable_l3ha']
+    return NeutronAPIContext()()['enable_l3ha']
 
 EXT_PORT_CONF = '/etc/init/ext-port.conf'
 PHY_NIC_MTU_CONF = '/etc/init/os-charm-phy-nic-mtu.conf'

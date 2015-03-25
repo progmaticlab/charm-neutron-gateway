@@ -46,7 +46,7 @@ TO_PATCH = [
     'lsb_release',
     'mkdir',
     'copy2',
-    'neutron_api_settings',
+    'NeutronAPIContext',
 ]
 
 
@@ -144,7 +144,7 @@ class TestQuantumUtils(CharmTestCase):
         self.get_os_codename_install_source.return_value = 'juno'
         self.assertTrue('keepalived' in quantum_utils.get_packages())
 
-    @patch('quantum_contexts.config')
+    @patch('charmhelpers.contrib.openstack.context.config')
     def test_configure_ovs_starts_service_if_required(self, mock_config):
         mock_config.side_effect = self.test_config.get
         self.config.return_value = 'ovs'
@@ -157,7 +157,7 @@ class TestQuantumUtils(CharmTestCase):
         quantum_utils.configure_ovs()
         self.assertFalse(self.full_restart.called)
 
-    @patch('quantum_contexts.config')
+    @patch('charmhelpers.contrib.openstack.context.config')
     def test_configure_ovs_ovs_ext_port(self, mock_config):
         mock_config.side_effect = self.test_config.get
         self.config.side_effect = self.test_config.get
@@ -173,7 +173,7 @@ class TestQuantumUtils(CharmTestCase):
         ])
         self.add_bridge_port.assert_called_with('br-ex', 'eth0')
 
-    @patch('quantum_contexts.config')
+    @patch('charmhelpers.contrib.openstack.context.config')
     def test_configure_ovs_ovs_data_port(self, mock_config):
         mock_config.side_effect = self.test_config.get
         self.config.side_effect = self.test_config.get
