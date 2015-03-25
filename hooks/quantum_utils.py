@@ -43,10 +43,10 @@ import charmhelpers.contrib.openstack.context as context
 from charmhelpers.contrib.openstack.context import (
     SyslogContext,
     NeutronAPIContext,
+    NetworkServiceContext,
     ExternalPortContext,
     PhyNICMTUContext,
     DataPortContext,
-    NetworkServiceContext,
 )
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
