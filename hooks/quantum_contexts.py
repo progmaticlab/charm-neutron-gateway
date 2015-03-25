@@ -4,9 +4,6 @@ import uuid
 import socket
 from charmhelpers.core.hookenv import (
     config,
-    relation_ids,
-    related_units,
-    relation_get,
     unit_get,
     cached
 )
@@ -15,8 +12,6 @@ from charmhelpers.fetch import (
 )
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
-    context_complete,
-    NeutronPortContext,
     NeutronAPIContext,
 )
 from charmhelpers.contrib.openstack.utils import (
@@ -29,14 +24,8 @@ from charmhelpers.contrib.network.ip import (
     get_address_in_network,
 )
 from charmhelpers.contrib.openstack.neutron import (
-    parse_data_port_mappings,
     parse_vlan_range_mappings,
 )
-from charmhelpers.core.host import (
-    get_nic_hwaddr,
-)
-from charmhelpers.core.strutils import bool_from_string
-import copy
 
 DB_USER = "quantum"
 QUANTUM_DB = "quantum"

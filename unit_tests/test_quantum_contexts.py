@@ -267,7 +267,7 @@ class TestQuantumGatewayContext(CharmTestCase):
         super(TestQuantumGatewayContext, self).setUp(quantum_contexts,
                                                      TO_PATCH)
         self.config.side_effect = self.test_config.get
-        self.maxDiff = None 
+        self.maxDiff = None
 
     @patch.object(quantum_contexts, 'get_shared_secret')
     @patch.object(quantum_contexts, 'get_host_ip')
