@@ -4,9 +4,6 @@ import uuid
 import socket
 from charmhelpers.core.hookenv import (
     config,
-    relation_ids,
-    related_units,
-    relation_get,
     unit_get,
     cached
 )
@@ -15,8 +12,7 @@ from charmhelpers.fetch import (
 )
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
-    context_complete,
-    NeutronPortContext,
+    NeutronAPIContext,
 )
 from charmhelpers.contrib.openstack.utils import (
     get_os_codename_install_source
@@ -28,11 +24,7 @@ from charmhelpers.contrib.network.ip import (
     get_address_in_network,
 )
 from charmhelpers.contrib.openstack.neutron import (
-    parse_data_port_mappings,
     parse_vlan_range_mappings,
-)
-from charmhelpers.core.host import (
-    get_nic_hwaddr,
 )
 
 DB_USER = "quantum"
@@ -104,61 +96,6 @@ def core_plugin():
         return CORE_PLUGIN[networking_name()][plugin]
 
 
-def _neutron_api_settings():
-    '''
-    Inspects current neutron-plugin-api relation for neutron settings. Return
-    defaults if it is not present
-    '''
-    neutron_settings = {
-        'l2_population': False,
-        'overlay_network_type': 'gre',
-
-    }
-
-    for rid in relation_ids('neutron-plugin-api'):
-        for unit in related_units(rid):
-            rdata = relation_get(rid=rid, unit=unit)
-            if 'l2-population' in rdata:
-                neutron_settings.update({
-                    'l2_population': rdata['l2-population'],
-                    'overlay_network_type': rdata['overlay-network-type'],
-                })
-
-            net_dev_mtu = rdata.get('network-device-mtu')
-            if net_dev_mtu:
-                neutron_settings['network_device_mtu'] = net_dev_mtu
-
-    return neutron_settings
-
-
-class NetworkServiceContext(OSContextGenerator):
-    interfaces = ['quantum-network-service']
-
-    def __call__(self):
-        for rid in relation_ids('quantum-network-service'):
-            for unit in related_units(rid):
-                rdata = relation_get(rid=rid, unit=unit)
-                ctxt = {
-                    'keystone_host': rdata.get('keystone_host'),
-                    'service_port': rdata.get('service_port'),
-                    'auth_port': rdata.get('auth_port'),
-                    'service_tenant': rdata.get('service_tenant'),
-                    'service_username': rdata.get('service_username'),
-                    'service_password': rdata.get('service_password'),
-                    'quantum_host': rdata.get('quantum_host'),
-                    'quantum_port': rdata.get('quantum_port'),
-                    'quantum_url': rdata.get('quantum_url'),
-                    'region': rdata.get('region'),
-                    'service_protocol':
-                    rdata.get('service_protocol') or 'http',
-                    'auth_protocol':
-                    rdata.get('auth_protocol') or 'http',
-                }
-                if context_complete(ctxt):
-                    return ctxt
-        return {}
-
-
 class L3AgentContext(OSContextGenerator):
 
     def __call__(self):
@@ -180,63 +117,10 @@ class L3AgentContext(OSContextGenerator):
         return ctxt
 
 
-class ExternalPortContext(NeutronPortContext):
-
-    def __call__(self):
-        ctxt = {}
-        ports = config('ext-port')
-        if ports:
-            ports = [p.strip() for p in ports.split()]
-            ports = self.resolve_ports(ports)
-            if ports:
-                ctxt = {"ext_port": ports[0]}
-                neutron_api_settings = _neutron_api_settings()
-                mtu = neutron_api_settings.get('network_device_mtu')
-                if mtu:
-                    ctxt['ext_port_mtu'] = mtu
-
-        return ctxt
-
-
-class DataPortContext(NeutronPortContext):
-
-    def __call__(self):
-        ports = config('data-port')
-        if ports:
-            portmap = parse_data_port_mappings(ports)
-            ports = portmap.values()
-            resolved = self.resolve_ports(ports)
-            normalized = {get_nic_hwaddr(port): port for port in resolved
-                          if port not in ports}
-            normalized.update({port: port for port in resolved
-                               if port in ports})
-            if resolved:
-                return {bridge: normalized[port] for bridge, port in
-                        portmap.iteritems() if port in normalized.keys()}
-
-        return None
-
-
-class PhyNICMTUContext(DataPortContext):
-
-    def __call__(self):
-        ctxt = {}
-        mappings = super(PhyNICMTUContext, self).__call__()
-        if mappings and mappings.values():
-            ports = mappings.values()
-            neutron_api_settings = _neutron_api_settings()
-            mtu = neutron_api_settings.get('network_device_mtu')
-            if mtu:
-                ctxt["devs"] = '\\n'.join(ports)
-                ctxt['mtu'] = mtu
-
-        return ctxt
-
-
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
-        neutron_api_settings = _neutron_api_settings()
+        neutron_api_settings = NeutronAPIContext()()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':

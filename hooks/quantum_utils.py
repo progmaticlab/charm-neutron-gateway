@@ -41,7 +41,11 @@ from charmhelpers.contrib.openstack.neutron import (
 
 import charmhelpers.contrib.openstack.context as context
 from charmhelpers.contrib.openstack.context import (
-    SyslogContext
+    SyslogContext,
+    NetworkServiceContext,
+    ExternalPortContext,
+    PhyNICMTUContext,
+    DataPortContext,
 )
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
@@ -50,11 +54,7 @@ from quantum_contexts import (
     NEUTRON, QUANTUM,
     networking_name,
     QuantumGatewayContext,
-    NetworkServiceContext,
     L3AgentContext,
-    ExternalPortContext,
-    PhyNICMTUContext,
-    DataPortContext,
     remap_plugin
 )
 from charmhelpers.contrib.openstack.neutron import (
