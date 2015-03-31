@@ -36,7 +36,6 @@ TO_PATCH = [
     'service_running',
     'NetworkServiceContext',
     'ExternalPortContext',
-    'DataPortContext',
     'unit_private_ip',
     'relations_of_type',
     'service_stop',
@@ -46,7 +45,8 @@ TO_PATCH = [
     'is_relation_made',
     'lsb_release',
     'mkdir',
-    'copy2'
+    'copy2',
+    'NeutronAPIContext',
 ]
 
 
@@ -139,7 +139,14 @@ class TestQuantumUtils(CharmTestCase):
         self.get_os_codename_install_source.return_value = 'kilo'
         self.assertTrue('python-neutron-fwaas' in quantum_utils.get_packages())
 
-    def test_configure_ovs_starts_service_if_required(self):
+    def test_get_packages_l3ha(self):
+        self.config.return_value = 'ovs'
+        self.get_os_codename_install_source.return_value = 'juno'
+        self.assertTrue('keepalived' in quantum_utils.get_packages())
+
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_configure_ovs_starts_service_if_required(self, mock_config):
+        mock_config.side_effect = self.test_config.get
         self.config.return_value = 'ovs'
         self.service_running.return_value = False
         quantum_utils.configure_ovs()
@@ -150,14 +157,14 @@ class TestQuantumUtils(CharmTestCase):
         quantum_utils.configure_ovs()
         self.assertFalse(self.full_restart.called)
 
-    def test_configure_ovs_ovs_ext_port(self):
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_configure_ovs_ovs_ext_port(self, mock_config):
+        mock_config.side_effect = self.test_config.get
         self.config.side_effect = self.test_config.get
         self.test_config.set('plugin', 'ovs')
         self.test_config.set('ext-port', 'eth0')
         self.ExternalPortContext.return_value = \
             DummyExternalPortContext(return_value={'ext_port': 'eth0'})
-        self.DataPortContext.return_value = \
-            DummyExternalPortContext(return_value=None)
         quantum_utils.configure_ovs()
         self.add_bridge.assert_has_calls([
             call('br-int'),
@@ -166,22 +173,36 @@ class TestQuantumUtils(CharmTestCase):
         ])
         self.add_bridge_port.assert_called_with('br-ex', 'eth0')
 
-    def test_configure_ovs_ovs_data_port(self):
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_configure_ovs_ovs_data_port(self, mock_config):
+        mock_config.side_effect = self.test_config.get
         self.config.side_effect = self.test_config.get
         self.test_config.set('plugin', 'ovs')
-        self.test_config.set('data-port', 'eth0')
         self.ExternalPortContext.return_value = \
             DummyExternalPortContext(return_value=None)
-        self.DataPortContext.return_value = \
-            DummyExternalPortContext(return_value={'data_port': 'eth0'})
+        # Test back-compatibility i.e. port but no bridge (so br-data is
+        # assumed)
+        self.test_config.set('data-port', 'eth0')
         quantum_utils.configure_ovs()
         self.add_bridge.assert_has_calls([
             call('br-int'),
             call('br-ex'),
             call('br-data')
         ])
-        self.add_bridge_port.assert_called_with('br-data', 'eth0',
-                                                promisc=True)
+        self.assertTrue(self.add_bridge_port.called)
+
+        # Now test with bridge:port format
+        self.test_config.set('data-port', 'br-foo:eth0')
+        self.add_bridge.reset_mock()
+        self.add_bridge_port.reset_mock()
+        quantum_utils.configure_ovs()
+        self.add_bridge.assert_has_calls([
+            call('br-int'),
+            call('br-ex'),
+            call('br-data')
+        ])
+        # Not called since we have a bogus bridge in data-ports
+        self.assertFalse(self.add_bridge_port.called)
 
     def test_do_openstack_upgrade(self):
         self.config.side_effect = self.test_config.get
@@ -241,6 +262,7 @@ class TestQuantumUtils(CharmTestCase):
 
     def test_restart_map_ovs(self):
         self.config.return_value = 'ovs'
+        self.get_os_codename_install_source.return_value = 'havana'
         ex_map = {
             quantum_utils.NEUTRON_CONF: ['neutron-l3-agent',
                                          'neutron-dhcp-agent',
@@ -261,12 +283,16 @@ class TestQuantumUtils(CharmTestCase):
             quantum_utils.NEUTRON_VPNAAS_AGENT_CONF: [
                 'neutron-plugin-vpn-agent',
                 'neutron-vpn-agent'],
-            quantum_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent'],
+            quantum_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent',
+                                                  'neutron-vpn-agent'],
             quantum_utils.NEUTRON_DHCP_AGENT_CONF: ['neutron-dhcp-agent'],
-            quantum_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent'],
+            quantum_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent',
+                                               'neutron-vpn-agent'],
             quantum_utils.NEUTRON_METERING_AGENT_CONF:
             ['neutron-metering-agent', 'neutron-plugin-metering-agent'],
             quantum_utils.NOVA_CONF: ['nova-api-metadata'],
+            quantum_utils.EXT_PORT_CONF: ['ext-port'],
+            quantum_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
         }
 
         self.assertDictEqual(quantum_utils.restart_map(), ex_map)

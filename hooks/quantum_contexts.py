@@ -2,15 +2,8 @@
 import os
 import uuid
 import socket
-from charmhelpers.core.host import (
-    list_nics,
-    get_nic_hwaddr
-)
 from charmhelpers.core.hookenv import (
     config,
-    relation_ids,
-    related_units,
-    relation_get,
     unit_get,
     cached
 )
@@ -19,7 +12,7 @@ from charmhelpers.fetch import (
 )
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
-    context_complete,
+    NeutronAPIContext,
 )
 from charmhelpers.contrib.openstack.utils import (
     get_os_codename_install_source
@@ -27,12 +20,11 @@ from charmhelpers.contrib.openstack.utils import (
 from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader
 )
-import re
 from charmhelpers.contrib.network.ip import (
     get_address_in_network,
-    get_ipv4_addr,
-    get_ipv6_addr,
-    is_bridge_member,
+)
+from charmhelpers.contrib.openstack.neutron import (
+    parse_vlan_range_mappings,
 )
 
 DB_USER = "quantum"
@@ -104,60 +96,10 @@ def core_plugin():
         return CORE_PLUGIN[networking_name()][plugin]
 
 
-def neutron_api_settings():
-    '''
-    Inspects current neutron-plugin-api relation for neutron settings. Return
-    defaults if it is not present
-    '''
-    neutron_settings = {
-        'l2_population': False,
-        'overlay_network_type': 'gre',
-
-    }
-    for rid in relation_ids('neutron-plugin-api'):
-        for unit in related_units(rid):
-            rdata = relation_get(rid=rid, unit=unit)
-            if 'l2-population' not in rdata:
-                continue
-            neutron_settings = {
-                'l2_population': rdata['l2-population'],
-                'overlay_network_type': rdata['overlay-network-type'],
-            }
-            return neutron_settings
-    return neutron_settings
-
-
-class NetworkServiceContext(OSContextGenerator):
-    interfaces = ['quantum-network-service']
-
-    def __call__(self):
-        for rid in relation_ids('quantum-network-service'):
-            for unit in related_units(rid):
-                rdata = relation_get(rid=rid, unit=unit)
-                ctxt = {
-                    'keystone_host': rdata.get('keystone_host'),
-                    'service_port': rdata.get('service_port'),
-                    'auth_port': rdata.get('auth_port'),
-                    'service_tenant': rdata.get('service_tenant'),
-                    'service_username': rdata.get('service_username'),
-                    'service_password': rdata.get('service_password'),
-                    'quantum_host': rdata.get('quantum_host'),
-                    'quantum_port': rdata.get('quantum_port'),
-                    'quantum_url': rdata.get('quantum_url'),
-                    'region': rdata.get('region'),
-                    'service_protocol':
-                    rdata.get('service_protocol') or 'http',
-                    'auth_protocol':
-                    rdata.get('auth_protocol') or 'http',
-                }
-                if context_complete(ctxt):
-                    return ctxt
-        return {}
-
-
 class L3AgentContext(OSContextGenerator):
 
     def __call__(self):
+        api_settings = NeutronAPIContext()()
         ctxt = {}
         if config('run-internal-router') == 'leader':
             ctxt['handle_internal_only_router'] = eligible_leader(None)
@@ -170,68 +112,19 @@ class L3AgentContext(OSContextGenerator):
 
         if config('external-network-id'):
             ctxt['ext_net_id'] = config('external-network-id')
-
         if config('plugin'):
             ctxt['plugin'] = config('plugin')
+        if api_settings['enable_dvr']:
+            ctxt['agent_mode'] = 'dvr_snat'
+        else:
+            ctxt['agent_mode'] = 'legacy'
         return ctxt
-
-
-class NeutronPortContext(OSContextGenerator):
-
-    def _resolve_port(self, config_key):
-        if not config(config_key):
-            return None
-        hwaddr_to_nic = {}
-        hwaddr_to_ip = {}
-        for nic in list_nics(['eth', 'bond']):
-            hwaddr = get_nic_hwaddr(nic)
-            hwaddr_to_nic[hwaddr] = nic
-            addresses = get_ipv4_addr(nic, fatal=False) + \
-                get_ipv6_addr(iface=nic, fatal=False)
-            hwaddr_to_ip[hwaddr] = addresses
-        mac_regex = re.compile(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', re.I)
-        for entry in config(config_key).split():
-            entry = entry.strip()
-            if re.match(mac_regex, entry):
-                if entry in hwaddr_to_nic and len(hwaddr_to_ip[entry]) == 0:
-                    # If the nic is part of a bridge then don't use it
-                    if is_bridge_member(hwaddr_to_nic[entry]):
-                        continue
-                    # Entry is a MAC address for a valid interface that doesn't
-                    # have an IP address assigned yet.
-                    return hwaddr_to_nic[entry]
-            else:
-                # If the passed entry is not a MAC address, assume it's a valid
-                # interface, and that the user put it there on purpose (we can
-                # trust it to be the real external network).
-                return entry
-        return None
-
-
-class ExternalPortContext(NeutronPortContext):
-
-    def __call__(self):
-        port = self._resolve_port('ext-port')
-        if port:
-            return {"ext_port": port}
-        else:
-            return None
-
-
-class DataPortContext(NeutronPortContext):
-
-    def __call__(self):
-        port = self._resolve_port('data-port')
-        if port:
-            return {"data_port": port}
-        else:
-            return None
 
 
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
-        napi_settings = neutron_api_settings()
+        api_settings = NeutronAPIContext()()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
@@ -242,10 +135,29 @@ class QuantumGatewayContext(OSContextGenerator):
             'debug': config('debug'),
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
-            'l2_population': napi_settings['l2_population'],
+            'l2_population': api_settings['l2_population'],
+            'enable_dvr': api_settings['enable_dvr'],
+            'enable_l3ha': api_settings['enable_l3ha'],
             'overlay_network_type':
-            napi_settings['overlay_network_type'],
+            api_settings['overlay_network_type'],
         }
+
+        mappings = config('bridge-mappings')
+        if mappings:
+            ctxt['bridge_mappings'] = mappings
+
+        vlan_ranges = config('vlan-ranges')
+        vlan_range_mappings = parse_vlan_range_mappings(vlan_ranges)
+        if vlan_range_mappings:
+            providers = sorted(vlan_range_mappings.keys())
+            ctxt['network_providers'] = ' '.join(providers)
+            ctxt['vlan_ranges'] = vlan_ranges
+
+        net_dev_mtu = api_settings['network_device_mtu']
+        if net_dev_mtu:
+            ctxt['network_device_mtu'] = net_dev_mtu
+            ctxt['veth_mtu'] = net_dev_mtu
+
         return ctxt
 
 
