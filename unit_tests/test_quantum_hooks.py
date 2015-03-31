@@ -48,6 +48,7 @@ TO_PATCH = [
     'remove_legacy_ha_files',
     'cleanup_ovs_netns',
     'stop_neutron_ha_monitor_daemon',
+    'use_l3ha',
 ]
 
 
@@ -245,6 +246,12 @@ class TestQuantumHooks(CharmTestCase):
         self._call_hook('quantum-network-service-relation-changed')
         self.assertTrue(self.CONFIGS.write_all.called)
         self.install_ca_cert.assert_called_with('cert')
+
+    def test_neutron_plugin_changed(self):
+        self.use_l3ha.return_value = True
+        self._call_hook('neutron-plugin-api-relation-changed')
+        self.apt_install.assert_called_with(['keepalived'], fatal=True)
+        self.assertTrue(self.CONFIGS.write_all.called)
 
     def test_cluster_departed_nvp(self):
         self.test_config.set('plugin', 'nvp')

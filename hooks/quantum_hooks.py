@@ -40,6 +40,7 @@ from charmhelpers.contrib.charmsupport import nrpe
 
 import sys
 from quantum_utils import (
+    L3HA_PACKAGES,
     register_configs,
     restart_map,
     services,
@@ -56,7 +57,8 @@ from quantum_utils import (
     install_legacy_ha_files,
     cleanup_ovs_netns,
     reassign_agent_resources,
-    stop_neutron_ha_monitor_daemon
+    stop_neutron_ha_monitor_daemon,
+    use_l3ha,
 )
 
 hooks = Hooks()
@@ -193,10 +195,20 @@ def amqp_departed():
             'pgsql-db-relation-changed',
             'amqp-relation-changed',
             'cluster-relation-changed',
-            'cluster-relation-joined',
-            'neutron-plugin-api-relation-changed')
+            'cluster-relation-joined')
 @restart_on_change(restart_map())
 def db_amqp_changed():
+    CONFIGS.write_all()
+
+
+@hooks.hook('neutron-plugin-api-relation-changed')
+@restart_on_change(restart_map())
+def neutron_plugin_api_changed():
+    if use_l3ha():
+        apt_update()
+        apt_install(L3HA_PACKAGES, fatal=True)
+    else:
+        apt_purge(L3HA_PACKAGES, fatal=True)
     CONFIGS.write_all()
 
 

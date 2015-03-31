@@ -38,6 +38,15 @@ def patch_open():
         yield mock_open, mock_file
 
 
+class DummyNeutronAPIContext():
+
+    def __init__(self, return_value):
+        self.return_value = return_value
+
+    def __call__(self):
+        return self.return_value
+
+
 class TestL3AgentContext(CharmTestCase):
 
     def setUp(self):
@@ -45,31 +54,50 @@ class TestL3AgentContext(CharmTestCase):
                                               TO_PATCH)
         self.config.side_effect = self.test_config.get
 
-    def test_no_ext_netid(self):
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_no_ext_netid(self,  _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'none')
         self.test_config.set('external-network-id', '')
         self.eligible_leader.return_value = False
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': False,
+                          {'agent_mode': 'legacy',
+                           'handle_internal_only_router': False,
                            'plugin': 'ovs'})
 
-    def test_hior_leader(self):
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_hior_leader(self, _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'leader')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': True,
+                          {'agent_mode': 'legacy',
+                           'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
-    def test_hior_all(self):
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_hior_all(self, _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'all')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
         self.assertEquals(quantum_contexts.L3AgentContext()(),
-                          {'handle_internal_only_router': True,
+                          {'agent_mode': 'legacy',
+                           'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
+
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_dvr(self, _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': True})
+        self.assertEquals(quantum_contexts.L3AgentContext()()['agent_mode'],
+                          'dvr_snat')
 
 
 class TestQuantumGatewayContext(CharmTestCase):
@@ -78,6 +106,7 @@ class TestQuantumGatewayContext(CharmTestCase):
         super(TestQuantumGatewayContext, self).setUp(quantum_contexts,
                                                      TO_PATCH)
         self.config.side_effect = self.test_config.get
+        self.maxDiff = None
 
     @patch('charmhelpers.contrib.openstack.context.relation_get')
     @patch('charmhelpers.contrib.openstack.context.related_units')
@@ -85,6 +114,11 @@ class TestQuantumGatewayContext(CharmTestCase):
     @patch.object(quantum_contexts, 'get_shared_secret')
     @patch.object(quantum_contexts, 'get_host_ip')
     def test_all(self, _host_ip, _secret, _rids, _runits, _rget):
+        rdata = {'l2-population': 'True',
+                 'enable-dvr': 'True',
+                 'overlay-network-type': 'gre',
+                 'enable-l3ha': 'True',
+                 'network-device-mtu': 9000}
         self.test_config.set('plugin', 'ovs')
         self.test_config.set('debug', False)
         self.test_config.set('verbose', True)
@@ -94,7 +128,6 @@ class TestQuantumGatewayContext(CharmTestCase):
         # Provided by neutron-api relation
         _rids.return_value = ['neutron-plugin-api:0']
         _runits.return_value = ['neutron-api/0']
-        rdata = {'network-device-mtu': 9000, 'l2-population': 'False'}
         _rget.side_effect = lambda *args, **kwargs: rdata
         self.get_os_codename_install_source.return_value = 'folsom'
         _host_ip.return_value = '10.5.0.1'
@@ -102,6 +135,8 @@ class TestQuantumGatewayContext(CharmTestCase):
         ctxt = quantum_contexts.QuantumGatewayContext()()
         self.assertEquals(ctxt, {
             'shared_secret': 'testsecret',
+            'enable_dvr': True,
+            'enable_l3ha': True,
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
             'core_plugin': "quantum.plugins.openvswitch.ovs_quantum_plugin."
@@ -109,7 +144,7 @@ class TestQuantumGatewayContext(CharmTestCase):
             'plugin': 'ovs',
             'debug': False,
             'verbose': True,
-            'l2_population': False,
+            'l2_population': True,
             'overlay_network_type': 'gre',
             'bridge_mappings': 'physnet1:br-data',
             'network_providers': 'physnet1 physnet2',

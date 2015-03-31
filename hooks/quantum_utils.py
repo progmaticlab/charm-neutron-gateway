@@ -42,6 +42,7 @@ from charmhelpers.contrib.openstack.neutron import (
 import charmhelpers.contrib.openstack.context as context
 from charmhelpers.contrib.openstack.context import (
     SyslogContext,
+    NeutronAPIContext,
     NetworkServiceContext,
     ExternalPortContext,
     PhyNICMTUContext,
@@ -55,7 +56,7 @@ from quantum_contexts import (
     networking_name,
     QuantumGatewayContext,
     L3AgentContext,
-    remap_plugin
+    remap_plugin,
 )
 from charmhelpers.contrib.openstack.neutron import (
     parse_bridge_mappings,
@@ -171,6 +172,7 @@ LEGACY_FILES_MAP = {
     },
 }
 LEGACY_RES_MAP = ['res_monitor']
+L3HA_PACKAGES = ['keepalived']
 
 
 def get_early_packages():
@@ -201,7 +203,14 @@ def get_packages():
             packages.append('openswan')
         if source >= 'kilo':
             packages.append('python-neutron-fwaas')
+    packages.extend(determine_l3ha_packages())
     return packages
+
+
+def determine_l3ha_packages():
+    if use_l3ha():
+        return L3HA_PACKAGES
+    return []
 
 
 def get_common_package():
@@ -209,6 +218,10 @@ def get_common_package():
         return 'quantum-common'
     else:
         return 'neutron-common'
+
+
+def use_l3ha():
+    return NeutronAPIContext()()['enable_l3ha']
 
 EXT_PORT_CONF = '/etc/init/ext-port.conf'
 PHY_NIC_MTU_CONF = '/etc/init/os-charm-phy-nic-mtu.conf'
@@ -322,7 +335,7 @@ NEUTRON_OVS_CONFIG_FILES = {
         'hook_contexts': [NetworkServiceContext(),
                           L3AgentContext(),
                           QuantumGatewayContext()],
-        'services': ['neutron-l3-agent']
+        'services': ['neutron-l3-agent', 'neutron-vpn-agent']
     },
     NEUTRON_METERING_AGENT_CONF: {
         'hook_contexts': [QuantumGatewayContext()],
@@ -340,7 +353,7 @@ NEUTRON_OVS_CONFIG_FILES = {
     },
     NEUTRON_FWAAS_CONF: {
         'hook_contexts': [QuantumGatewayContext()],
-        'services': ['neutron-l3-agent']
+        'services': ['neutron-l3-agent', 'neutron-vpn-agent']
     },
     NEUTRON_OVS_PLUGIN_CONF: {
         'hook_contexts': [QuantumGatewayContext()],

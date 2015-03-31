@@ -99,6 +99,7 @@ def core_plugin():
 class L3AgentContext(OSContextGenerator):
 
     def __call__(self):
+        api_settings = NeutronAPIContext()()
         ctxt = {}
         if config('run-internal-router') == 'leader':
             ctxt['handle_internal_only_router'] = eligible_leader(None)
@@ -111,16 +112,19 @@ class L3AgentContext(OSContextGenerator):
 
         if config('external-network-id'):
             ctxt['ext_net_id'] = config('external-network-id')
-
         if config('plugin'):
             ctxt['plugin'] = config('plugin')
+        if api_settings['enable_dvr']:
+            ctxt['agent_mode'] = 'dvr_snat'
+        else:
+            ctxt['agent_mode'] = 'legacy'
         return ctxt
 
 
 class QuantumGatewayContext(OSContextGenerator):
 
     def __call__(self):
-        neutron_api_settings = NeutronAPIContext()()
+        api_settings = NeutronAPIContext()()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
@@ -131,9 +135,11 @@ class QuantumGatewayContext(OSContextGenerator):
             'debug': config('debug'),
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
-            'l2_population': neutron_api_settings['l2_population'],
+            'l2_population': api_settings['l2_population'],
+            'enable_dvr': api_settings['enable_dvr'],
+            'enable_l3ha': api_settings['enable_l3ha'],
             'overlay_network_type':
-            neutron_api_settings['overlay_network_type'],
+            api_settings['overlay_network_type'],
         }
 
         mappings = config('bridge-mappings')
@@ -147,7 +153,7 @@ class QuantumGatewayContext(OSContextGenerator):
             ctxt['network_providers'] = ' '.join(providers)
             ctxt['vlan_ranges'] = vlan_ranges
 
-        net_dev_mtu = neutron_api_settings.get('network_device_mtu')
+        net_dev_mtu = api_settings['network_device_mtu']
         if net_dev_mtu:
             ctxt['network_device_mtu'] = net_dev_mtu
             ctxt['veth_mtu'] = net_dev_mtu
