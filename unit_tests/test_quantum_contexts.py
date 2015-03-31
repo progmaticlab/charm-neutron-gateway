@@ -38,6 +38,15 @@ def patch_open():
         yield mock_open, mock_file
 
 
+class DummyNeutronAPIContext():
+
+    def __init__(self, return_value):
+        self.return_value = return_value
+
+    def __call__(self):
+        return self.return_value
+
+
 class TestL3AgentContext(CharmTestCase):
 
     def setUp(self):
@@ -45,7 +54,10 @@ class TestL3AgentContext(CharmTestCase):
                                               TO_PATCH)
         self.config.side_effect = self.test_config.get
 
-    def test_no_ext_netid(self):
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_no_ext_netid(self,  _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'none')
         self.test_config.set('external-network-id', '')
         self.eligible_leader.return_value = False
@@ -54,7 +66,10 @@ class TestL3AgentContext(CharmTestCase):
                            'handle_internal_only_router': False,
                            'plugin': 'ovs'})
 
-    def test_hior_leader(self):
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_hior_leader(self, _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'leader')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
@@ -64,7 +79,10 @@ class TestL3AgentContext(CharmTestCase):
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
-    def test_hior_all(self):
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_hior_all(self, _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'all')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
@@ -74,9 +92,10 @@ class TestL3AgentContext(CharmTestCase):
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
-    @patch.object(quantum_contexts, 'neutron_api_settings')
-    def test_dvr(self, _napi_settings):
-        _napi_settings.return_value = {'enable_dvr': True}
+    @patch('quantum_contexts.NeutronAPIContext')
+    def test_dvr(self, _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': True})
         self.assertEquals(quantum_contexts.L3AgentContext()()['agent_mode'],
                           'dvr_snat')
 
