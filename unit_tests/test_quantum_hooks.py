@@ -114,6 +114,7 @@ class TestQuantumHooks(CharmTestCase):
         _pgsql_db_joined = self.patch('pgsql_db_joined')
         _amqp_joined = self.patch('amqp_joined')
         _amqp_nova_joined = self.patch('amqp_nova_joined')
+        _zmq_joined = self.patch('zeromq_configuration_relation_joined')
         self._call_hook('config-changed')
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.configure_ovs.called)
@@ -121,6 +122,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_pgsql_db_joined.called)
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
+        self.assertTrue(_zmq_joined.called)
         self.create_sysctl.assert_called()
 
     def test_config_changed_upgrade(self):

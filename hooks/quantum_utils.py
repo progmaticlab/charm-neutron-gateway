@@ -251,7 +251,9 @@ NOVA_CONFIG_FILES = {
                           context.PostgresqlDBContext(),
                           NetworkServiceContext(),
                           QuantumGatewayContext(),
-                          SyslogContext()],
+                          SyslogContext(),
+                          context.ZeroMQContext(),
+                          context.NotificationDriverContext()],
         'services': ['nova-api-metadata']
     },
 }
@@ -290,7 +292,9 @@ QUANTUM_OVS_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
                           QuantumGatewayContext(),
-                          SyslogContext()],
+                          SyslogContext(),
+                          context.ZeroMQContext(),
+                          context.NotificationDriverContext()],
         'services': ['quantum-l3-agent',
                      'quantum-dhcp-agent',
                      'quantum-metadata-agent',
@@ -320,7 +324,9 @@ NEUTRON_OVS_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
                           QuantumGatewayContext(),
-                          SyslogContext()],
+                          SyslogContext(),
+                          context.ZeroMQContext(),
+                          context.NotificationDriverContext()],
         'services': ['neutron-l3-agent',
                      'neutron-dhcp-agent',
                      'neutron-metadata-agent',
@@ -733,3 +739,24 @@ def cleanup_ovs_netns():
         subprocess.call('neutron-netns-cleanup')
     except subprocess.CalledProcessError as e:
         log('Faild to cleanup ovs and netns, %s' % e, level=ERROR)
+
+
+def get_topics():
+    # metering_agent
+    topics = []
+    if 'neutron-l3-agent' in services():
+        topics.append('l3_agent')
+    if 'neutron-dhcp-agent' in services():
+        topics.append('dhcp_agent')
+    if 'neutron-metering-agent' in services():
+        topics.append('metering_agent')
+    if 'neutron-lbaas-agent' in services():
+        topics.append('n-lbaas_agent')
+    if 'neutron-plugin-openvswitch-agent' in services():
+        topics.append('q-agent-notifier-port-update')
+        topics.append('q-agent-notifier-network-delete')
+        topics.append('q-agent-notifier-tunnel-update')
+        topics.append('q-agent-notifier-security_group-update')
+        topics.append('q-agent-notifier-dvr-update')
+    topics.append('q-agent-notifier-l2population-update')
+    return topics

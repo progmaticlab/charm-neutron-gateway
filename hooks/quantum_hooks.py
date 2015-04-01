@@ -32,6 +32,7 @@ from charmhelpers.contrib.hahelpers.apache import(
 from charmhelpers.contrib.openstack.utils import (
     configure_installation_source,
     openstack_upgrade_available,
+    os_requires_version,
 )
 from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
@@ -48,6 +49,7 @@ from quantum_utils import (
     get_packages,
     get_early_packages,
     get_common_package,
+    get_topics,
     valid_plugin,
     configure_ovs,
     stop_services,
@@ -109,6 +111,8 @@ def config_changed():
         amqp_joined(relation_id=r_id)
     for r_id in relation_ids('amqp-nova'):
         amqp_nova_joined(relation_id=r_id)
+    for rid in relation_ids('zeromq-configuration'):
+        zeromq_configuration_relation_joined(rid)
     if valid_plugin():
         CONFIGS.write_all()
         configure_ovs()
@@ -248,6 +252,20 @@ def stop():
     if config('ha-legacy-mode'):
         # Cleanup ovs and netns for destroyed units.
         cleanup_ovs_netns()
+
+
+@hooks.hook('zeromq-configuration-relation-joined')
+@os_requires_version('kilo', 'neutron-common')
+def zeromq_configuration_relation_joined(relid=None):
+    relation_set(relation_id=relid,
+                 topics=" ".join(get_topics()),
+                 users="neutron nova")
+
+
+@hooks.hook('zeromq-configuration-relation-changed')
+@restart_on_change(restart_map(), stopstart=True)
+def zeromq_configuration_relation_changed():
+    CONFIGS.write_all()
 
 
 @hooks.hook('nrpe-external-master-relation-joined',
