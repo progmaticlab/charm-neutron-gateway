@@ -144,14 +144,14 @@ class QuantumGatewayContext(OSContextGenerator):
 
         mappings = config('bridge-mappings')
         if mappings:
-            ctxt['bridge_mappings'] = mappings
+            ctxt['bridge_mappings'] = ','.join(mappings.split())
 
         vlan_ranges = config('vlan-ranges')
         vlan_range_mappings = parse_vlan_range_mappings(vlan_ranges)
         if vlan_range_mappings:
             providers = sorted(vlan_range_mappings.keys())
-            ctxt['network_providers'] = ' '.join(providers)
-            ctxt['vlan_ranges'] = vlan_ranges
+            ctxt['network_providers'] = ','.join(providers)
+            ctxt['vlan_ranges'] = ','.join(vlan_ranges.split())
 
         net_dev_mtu = api_settings['network_device_mtu']
         if net_dev_mtu:
