@@ -1,0 +1,2 @@
+git-reinstall:
+    description: Reinstall quantum-gateway from the openstack-origin-git repositories.

@@ -2,6 +2,7 @@
 
 import amulet
 import time
+import yaml
 try:
     from quantumclient.v2_0 import client as neutronclient
 except ImportError:
@@ -18,16 +19,18 @@ from charmhelpers.contrib.openstack.amulet.utils import (
 )
 
 # Use DEBUG to turn on debug logging
-u = OpenStackAmuletUtils(ERROR)
+u = OpenStackAmuletUtils(DEBUG)
 
 
 class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
     """Amulet tests on a basic quantum-gateway deployment."""
 
-    def __init__(self, series, openstack=None, source=None, stable=False):
+    def __init__(self, series, openstack=None, source=None, git=False,
+                 stable=False):
         """Deploy the entire test environment."""
         super(QuantumGatewayBasicDeployment, self).__init__(series, openstack,
                                                             source, stable)
+        self.git = git
         self._add_services()
         self._add_relations()
         self._configure_services()
@@ -64,11 +67,29 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def _configure_services(self):
         """Configure all of the services."""
+        quantum_gateway_config = {}
+        if self.git:
+            branch = 'stable/' + self._get_openstack_release_string()
+            openstack_origin_git = {
+                'repositories': [
+                    {'name': 'requirements',
+                     'repository': 'git://git.openstack.org/openstack/requirements',
+                     'branch': branch},
+                    {'name': 'neutron',
+                     'repository': 'git://git.openstack.org/openstack/neutron',
+                     'branch': branch},
+                ],
+                'directory': '/mnt/openstack-git',
+                'http_proxy': 'http://squid.internal:3128',
+                'https_proxy': 'https://squid.internal:3128',
+            }
+            quantum_gateway_config['openstack-origin-git'] = yaml.dump(openstack_origin_git)
         keystone_config = {'admin-password': 'openstack',
                            'admin-token': 'ubuntutesting'}
         nova_cc_config = {'network-manager': 'Quantum',
                           'quantum-security-groups': 'yes'}
-        configs = {'keystone': keystone_config,
+        configs = {'quantum-gateway': quantum_gateway_config,
+                   'keystone': keystone_config,
                    'nova-cloud-controller': nova_cc_config}
         super(QuantumGatewayBasicDeployment, self)._configure_services(configs)
 
@@ -269,7 +290,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         self.d.configure('quantum-gateway', {'debug': 'True'})
 
-        time = 20
+        time = 40
         for s in services:
             if not u.service_restarted(self.quantum_gateway_sentry, s, conf,
                                        pgrep_full=True, sleep_time=time):
@@ -386,101 +407,6 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
             ret = u.validate_config_data(unit, conf, section, pairs)
             if ret:
                 message = "ml2 config error: {}".format(ret)
-                amulet.raise_status(amulet.FAIL, msg=message)
-
-    def test_api_paste_config(self):
-        """Verify the data in the api paste config file."""
-        unit = self.quantum_gateway_sentry
-        if self._get_openstack_release() >= self.precise_havana:
-            conf = '/etc/neutron/api-paste.ini'
-            expected = {
-                'composite:neutron': {
-                    'use': 'egg:Paste#urlmap',
-                    '/': 'neutronversions',
-                    '/v2.0': 'neutronapi_v2_0'
-                },
-                'filter:keystonecontext': {
-                    'paste.filter_factory': 'neutron.auth:'
-                                            'NeutronKeystoneContext.factory'
-                },
-                'filter:authtoken': {
-                    'paste.filter_factory': 'keystoneclient.middleware.'
-                                            'auth_token:filter_factory'
-                },
-                'filter:extensions': {
-                    'paste.filter_factory': 'neutron.api.extensions:'
-                                            'plugin_aware_extension_middleware_'
-                                            'factory'
-                },
-                'app:neutronversions': {
-                    'paste.app_factory': 'neutron.api.versions:Versions.factory'
-                },
-                'app:neutronapiapp_v2_0': {
-                    'paste.app_factory': 'neutron.api.v2.router:APIRouter.'
-                                         'factory'
-                }
-            }
-            if self._get_openstack_release() == self.precise_havana:
-                expected_additional = {
-                    'composite:neutronapi_v2_0': {
-                        'use': 'call:neutron.auth:pipeline_factory',
-                        'noauth': 'extensions neutronapiapp_v2_0',
-                        'keystone': 'authtoken keystonecontext extensions '
-                                    'neutronapiapp_v2_0'
-                    }
-                }
-            else:
-                expected_additional = {
-                    'composite:neutronapi_v2_0': {
-                        'use': 'call:neutron.auth:pipeline_factory',
-                        'noauth': 'request_id catch_errors extensions '
-                                  'neutronapiapp_v2_0',
-                        'keystone': 'request_id catch_errors authtoken '
-                                    'keystonecontext extensions '
-                                    'neutronapiapp_v2_0'
-                    }
-                }
-            expected = dict(expected.items() + expected_additional.items())
-        else:
-            conf = '/etc/quantum/api-paste.ini'
-            expected = {
-                'composite:quantum': {
-                    'use': 'egg:Paste#urlmap',
-                    '/': 'quantumversions',
-                    '/v2.0': 'quantumapi_v2_0'
-                },
-                'composite:quantumapi_v2_0': {
-                    'use': 'call:quantum.auth:pipeline_factory',
-                    'noauth': 'extensions quantumapiapp_v2_0',
-                    'keystone': 'authtoken keystonecontext extensions '
-                                'quantumapiapp_v2_0',
-                },
-                'filter:keystonecontext': {
-                    'paste.filter_factory': 'quantum.auth:'
-                                            'QuantumKeystoneContext.factory'
-                },
-                'filter:authtoken': {
-                    'paste.filter_factory': 'keystoneclient.middleware.'
-                                            'auth_token:filter_factory'
-                },
-                'filter:extensions': {
-                    'paste.filter_factory': 'quantum.api.extensions:'
-                                            'plugin_aware_extension_middleware_'
-                                            'factory'
-                },
-                'app:quantumversions': {
-                    'paste.app_factory': 'quantum.api.versions:Versions.factory'
-                },
-                'app:quantumapiapp_v2_0': {
-                    'paste.app_factory': 'quantum.api.v2.router:APIRouter.'
-                                         'factory'
-                }
-            }
-
-        for section, pairs in expected.iteritems():
-            ret = u.validate_config_data(unit, conf, section, pairs)
-            if ret:
-                message = "api paste config error: {}".format(ret)
                 amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_dhcp_agent_config(self):

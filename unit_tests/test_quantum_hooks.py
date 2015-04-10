@@ -1,4 +1,5 @@
 from mock import MagicMock, patch, call
+import yaml
 import charmhelpers.core.hookenv as hookenv
 hookenv.config = MagicMock()
 import quantum_utils as utils
@@ -23,6 +24,7 @@ TO_PATCH = [
     'filter_installed_packages',
     'get_early_packages',
     'get_packages',
+    'git_install',
     'log',
     'do_openstack_upgrade',
     'openstack_upgrade_available',
@@ -103,9 +105,46 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.log.called)
         _exit.assert_called_with(1)
 
-    def test_config_changed(self):
+    @patch.object(utils, 'git_install_requested')
+    def test_install_hook_git(self, git_requested):
+        git_requested.return_value = True
+        self.valid_plugin.return_value = True
+        _pkgs = ['foo', 'bar']
+        self.filter_installed_packages.return_value = _pkgs
+        repo = 'cloud:trusty-juno'
+        openstack_origin_git = {
+            'repositories': [
+                {'name': 'requirements',
+                 'repository': 'git://git.openstack.org/openstack/requirements',  # noqa
+                 'branch': 'stable/juno'},
+                {'name': 'neutron',
+                 'repository': 'git://git.openstack.org/openstack/neutron',
+                 'branch': 'stable/juno'}
+            ],
+            'directory': '/mnt/openstack-git',
+        }
+        projects_yaml = yaml.dump(openstack_origin_git)
+        self.test_config.set('openstack-origin', repo)
+        self.test_config.set('openstack-origin-git', projects_yaml)
+        self._call_hook('install')
+        self.configure_installation_source.assert_called_with(
+            'cloud:trusty-juno'
+        )
+        self.apt_update.assert_called_with(fatal=True)
+        self.apt_install.assert_has_calls([
+            call(_pkgs, fatal=True),
+            call(_pkgs, fatal=True),
+        ])
+        self.assertTrue(self.get_early_packages.called)
+        self.assertTrue(self.get_packages.called)
+        self.git_install.assert_called_with(projects_yaml)
+        self.assertTrue(self.execd_preinstall.called)
+
+    @patch.object(hooks, 'git_install_requested')
+    def test_config_changed(self, git_requested):
         def mock_relids(rel):
             return ['relid']
+        git_requested.return_value = False
         self.test_config.set('sysctl', '{ kernel.max_pid: "1337"}')
         self.openstack_upgrade_available.return_value = True
         self.valid_plugin.return_value = True
@@ -125,14 +164,18 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_zmq_joined.called)
         self.create_sysctl.assert_called()
 
-    def test_config_changed_upgrade(self):
+    @patch.object(hooks, 'git_install_requested')
+    def test_config_changed_upgrade(self, git_requested):
+        git_requested.return_value = False
         self.openstack_upgrade_available.return_value = True
         self.valid_plugin.return_value = True
         self._call_hook('config-changed')
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.configure_ovs.called)
 
-    def test_config_changed_n1kv(self):
+    @patch.object(hooks, 'git_install_requested')
+    def test_config_changed_n1kv(self, git_requested):
+        git_requested.return_value = False
         self.openstack_upgrade_available.return_value = False
         self.valid_plugin.return_value = True
         self.filter_installed_packages.side_effect = lambda p: p
@@ -144,11 +187,55 @@ class TestQuantumHooks(CharmTestCase):
         self.apt_purge.assert_called_with('neutron-l3-agent')
 
     @patch('sys.exit')
-    def test_config_changed_invalid_plugin(self, _exit):
+    @patch.object(hooks, 'git_install_requested')
+    def test_config_changed_invalid_plugin(self, git_requested, _exit):
+        git_requested.return_value = False
         self.valid_plugin.return_value = False
         self._call_hook('config-changed')
         self.assertTrue(self.log.called)
         _exit.assert_called_with(1)
+
+    @patch.object(hooks, 'git_install_requested')
+    @patch.object(hooks, 'config_value_changed')
+    def test_config_changed_git(self, config_val_changed, git_requested):
+        def mock_relids(rel):
+            return ['relid']
+        git_requested.return_value = True
+        self.test_config.set('sysctl', '{ kernel.max_pid: "1337"}')
+        self.openstack_upgrade_available.return_value = True
+        self.valid_plugin.return_value = True
+        self.relation_ids.side_effect = mock_relids
+        _db_joined = self.patch('db_joined')
+        _pgsql_db_joined = self.patch('pgsql_db_joined')
+        _amqp_joined = self.patch('amqp_joined')
+        _amqp_nova_joined = self.patch('amqp_nova_joined')
+        _zmq_joined = self.patch('zeromq_configuration_relation_joined')
+        repo = 'cloud:trusty-juno'
+        openstack_origin_git = {
+            'repositories': [
+                {'name': 'requirements',
+                 'repository':
+                 'git://git.openstack.org/openstack/requirements',
+                 'branch': 'stable/juno'},
+                {'name': 'neutron',
+                 'repository': 'git://git.openstack.org/openstack/neutron',
+                 'branch': 'stable/juno'}
+            ],
+            'directory': '/mnt/openstack-git',
+        }
+        projects_yaml = yaml.dump(openstack_origin_git)
+        self.test_config.set('openstack-origin', repo)
+        self.test_config.set('openstack-origin-git', projects_yaml)
+        self._call_hook('config-changed')
+        self.git_install.assert_called_with(projects_yaml)
+        self.assertFalse(self.do_openstack_upgrade.called)
+        self.assertTrue(self.configure_ovs.called)
+        self.assertTrue(_db_joined.called)
+        self.assertTrue(_pgsql_db_joined.called)
+        self.assertTrue(_amqp_joined.called)
+        self.assertTrue(_amqp_nova_joined.called)
+        self.assertTrue(_zmq_joined.called)
+        self.create_sysctl.assert_called()
 
     def test_upgrade_charm(self):
         _install = self.patch('install')
