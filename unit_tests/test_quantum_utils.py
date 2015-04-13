@@ -792,60 +792,11 @@ class TestQuantumAgentReallocation(CharmTestCase):
         join.return_value = 'joined-string'
         quantum_utils.git_post_install(projects_yaml)
         expected = [
-            call('joined-string', '/etc/neutron/api-paste.ini'),
-            call('joined-string', '/etc/neutron/dhcp_agent.ini'),
-            call('joined-string', '/etc/neutron/fwaas_driver.ini'),
-            call('joined-string', '/etc/neutron/l3_agent.ini'),
-            call('joined-string', '/etc/neutron/lbaas_agent.ini'),
-            call('joined-string', '/etc/neutron/metadata_agent.ini'),
-            call('joined-string', '/etc/neutron/metering_agent.ini'),
-            call('joined-string', '/etc/neutron/policy.json'),
-            call('joined-string', '/etc/neutron/rootwrap.conf'),
-            call('joined-string', '/etc/neutron/vpn_agent.ini'),
+            call('joined-string', '/etc/neutron'),
+            call('joined-string', '/etc/neutron/plugins'),
+            call('joined-string', '/etc/neutron/rootwrap.d'),
         ]
-        copyfile.assert_has_calls(expected, any_order=True)
-        expected = [
-            call('joined-string', '/etc/neutron/plugins/bigswitch'),
-            call('joined-string', '/etc/neutron/plugins/brocade'),
-            call('joined-string', '/etc/neutron/plugins/cisco'),
-            call('joined-string', '/etc/neutron/plugins/hyperv'),
-            call('joined-string', '/etc/neutron/plugins/ibm'),
-            call('joined-string', '/etc/neutron/plugins/metaplugin'),
-            call('joined-string', '/etc/neutron/plugins/midonet'),
-            call('joined-string', '/etc/neutron/plugins/ml2'),
-            call('joined-string', '/etc/neutron/plugins/mlnx'),
-            call('joined-string', '/etc/neutron/plugins/nec'),
-            call('joined-string', '/etc/neutron/plugins/nuage'),
-            call('joined-string', '/etc/neutron/plugins/oneconvergence'),
-            call('joined-string', '/etc/neutron/plugins/opencontrail'),
-            call('joined-string', '/etc/neutron/plugins/plumgrid'),
-            call('joined-string', '/etc/neutron/plugins/ryu'),
-            call('joined-string', '/etc/neutron/plugins/vmware'),
-        ]
-        copytree.assert_has_calls(expected, any_order=True)
-        expected = [
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/dhcp.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/ipset-firewall.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/iptables-firewall.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/l3.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/lbaas-haproxy.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/linuxbridge-plugin.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/nec-plugin.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/openvswitch-plugin.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/ryu-plugin.filters'),
-            call('joined-string',
-                 '/etc/neutron/rootwrap.d/vpnaas.filters'),
-        ]
-        copyfile.assert_has_calls(expected, any_order=True)
+        copytree.assert_has_calls(expected)
         expected = [
             call('/usr/local/bin/neutron-rootwrap',
                  '/usr/bin/neutron-rootwrap'),

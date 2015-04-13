@@ -863,178 +863,19 @@ def git_pre_install():
 def git_post_install(projects_yaml):
     """Perform post-install setup."""
     src_etc = os.path.join(git_src_dir(projects_yaml, 'neutron'), 'etc')
-    etc_configs = {
-        'api-paste': {
-            'src': os.path.join(src_etc, 'api-paste.ini'),
-            'dest': '/etc/neutron/api-paste.ini',
-        },
-        'dhcp_agent': {
-            'src': os.path.join(src_etc, 'dhcp_agent.ini'),
-            'dest': '/etc/neutron/dhcp_agent.ini',
-        },
-        'fwaas_driver': {
-            'src': os.path.join(src_etc, 'fwaas_driver.ini'),
-            'dest': '/etc/neutron/fwaas_driver.ini',
-        },
-        'l3_agent': {
-            'src': os.path.join(src_etc, 'l3_agent.ini'),
-            'dest': '/etc/neutron/l3_agent.ini',
-        },
-        'lbaas_agent': {
-            'src': os.path.join(src_etc, 'lbaas_agent.ini'),
-            'dest': '/etc/neutron/lbaas_agent.ini',
-        },
-        'metadata_agent': {
-            'src': os.path.join(src_etc, 'metadata_agent.ini'),
-            'dest': '/etc/neutron/metadata_agent.ini',
-        },
-        'metering_agent': {
-            'src': os.path.join(src_etc, 'metering_agent.ini'),
-            'dest': '/etc/neutron/metering_agent.ini',
-        },
-        'policy': {
-            'src': os.path.join(src_etc, 'policy.json'),
-            'dest': '/etc/neutron/policy.json',
-        },
-        'rootwrap': {
-            'src': os.path.join(src_etc, 'rootwrap.conf'),
-            'dest': '/etc/neutron/rootwrap.conf',
-        },
-        'vpn_agent': {
-            'src': os.path.join(src_etc, 'vpn_agent.ini'),
-            'dest': '/etc/neutron/vpn_agent.ini',
-        },
-    }
+    configs = [
+        {'src': src_etc,
+         'dest': '/etc/neutron'},
+        {'src': os.path.join(src_etc, 'neutron/plugins'),
+         'dest': '/etc/neutron/plugins'},
+        {'src': os.path.join(src_etc, 'neutron/rootwrap.d'),
+         'dest': '/etc/neutron/rootwrap.d'},
+    ]
 
-    for conf, files in etc_configs.iteritems():
-        if os.path.exists(files['src']):
-            shutil.copyfile(files['src'], files['dest'])
-
-    src_plugins = os.path.join(src_etc, 'neutron/plugins')
-    plugins_configs = {
-        'bigswitch': {
-            'src': os.path.join(src_plugins, 'bigswitch'),
-            'dest': '/etc/neutron/plugins/bigswitch',
-        },
-        'brocade': {
-            'src': os.path.join(src_plugins, 'brocade'),
-            'dest': '/etc/neutron/plugins/brocade',
-        },
-        'cisco': {
-            'src': os.path.join(src_plugins, 'cisco'),
-            'dest': '/etc/neutron/plugins/cisco',
-        },
-        'hyperv': {
-            'src': os.path.join(src_plugins, 'hyperv'),
-            'dest': '/etc/neutron/plugins/hyperv',
-        },
-        'ibm': {
-            'src': os.path.join(src_plugins, 'ibm'),
-            'dest': '/etc/neutron/plugins/ibm',
-        },
-        'metaplugin': {
-            'src': os.path.join(src_plugins, 'metaplugin'),
-            'dest': '/etc/neutron/plugins/metaplugin',
-        },
-        'midonet': {
-            'src': os.path.join(src_plugins, 'midonet'),
-            'dest': '/etc/neutron/plugins/midonet',
-        },
-        'ml2': {
-            'src': os.path.join(src_plugins, 'ml2'),
-            'dest': '/etc/neutron/plugins/ml2',
-        },
-        'mlnx': {
-            'src': os.path.join(src_plugins, 'mlnx'),
-            'dest': '/etc/neutron/plugins/mlnx',
-        },
-        'nec': {
-            'src': os.path.join(src_plugins, 'nec'),
-            'dest': '/etc/neutron/plugins/nec',
-        },
-        'nuage': {
-            'src': os.path.join(src_plugins, 'nuage'),
-            'dest': '/etc/neutron/plugins/nuage',
-        },
-        'oneconvergence': {
-            'src': os.path.join(src_plugins, 'oneconvergence'),
-            'dest': '/etc/neutron/plugins/oneconvergence',
-        },
-        'opencontrail': {
-            'src': os.path.join(src_plugins, 'opencontrail'),
-            'dest': '/etc/neutron/plugins/opencontrail',
-        },
-        'plumgrid': {
-            'src': os.path.join(src_plugins, 'plumgrid'),
-            'dest': '/etc/neutron/plugins/plumgrid',
-        },
-        'ryu': {
-            'src': os.path.join(src_plugins, 'ryu'),
-            'dest': '/etc/neutron/plugins/ryu',
-        },
-        'vmware': {
-            'src': os.path.join(src_plugins, 'vmware'),
-            'dest': '/etc/neutron/plugins/vmware',
-        },
-    }
-
-    for conf, dirs in plugins_configs.iteritems():
-        if os.path.exists(dirs['src']):
-            if os.path.exists(dirs['dest']):
-                shutil.rmtree(dirs['dest'])
-            shutil.copytree(dirs['src'], dirs['dest'])
-
-    src_rootwrap = os.path.join(src_etc, 'neutron/rootwrap.d')
-    rootwrap_configs = {
-        'debug-filters': {
-            'src': os.path.join(src_rootwrap, 'debug.filters'),
-            'dest': '/etc/neutron/rootwrap.d/debug.filters',
-        },
-        'dhcp-filters': {
-            'src': os.path.join(src_rootwrap, 'dhcp.filters'),
-            'dest': '/etc/neutron/rootwrap.d/dhcp.filters',
-        },
-        'ipset-firewall-filters': {
-            'src': os.path.join(src_rootwrap, 'ipset-firewall.filters'),
-            'dest': '/etc/neutron/rootwrap.d/ipset-firewall.filters',
-        },
-        'iptables-firewall-filters': {
-            'src': os.path.join(src_rootwrap, 'iptables-firewall.filters'),
-            'dest': '/etc/neutron/rootwrap.d/iptables-firewall.filters',
-        },
-        'l3-filters': {
-            'src': os.path.join(src_rootwrap, 'l3.filters'),
-            'dest': '/etc/neutron/rootwrap.d/l3.filters',
-        },
-        'lbaas-haproxy': {
-            'src': os.path.join(src_rootwrap, 'lbaas-haproxy.filters'),
-            'dest': '/etc/neutron/rootwrap.d/lbaas-haproxy.filters',
-        },
-        'linuxbridge-plugin': {
-            'src': os.path.join(src_rootwrap, 'linuxbridge-plugin.filters'),
-            'dest': '/etc/neutron/rootwrap.d/linuxbridge-plugin.filters',
-        },
-        'nec-plugin': {
-            'src': os.path.join(src_rootwrap, 'nec-plugin.filters'),
-            'dest': '/etc/neutron/rootwrap.d/nec-plugin.filters',
-        },
-        'openvswitch-plugin': {
-            'src': os.path.join(src_rootwrap, 'openvswitch-plugin.filters'),
-            'dest': '/etc/neutron/rootwrap.d/openvswitch-plugin.filters',
-        },
-        'ryu-plugin': {
-            'src': os.path.join(src_rootwrap, 'ryu-plugin.filters'),
-            'dest': '/etc/neutron/rootwrap.d/ryu-plugin.filters',
-        },
-        'vpnaas': {
-            'src': os.path.join(src_rootwrap, 'vpnaas.filters'),
-            'dest': '/etc/neutron/rootwrap.d/vpnaas.filters',
-        },
-    }
-
-    for conf, files in rootwrap_configs.iteritems():
-        if os.path.exists(files['src']):
-            shutil.copyfile(files['src'], files['dest'])
+    for c in configs:
+        if os.path.exists(c['dest']):
+            shutil.rmtree(c['dest'])
+        shutil.copytree(c['src'], c['dest'])
 
     symlinks = [
         {'src': '/usr/local/bin/neutron-rootwrap',
