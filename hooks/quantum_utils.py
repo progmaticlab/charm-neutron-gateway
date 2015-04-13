@@ -1046,13 +1046,13 @@ def git_post_install(projects_yaml):
             os.remove(s['link'])
         os.symlink(s['src'], s['link'])
 
-    render('neutron_sudoers',
+    render('git/neutron_sudoers',
            '/etc/sudoers.d/neutron_sudoers', {}, perms=0o440)
-    render('cron.d/neutron-dhcp-agent-netns-cleanup',
+    render('git/cron.d/neutron-dhcp-agent-netns-cleanup',
            '/etc/cron.d/neutron-dhcp-agent-netns-cleanup', {}, perms=0o755)
-    render('cron.d/neutron-l3-agent-netns-cleanup',
+    render('git/cron.d/neutron-l3-agent-netns-cleanup',
            '/etc/cron.d/neutron-l3-agent-netns-cleanup', {}, perms=0o755)
-    render('cron.d/neutron-lbaas-agent-netns-cleanup',
+    render('git/cron.d/neutron-lbaas-agent-netns-cleanup',
            '/etc/cron.d/neutron-lbaas-agent-netns-cleanup', {}, perms=0o755)
 
     service_name = 'quantum-gateway'
@@ -1242,10 +1242,10 @@ def git_post_install(projects_yaml):
     # NOTE(coreycb): Needs systemd support
     templates_dir = 'hooks/charmhelpers/contrib/openstack/templates'
     templates_dir = os.path.join(charm_dir(), templates_dir)
-    render('upstart/neutron-agent.upstart',
+    render('git/upstart/neutron-agent.upstart',
            '/etc/init/neutron-dhcp-agent.conf',
            neutron_dhcp_agent_context, perms=0o644)
-    render('upstart/neutron-agent.upstart',
+    render('git/upstart/neutron-agent.upstart',
            '/etc/init/neutron-l3-agent.conf',
            neutron_l3_agent_context, perms=0o644)
     render('git.upstart',
@@ -1304,10 +1304,10 @@ def git_post_install(projects_yaml):
            '/etc/init/neutron-plugin-sriov-agent.conf',
            neutron_plugin_sriov_context, perms=0o644,
            templates_dir=templates_dir)
-    render('upstart/neutron-server.upstart',
+    render('git/upstart/neutron-server.upstart',
            '/etc/init/neutron-server.conf',
            neutron_api_context, perms=0o644)
-    render('upstart/neutron-agent.upstart',
+    render('git/upstart/neutron-agent.upstart',
            '/etc/init/neutron-vpn-agent.conf',
            neutron_vpn_agent_context, perms=0o644)
 
