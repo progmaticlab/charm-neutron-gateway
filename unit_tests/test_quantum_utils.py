@@ -1074,24 +1074,3 @@ class TestQuantumAgentReallocation(CharmTestCase):
                  neutron_vpn_agent_context, perms=0o644),
         ]
         self.assertEquals(render.call_args_list, expected)
-        expected = [
-            call('neutron-dhcp-agent'),
-            call('neutron-l3-agent'),
-            call('neutron-lbaas-agent'),
-            call('neutron-metadata-agent'),
-            call('neutron-metering-agent'),
-            call('neutron-ovs-cleanup'),
-            call('neutron-plugin-bigswitch'),
-            call('neutron-plugin-ibm-agent'),
-            call('neutron-plugin-linuxbridge-agent'),
-            call('neutron-plugin-mlnx-agent'),
-            call('neutron-plugin-nec-agent'),
-            call('neutron-plugin-oneconvergence-agent'),
-            call('neutron-plugin-openflow-agent'),
-            call('neutron-plugin-openvswitch-agent'),
-            call('neutron-plugin-ryu-agent'),
-            call('neutron-plugin-sriov-agent'),
-            call('neutron-server'),
-            call('neutron-vpn-agent'),
-        ]
-        self.assertEquals(self.service_restart.call_args_list, expected)

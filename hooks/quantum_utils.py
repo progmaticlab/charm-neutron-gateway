@@ -1151,22 +1151,3 @@ def git_post_install(projects_yaml):
     render('git/upstart/neutron-agent.upstart',
            '/etc/init/neutron-vpn-agent.conf',
            neutron_vpn_agent_context, perms=0o644)
-
-    service_restart('neutron-dhcp-agent')
-    service_restart('neutron-l3-agent')
-    service_restart('neutron-lbaas-agent')
-    service_restart('neutron-metadata-agent')
-    service_restart('neutron-metering-agent')
-    service_restart('neutron-ovs-cleanup')
-    service_restart('neutron-plugin-bigswitch')
-    service_restart('neutron-plugin-ibm-agent')
-    service_restart('neutron-plugin-linuxbridge-agent')
-    service_restart('neutron-plugin-mlnx-agent')
-    service_restart('neutron-plugin-nec-agent')
-    service_restart('neutron-plugin-oneconvergence-agent')
-    service_restart('neutron-plugin-openflow-agent')
-    service_restart('neutron-plugin-openvswitch-agent')
-    service_restart('neutron-plugin-ryu-agent')
-    service_restart('neutron-plugin-sriov-agent')
-    service_restart('neutron-server')
-    service_restart('neutron-vpn-agent')
