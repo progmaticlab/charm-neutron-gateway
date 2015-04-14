@@ -1,10 +1,21 @@
-from mock import patch
+from mock import patch, MagicMock
 
 with patch('charmhelpers.core.hookenv.config') as config:
     config.return_value = 'neutron'
     import quantum_utils as utils  # noqa
 
+# Need to do some early patching to get the module loaded.
+_register_configs = utils.register_configs
+_restart_map = utils.restart_map
+
+utils.register_configs = MagicMock()
+utils.restart_map = MagicMock()
+
 import git_reinstall
+
+# Unpatch it now that its loaded.
+utils.register_configs = _register_configs
+utils.restart_map = _restart_map
 
 from test_utils import (
     CharmTestCase
@@ -70,7 +81,7 @@ class TestNeutronAPIActions(CharmTestCase):
         git_install.side_effect = e
         traceback = (
             "Traceback (most recent call last):\n"
-            "  File \"actions/git_reinstall.py\", line 33, in git_reinstall\n"
+            "  File \"actions/git_reinstall.py\", line 37, in git_reinstall\n"
             "    git_install(config(\'openstack-origin-git\'))\n"
             "  File \"/usr/lib/python2.7/dist-packages/mock.py\", line 964, in __call__\n"  # noqa
             "    return _mock_self._mock_call(*args, **kwargs)\n"
