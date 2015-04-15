@@ -147,8 +147,8 @@ class TestQuantumGatewayContext(CharmTestCase):
             'l2_population': True,
             'overlay_network_type': 'gre',
             'bridge_mappings': 'physnet1:br-data',
-            'network_providers': 'physnet1 physnet2',
-            'vlan_ranges': 'physnet1:1000:2000 physnet2:2001:3000',
+            'network_providers': 'physnet1,physnet2',
+            'vlan_ranges': 'physnet1:1000:2000,physnet2:2001:3000',
             'network_device_mtu': 9000,
             'veth_mtu': 9000,
         })
