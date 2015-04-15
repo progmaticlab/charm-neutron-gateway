@@ -125,6 +125,7 @@ class TestQuantumGatewayContext(CharmTestCase):
         self.test_config.set('instance-mtu', 1420)
         self.test_config.set('vlan-ranges',
                              'physnet1:1000:2000 physnet2:2001:3000')
+        self.test_config.set('flat-network-providers', 'physnet3 physnet4')
         # Provided by neutron-api relation
         _rids.return_value = ['neutron-plugin-api:0']
         _runits.return_value = ['neutron-api/0']
@@ -147,7 +148,7 @@ class TestQuantumGatewayContext(CharmTestCase):
             'l2_population': True,
             'overlay_network_type': 'gre',
             'bridge_mappings': 'physnet1:br-data',
-            'network_providers': 'physnet1,physnet2',
+            'network_providers': 'physnet3,physnet4',
             'vlan_ranges': 'physnet1:1000:2000,physnet2:2001:3000',
             'network_device_mtu': 9000,
             'veth_mtu': 9000,

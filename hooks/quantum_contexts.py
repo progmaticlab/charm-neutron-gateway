@@ -23,9 +23,6 @@ from charmhelpers.contrib.hahelpers.cluster import(
 from charmhelpers.contrib.network.ip import (
     get_address_in_network,
 )
-from charmhelpers.contrib.openstack.neutron import (
-    parse_vlan_range_mappings,
-)
 
 DB_USER = "quantum"
 QUANTUM_DB = "quantum"
@@ -146,11 +143,12 @@ class QuantumGatewayContext(OSContextGenerator):
         if mappings:
             ctxt['bridge_mappings'] = ','.join(mappings.split())
 
+        flat_providers = config('flat-network-providers')
+        if flat_providers:
+            ctxt['network_providers'] = ','.join(flat_providers.split())
+
         vlan_ranges = config('vlan-ranges')
-        vlan_range_mappings = parse_vlan_range_mappings(vlan_ranges)
-        if vlan_range_mappings:
-            providers = sorted(vlan_range_mappings.keys())
-            ctxt['network_providers'] = ','.join(providers)
+        if vlan_ranges:
             ctxt['vlan_ranges'] = ','.join(vlan_ranges.split())
 
         net_dev_mtu = api_settings['network_device_mtu']
