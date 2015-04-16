@@ -30,6 +30,7 @@ from charmhelpers.contrib.hahelpers.apache import(
     install_ca_cert
 )
 from charmhelpers.contrib.openstack.utils import (
+    config_value_changed,
     configure_installation_source,
     openstack_upgrade_available,
     os_requires_version,
@@ -50,6 +51,8 @@ from quantum_utils import (
     get_early_packages,
     get_common_package,
     get_topics,
+    git_install,
+    git_install_requested,
     valid_plugin,
     configure_ovs,
     stop_services,
@@ -82,6 +85,7 @@ def install():
                     fatal=True)
         apt_install(filter_installed_packages(get_packages()),
                     fatal=True)
+        git_install(config('openstack-origin-git'))
     else:
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)
@@ -94,8 +98,15 @@ def install():
 @restart_on_change(restart_map())
 def config_changed():
     global CONFIGS
-    if openstack_upgrade_available(get_common_package()):
-        CONFIGS = do_openstack_upgrade()
+    if git_install_requested():
+        if config_value_changed('openstack-origin-git'):
+            git_install(config('openstack-origin-git'))
+            CONFIGS.write_all()
+    else:
+        if openstack_upgrade_available(get_common_package()):
+            do_openstack_upgrade()
+            CONFIGS.write_all()
+
     update_nrpe_config()
 
     sysctl_dict = config('sysctl')
@@ -120,10 +131,11 @@ def config_changed():
         log('Please provide a valid plugin config', level=ERROR)
         sys.exit(1)
     if config('plugin') == 'n1kv':
-        if config('enable-l3-agent'):
-            apt_install(filter_installed_packages('neutron-l3-agent'))
-        else:
-            apt_purge('neutron-l3-agent')
+        if not git_install_requested():
+            if config('enable-l3-agent'):
+                apt_install(filter_installed_packages('neutron-l3-agent'))
+            else:
+                apt_purge('neutron-l3-agent')
 
     # Setup legacy ha configurations
     update_legacy_ha_files()

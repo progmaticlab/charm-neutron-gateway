@@ -1,7 +1,9 @@
 #!/usr/bin/python
 
 import amulet
+import os
 import time
+import yaml
 try:
     from quantumclient.v2_0 import client as neutronclient
 except ImportError:
@@ -18,16 +20,18 @@ from charmhelpers.contrib.openstack.amulet.utils import (
 )
 
 # Use DEBUG to turn on debug logging
-u = OpenStackAmuletUtils(ERROR)
+u = OpenStackAmuletUtils(DEBUG)
 
 
 class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
     """Amulet tests on a basic quantum-gateway deployment."""
 
-    def __init__(self, series, openstack=None, source=None, stable=False):
+    def __init__(self, series, openstack=None, source=None, git=False,
+                 stable=False):
         """Deploy the entire test environment."""
         super(QuantumGatewayBasicDeployment, self).__init__(series, openstack,
                                                             source, stable)
+        self.git = git
         self._add_services()
         self._add_relations()
         self._configure_services()
@@ -64,11 +68,30 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def _configure_services(self):
         """Configure all of the services."""
+        quantum_gateway_config = {}
+        if self.git:
+            branch = 'stable/' + self._get_openstack_release_string()
+            amulet_http_proxy = os.environ.get('AMULET_HTTP_PROXY')
+            openstack_origin_git = {
+                'repositories': [
+                    {'name': 'requirements',
+                     'repository': 'git://git.openstack.org/openstack/requirements',
+                     'branch': branch},
+                    {'name': 'neutron',
+                     'repository': 'git://git.openstack.org/openstack/neutron',
+                     'branch': branch},
+                ],
+                'directory': '/mnt/openstack-git',
+                'http_proxy': amulet_http_proxy,
+                'https_proxy': amulet_http_proxy,
+            }
+            quantum_gateway_config['openstack-origin-git'] = yaml.dump(openstack_origin_git)
         keystone_config = {'admin-password': 'openstack',
                            'admin-token': 'ubuntutesting'}
         nova_cc_config = {'network-manager': 'Quantum',
                           'quantum-security-groups': 'yes'}
-        configs = {'keystone': keystone_config,
+        configs = {'quantum-gateway': quantum_gateway_config,
+                   'keystone': keystone_config,
                    'nova-cloud-controller': nova_cc_config}
         super(QuantumGatewayBasicDeployment, self)._configure_services(configs)
 
@@ -269,7 +292,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         self.d.configure('quantum-gateway', {'debug': 'True'})
 
-        time = 20
+        time = 40
         for s in services:
             if not u.service_restarted(self.quantum_gateway_sentry, s, conf,
                                        pgrep_full=True, sleep_time=time):
