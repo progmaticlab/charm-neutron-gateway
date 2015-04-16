@@ -1,0 +1,9 @@
+#!/usr/bin/python
+
+"""Amulet tests on a basic quantum-gateway deployment on utopic-juno."""
+
+from basic_deployment import QuantumGatewayBasicDeployment
+
+if __name__ == '__main__':
+    deployment = QuantumGatewayBasicDeployment(series='utopic')
+    deployment.run_tests()
