@@ -723,19 +723,19 @@ class TestQuantumAgentReallocation(CharmTestCase):
         add_user_to_group.assert_called_with('neutron', 'neutron')
         expected = [
             call('/etc/neutron', owner='neutron',
-                 group='neutron', perms=0700, force=False),
+                 group='neutron', perms=0755, force=False),
             call('/etc/neutron/rootwrap.d', owner='neutron',
-                 group='neutron', perms=0700, force=False),
+                 group='neutron', perms=0755, force=False),
             call('/etc/neutron/plugins', owner='neutron',
-                 group='neutron', perms=0700, force=False),
+                 group='neutron', perms=0755, force=False),
             call('/etc/nova', owner='neutron',
-                 group='neutron', perms=0700, force=False),
+                 group='neutron', perms=0755, force=False),
             call('/var/lib/neutron', owner='neutron',
-                 group='neutron', perms=0700, force=False),
+                 group='neutron', perms=0755, force=False),
             call('/var/lib/neutron/lock', owner='neutron',
-                 group='neutron', perms=0700, force=False),
+                 group='neutron', perms=0755, force=False),
             call('/var/log/neutron', owner='neutron',
-                 group='neutron', perms=0700, force=False),
+                 group='neutron', perms=0755, force=False),
         ]
         self.assertEquals(mkdir.call_args_list, expected)
         expected = [
