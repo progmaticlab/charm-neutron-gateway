@@ -133,14 +133,18 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
                                 'status neutron-plugin-openvswitch-agent']
             if self._get_openstack_release() == self.precise_havana:
                 neutron_services.append('status neutron-l3-agent')
-            else:
+            elif (self._get_openstack_release() <= self.trusty_juno and
+                  self._get_openstack_release() != self.precise_havana):
                 neutron_services.append('status neutron-vpn-agent')
+            else:
                 neutron_services.append('status neutron-metering-agent')
                 neutron_services.append('status neutron-ovs-cleanup')
         else:
             neutron_services = ['status quantum-dhcp-agent',
                                 'status quantum-l3-agent',
+
                                 'status quantum-metadata-agent',
+
                                 'status quantum-plugin-openvswitch-agent']
 
         nova_cc_services = ['status nova-api-ec2',
@@ -283,7 +287,8 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
                         'neutron-metadata-agent']
             if self._get_openstack_release() == self.precise_havana:
                 services.append('neutron-l3-agent')
-            else:
+            elif (self._get_openstack_release() <= self.trusty_juno and
+                  self._get_openstack_release() != self.precise_havana):
                 services.append('neutron-vpn-agent')
         else:
             conf = '/etc/quantum/quantum.conf'
