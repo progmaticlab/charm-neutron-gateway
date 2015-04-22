@@ -280,7 +280,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() <= self.trusty_juno:
             services.append('neutron-vpn-agent')
 
-        u.log.debug("Making config change on quantim-gateway...")
+        u.log.debug("Making config change on quantum-gateway...")
         self.d.configure('quantum-gateway', {'debug': 'True'})
 
         time = 60
