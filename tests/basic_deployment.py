@@ -126,26 +126,15 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_services(self):
         """Verify the expected services are running on the corresponding
            service units."""
-        if self._get_openstack_release() >= self.precise_havana:
-            neutron_services = ['status neutron-dhcp-agent',
-                                'status neutron-lbaas-agent',
-                                'status neutron-metadata-agent',
-                                'status neutron-plugin-openvswitch-agent']
-            if self._get_openstack_release() == self.precise_havana:
-                neutron_services.append('status neutron-l3-agent')
-            elif (self._get_openstack_release() <= self.trusty_juno and
-                  self._get_openstack_release() != self.precise_havana):
-                neutron_services.append('status neutron-vpn-agent')
-            else:
-                neutron_services.append('status neutron-metering-agent')
-                neutron_services.append('status neutron-ovs-cleanup')
-        else:
-            neutron_services = ['status quantum-dhcp-agent',
-                                'status quantum-l3-agent',
+        neutron_services = ['status neutron-dhcp-agent',
+                            'status neutron-lbaas-agent',
+                            'status neutron-metadata-agent',
+                            'status neutron-plugin-openvswitch-agent',
+                            'status neutron-metering-agent',
+                            'status neutron-ovs-cleanup']
 
-                                'status quantum-metadata-agent',
-
-                                'status quantum-plugin-openvswitch-agent']
+        if self._get_openstack_release() <= self.trusty_juno:
+            neutron_services.append('status neutron-vpn-agent')
 
         nova_cc_services = ['status nova-api-ec2',
                             'status nova-api-os-compute',
@@ -280,20 +269,16 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
            but it forces the test to run last.  It just makes things
            easier because restarting services requires re-authorization.
            """
-        if self._get_openstack_release() >= self.precise_havana:
-            conf = '/etc/neutron/neutron.conf'
-            services = ['neutron-dhcp-agent', 'neutron-openvswitch-agent',
-                        'neutron-metering-agent', 'neutron-lbaas-agent',
-                        'neutron-metadata-agent']
-            if self._get_openstack_release() == self.precise_havana:
-                services.append('neutron-l3-agent')
-            elif (self._get_openstack_release() <= self.trusty_juno and
-                  self._get_openstack_release() != self.precise_havana):
-                services.append('neutron-vpn-agent')
-        else:
-            conf = '/etc/quantum/quantum.conf'
-            services = ['quantum-dhcp-agent', 'quantum-openvswitch-agent',
-                        'quantum-metadata-agent', 'quantum-l3-agent']
+        conf = '/etc/neutron/neutron.conf'
+        services = ['neutron-dhcp-agent',
+                    'neutron-openvswitch-agent',
+                    'neutron-metering-agent',
+                    'neutron-lbaas-agent',
+                    'neutron-metadata-agent',
+                    'neutron-l3-agent']
+
+        if self._get_openstack_release() <= self.trusty_juno:
+            services.append('neutron-vpn-agent')
 
         self.d.configure('quantum-gateway', {'debug': 'True'})
 
