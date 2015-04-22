@@ -129,9 +129,9 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         neutron_services = ['status neutron-dhcp-agent',
                             'status neutron-lbaas-agent',
                             'status neutron-metadata-agent',
-                            'status neutron-plugin-openvswitch-agent',
                             'status neutron-metering-agent',
-                            'status neutron-ovs-cleanup']
+                            'status neutron-ovs-cleanup',
+                            'status neutron-plugin-openvswitch-agent']
 
         if self._get_openstack_release() <= self.trusty_juno:
             neutron_services.append('status neutron-vpn-agent')
@@ -270,20 +270,21 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
            easier because restarting services requires re-authorization.
            """
         conf = '/etc/neutron/neutron.conf'
+
         services = ['neutron-dhcp-agent',
-                    'neutron-openvswitch-agent',
-                    'neutron-metering-agent',
                     'neutron-lbaas-agent',
                     'neutron-metadata-agent',
-                    'neutron-l3-agent']
+                    'neutron-metering-agent',
+                    'neutron-openvswitch-agent']
 
         if self._get_openstack_release() <= self.trusty_juno:
             services.append('neutron-vpn-agent')
 
         self.d.configure('quantum-gateway', {'debug': 'True'})
 
-        time = 40
+        time = 60
         for s in services:
+            u.log.debug("Restarting service {}...".format(s))
             if not u.service_restarted(self.quantum_gateway_sentry, s, conf,
                                        pgrep_full=True, sleep_time=time):
                 self.d.configure('quantum-gateway', {'debug': 'False'})
@@ -299,60 +300,30 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         rabbitmq_relation = self.rabbitmq_sentry.relation('amqp',
                                                          'quantum-gateway:amqp')
 
-        if self._get_openstack_release() >= self.precise_havana:
-            conf = '/etc/neutron/neutron.conf'
-            expected = {
-                'DEFAULT': {
-                    'verbose': 'False',
-                    'debug': 'False',
-                    'lock_path': '/var/lock/neutron',
-                    'rabbit_userid': 'neutron',
-                    'rabbit_virtual_host': 'openstack',
-                    'rabbit_password': rabbitmq_relation['password'],
-                    'rabbit_host': rabbitmq_relation['hostname'],
-                    'control_exchange': 'neutron',
-                    'notification_driver': 'neutron.openstack.common.notifier.'
-                                           'list_notifier',
-                    'list_notifier_drivers': 'neutron.openstack.common.'
-                                             'notifier.rabbit_notifier'
-                },
-                'agent': {
-                    'root_helper': 'sudo /usr/bin/neutron-rootwrap '
-                                   '/etc/neutron/rootwrap.conf'
-                }
+        conf = '/etc/neutron/neutron.conf'
+        expected = {
+            'DEFAULT': {
+                'verbose': 'False',
+                'debug': 'False',
+                'lock_path': '/var/lock/neutron',
+                'rabbit_userid': 'neutron',
+                'rabbit_virtual_host': 'openstack',
+                'rabbit_password': rabbitmq_relation['password'],
+                'rabbit_host': rabbitmq_relation['hostname'],
+                'control_exchange': 'neutron',
+                'notification_driver': 'neutron.openstack.common.notifier.'
+                                       'list_notifier',
+                'list_notifier_drivers': 'neutron.openstack.common.'
+                                         'notifier.rabbit_notifier'
+            },
+            'agent': {
+                'root_helper': 'sudo /usr/bin/neutron-rootwrap '
+                               '/etc/neutron/rootwrap.conf'
             }
-        else:
-            conf = '/etc/quantum/quantum.conf'
-            expected = {
-                'DEFAULT': {
-                    'verbose': 'False',
-                    'debug': 'False',
-                    'lock_path': '/var/lock/quantum',
-                    'rabbit_userid': 'neutron',
-                    'rabbit_virtual_host': 'openstack',
-                    'rabbit_password': rabbitmq_relation['password'],
-                    'rabbit_host': rabbitmq_relation['hostname'],
-                    'control_exchange': 'quantum',
-                    'notification_driver': 'quantum.openstack.common.notifier.'
-                                           'list_notifier',
-                    'list_notifier_drivers': 'quantum.openstack.common.'
-                                             'notifier.rabbit_notifier'
-                },
-                'AGENT': {
-                    'root_helper': 'sudo /usr/bin/quantum-rootwrap '
-                                   '/etc/quantum/rootwrap.conf'
-                }
-            }
+        }
 
-        if self._get_openstack_release() >= self.precise_icehouse:
-            expected['DEFAULT']['core_plugin'] = \
-                                          'neutron.plugins.ml2.plugin.Ml2Plugin'
-        elif self._get_openstack_release() >= self.precise_havana:
-            expected['DEFAULT']['core_plugin'] = \
-             'neutron.plugins.openvswitch.ovs_neutron_plugin.OVSNeutronPluginV2'
-        else:
-            expected['DEFAULT']['core_plugin'] = \
-             'quantum.plugins.openvswitch.ovs_quantum_plugin.OVSQuantumPluginV2'
+        expected['DEFAULT']['core_plugin'] = \
+                                      'neutron.plugins.ml2.plugin.Ml2Plugin'
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -404,27 +375,16 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_dhcp_agent_config(self):
         """Verify the data in the dhcp agent config file."""
         unit = self.quantum_gateway_sentry
-        if self._get_openstack_release() >= self.precise_havana:
-            conf = '/etc/neutron/dhcp_agent.ini'
-            expected = {
-                'state_path': '/var/lib/neutron',
-                'interface_driver': 'neutron.agent.linux.interface.'
-                                    'OVSInterfaceDriver',
-                'dhcp_driver': 'neutron.agent.linux.dhcp.Dnsmasq',
-                'root_helper': 'sudo /usr/bin/neutron-rootwrap '
-                               '/etc/neutron/rootwrap.conf',
-                'ovs_use_veth': 'True'
-            }
-        else:
-            conf = '/etc/quantum/dhcp_agent.ini'
-            expected = {
-                'state_path': '/var/lib/quantum',
-                'interface_driver': 'quantum.agent.linux.interface.'
-                                    'OVSInterfaceDriver',
-                'dhcp_driver': 'quantum.agent.linux.dhcp.Dnsmasq',
-                'root_helper': 'sudo /usr/bin/quantum-rootwrap '
-                               '/etc/quantum/rootwrap.conf'
-            }
+        conf = '/etc/neutron/dhcp_agent.ini'
+        expected = {
+            'state_path': '/var/lib/neutron',
+            'interface_driver': 'neutron.agent.linux.interface.'
+                                'OVSInterfaceDriver',
+            'dhcp_driver': 'neutron.agent.linux.dhcp.Dnsmasq',
+            'root_helper': 'sudo /usr/bin/neutron-rootwrap '
+                           '/etc/neutron/rootwrap.conf',
+            'ovs_use_veth': 'True'
+        }
 
         ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
         if ret:
@@ -459,34 +419,20 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
-        if self._get_openstack_release() >= self.precise_havana:
-            conf = '/etc/neutron/l3_agent.ini'
-            expected = {
-                'interface_driver': 'neutron.agent.linux.interface.'
-                                    'OVSInterfaceDriver',
-                'auth_url': ep,
-                'auth_region': 'RegionOne',
-                'admin_tenant_name': 'services',
-                'admin_user': 'quantum_s3_ec2_nova',
-                'admin_password': nova_cc_relation['service_password'],
-                'root_helper': 'sudo /usr/bin/neutron-rootwrap '
-                               '/etc/neutron/rootwrap.conf',
-                'ovs_use_veth': 'True',
-                'handle_internal_only_routers': 'True'
-            }
-        else:
-            conf = '/etc/quantum/l3_agent.ini'
-            expected = {
-                'interface_driver': 'quantum.agent.linux.interface.'
-                                    'OVSInterfaceDriver',
-                'auth_url': ep,
-                'auth_region': 'RegionOne',
-                'admin_tenant_name': 'services',
-                'admin_user': 'quantum_s3_ec2_nova',
-                'admin_password': nova_cc_relation['service_password'],
-                'root_helper': 'sudo /usr/bin/quantum-rootwrap '
-                               '/etc/quantum/rootwrap.conf'
-            }
+        conf = '/etc/neutron/l3_agent.ini'
+        expected = {
+            'interface_driver': 'neutron.agent.linux.interface.'
+                                'OVSInterfaceDriver',
+            'auth_url': ep,
+            'auth_region': 'RegionOne',
+            'admin_tenant_name': 'services',
+            'admin_user': 'quantum_s3_ec2_nova',
+            'admin_password': nova_cc_relation['service_password'],
+            'root_helper': 'sudo /usr/bin/neutron-rootwrap '
+                           '/etc/neutron/rootwrap.conf',
+            'ovs_use_veth': 'True',
+            'handle_internal_only_routers': 'True'
+        }
 
         ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
         if ret:
@@ -532,34 +478,20 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
                                       'quantum-network-service',
                                       'quantum-gateway:quantum-network-service')
 
-        if self._get_openstack_release() >= self.precise_havana:
-            conf = '/etc/neutron/metadata_agent.ini'
-            expected = {
-                'auth_url': ep,
-                'auth_region': 'RegionOne',
-                'admin_tenant_name': 'services',
-                'admin_user': 'quantum_s3_ec2_nova',
-                'admin_password': nova_cc_relation['service_password'],
-                'root_helper': 'sudo neutron-rootwrap '
-                                 '/etc/neutron/rootwrap.conf',
-                'state_path': '/var/lib/neutron',
-                'nova_metadata_ip': quantum_gateway_relation['private-address'],
-                'nova_metadata_port': '8775'
-            }
-        else:
-            conf = '/etc/quantum/metadata_agent.ini'
-            expected = {
-                'auth_url': ep,
-                'auth_region': 'RegionOne',
-                'admin_tenant_name': 'services',
-                'admin_user': 'quantum_s3_ec2_nova',
-                'admin_password': nova_cc_relation['service_password'],
-                'root_helper': 'sudo quantum-rootwrap '
-                               '/etc/quantum/rootwrap.conf',
-                'state_path': '/var/lib/quantum',
-                'nova_metadata_ip': quantum_gateway_relation['private-address'],
-                'nova_metadata_port': '8775'
-            }
+        conf = '/etc/neutron/metadata_agent.ini'
+        expected = {
+            'auth_url': ep,
+            'auth_region': 'RegionOne',
+            'admin_tenant_name': 'services',
+            'admin_user': 'quantum_s3_ec2_nova',
+            'admin_password': nova_cc_relation['service_password'],
+            'root_helper': 'sudo neutron-rootwrap '
+                             '/etc/neutron/rootwrap.conf',
+            'state_path': '/var/lib/neutron',
+            'nova_metadata_ip': quantum_gateway_relation['private-address'],
+            'nova_metadata_port': '8775'
+        }
+
         if self._get_openstack_release() >= self.precise_icehouse:
             expected['cache_url'] = 'memory://?default_ttl=5'
 
@@ -608,56 +540,31 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
-        if self._get_openstack_release() >= self.precise_havana:
-            expected = {
-                'logdir': '/var/log/nova',
-                'state_path': '/var/lib/nova',
-                'lock_path': '/var/lock/nova',
-                'root_helper': 'sudo nova-rootwrap /etc/nova/rootwrap.conf',
-                'verbose': 'False',
-                'use_syslog': 'False',
-                'api_paste_config': '/etc/nova/api-paste.ini',
-                'enabled_apis': 'metadata',
-                'multi_host': 'True',
-                'sql_connection': db_uri,
-                'service_neutron_metadata_proxy': 'True',
-                'rabbit_userid': 'neutron',
-                'rabbit_virtual_host': 'openstack',
-                'rabbit_password': rabbitmq_relation['password'],
-                'rabbit_host': rabbitmq_relation['hostname'],
-                'network_api_class': 'nova.network.neutronv2.api.API',
-                'neutron_auth_strategy': 'keystone',
-                'neutron_url': nova_cc_relation['quantum_url'],
-                'neutron_admin_tenant_name': 'services',
-                'neutron_admin_username': 'quantum_s3_ec2_nova',
-                'neutron_admin_password': nova_cc_relation['service_password'],
-                'neutron_admin_auth_url': ep
+        expected = {
+            'logdir': '/var/log/nova',
+            'state_path': '/var/lib/nova',
+            'lock_path': '/var/lock/nova',
+            'root_helper': 'sudo nova-rootwrap /etc/nova/rootwrap.conf',
+            'verbose': 'False',
+            'use_syslog': 'False',
+            'api_paste_config': '/etc/nova/api-paste.ini',
+            'enabled_apis': 'metadata',
+            'multi_host': 'True',
+            'sql_connection': db_uri,
+            'service_neutron_metadata_proxy': 'True',
+            'rabbit_userid': 'neutron',
+            'rabbit_virtual_host': 'openstack',
+            'rabbit_password': rabbitmq_relation['password'],
+            'rabbit_host': rabbitmq_relation['hostname'],
+            'network_api_class': 'nova.network.neutronv2.api.API',
+            'neutron_auth_strategy': 'keystone',
+            'neutron_url': nova_cc_relation['quantum_url'],
+            'neutron_admin_tenant_name': 'services',
+            'neutron_admin_username': 'quantum_s3_ec2_nova',
+            'neutron_admin_password': nova_cc_relation['service_password'],
+            'neutron_admin_auth_url': ep
 
-            }
-        else:
-            expected = {
-                'logdir': '/var/log/nova',
-                'state_path': '/var/lib/nova',
-                'lock_path': '/var/lock/nova',
-                'root_helper': 'sudo nova-rootwrap /etc/nova/rootwrap.conf',
-                'verbose': 'True',
-                'api_paste_config': '/etc/nova/api-paste.ini',
-                'enabled_apis': 'metadata',
-                'multi_host': 'True',
-                'sql_connection':  db_uri,
-                'service_quantum_metadata_proxy': 'True',
-                'rabbit_userid': 'neutron',
-                'rabbit_virtual_host': 'openstack',
-                'rabbit_password': rabbitmq_relation['password'],
-                'rabbit_host': rabbitmq_relation['hostname'],
-                'network_api_class': 'nova.network.quantumv2.api.API',
-                'quantum_auth_strategy': 'keystone',
-                'quantum_url': nova_cc_relation['quantum_url'],
-                'quantum_admin_tenant_name': 'services',
-                'quantum_admin_username': 'quantum_s3_ec2_nova',
-                'quantum_admin_password': nova_cc_relation['service_password'],
-                'quantum_admin_auth_url': ep
-            }
+        }
 
         ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
         if ret:
@@ -673,40 +580,20 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         unit = self.quantum_gateway_sentry
         quantum_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
 
-        if self._get_openstack_release() >= self.precise_havana:
-            conf = '/etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini'
-            expected = {
-                'ovs': {
-                    'local_ip': quantum_gateway_relation['private-address'],
-                    'tenant_network_type': 'gre',
-                    'enable_tunneling': 'True',
-                    'tunnel_id_ranges': '1:1000'
-                }
+        conf = '/etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini'
+        expected = {
+            'ovs': {
+                'local_ip': quantum_gateway_relation['private-address'],
+                'tenant_network_type': 'gre',
+                'enable_tunneling': 'True',
+                'tunnel_id_ranges': '1:1000'
+            },
+            'agent': {
+                'polling_interval': '10',
+                'root_helper': 'sudo /usr/bin/neutron-rootwrap '
+                '/etc/neutron/rootwrap.conf'
             }
-            if self._get_openstack_release() > self.precise_havana:
-                expected_additional = {
-                    'agent': {
-                        'polling_interval': '10',
-                        'root_helper': 'sudo /usr/bin/neutron-rootwrap '
-                        '/etc/neutron/rootwrap.conf'
-                    }
-                }
-                expected = dict(expected.items() + expected_additional.items())
-        else:
-            conf = '/etc/quantum/plugins/openvswitch/ovs_quantum_plugin.ini'
-            expected = {
-                'OVS': {
-                    'local_ip': quantum_gateway_relation['private-address'],
-                    'tenant_network_type': 'gre',
-                    'enable_tunneling': 'True',
-                    'tunnel_id_ranges': '1:1000'
-                    },
-                'AGENT': {
-                    'polling_interval': '10',
-                    'root_helper': 'sudo /usr/bin/quantum-rootwrap '
-                                   '/etc/quantum/rootwrap.conf'
-                    }
-            }
+        }
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
