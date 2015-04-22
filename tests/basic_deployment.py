@@ -284,7 +284,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         time = 60
         for s in services:
-            u.log.debug("Restarting service {}...".format(s))
+            u.log.debug("Making config change on {}...".format(s))
             if not u.service_restarted(self.quantum_gateway_sentry, s, conf,
                                        pgrep_full=True, sleep_time=time):
                 self.d.configure('quantum-gateway', {'debug': 'False'})
