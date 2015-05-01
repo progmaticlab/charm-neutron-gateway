@@ -99,7 +99,7 @@ Instance MTU
 
 When using Open vSwitch plugin with GRE tunnels default MTU of 1500 can cause
 packet fragmentation due to GRE overhead. One solution is to increase the MTU on
-physical hosts and network equipment. When this is not possible or practical thi
+physical hosts and network equipment. When this is not possible or practical the
 charm's instance-mtu option can be used to reduce instance MTU via DHCP.
 
     juju set quantum-gateway instance-mtu=1400
