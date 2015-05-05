@@ -778,6 +778,7 @@ class TestQuantumAgentReallocation(CharmTestCase):
         ]
         self.assertEquals(write_file.call_args_list, expected)
 
+    @patch('os.remove')
     @patch.object(quantum_utils, 'git_src_dir')
     @patch.object(quantum_utils, 'render')
     @patch('os.path.join')
@@ -787,7 +788,7 @@ class TestQuantumAgentReallocation(CharmTestCase):
     @patch('shutil.copyfile')
     @patch('shutil.copytree')
     def test_git_post_install(self, copytree, copyfile, rmtree, symlink,
-                              exists, join, render, git_src_dir):
+                              exists, join, render, git_src_dir, remove):
         projects_yaml = openstack_origin_git
         join.return_value = 'joined-string'
         quantum_utils.git_post_install(projects_yaml)

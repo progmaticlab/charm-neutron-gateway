@@ -223,8 +223,6 @@ def neutron_plugin_api_changed():
     if use_l3ha():
         apt_update()
         apt_install(L3HA_PACKAGES, fatal=True)
-    else:
-        apt_purge(L3HA_PACKAGES, fatal=True)
     CONFIGS.write_all()
 
 
