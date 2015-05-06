@@ -929,8 +929,10 @@ class TestQuantumAgentReallocation(CharmTestCase):
             'start_dir': '/var/lib/neutron',
             'process_name': 'neutron-nvsd-agent',
             'executable_name': '/usr/local/bin/neutron-nvsd-agent',
-            'config_files': ['/etc/neutron/neutron.conf',
-                         '/etc/neutron/plugins/oneconvergence/nvsdplugin.ini'],
+            'config_files': [
+                '/etc/neutron/neutron.conf',
+                '/etc/neutron/plugins/oneconvergence/nvsdplugin.ini'
+            ],
             'log_file': '/var/log/neutron/nvsd-agent.log',
         }
         neutron_plugin_openflow_context = {
