@@ -100,10 +100,10 @@ class TestL3AgentContext(CharmTestCase):
                           'dvr_snat')
 
 
-class TestQuantumGatewayContext(CharmTestCase):
+class TestNeutronGatewayContext(CharmTestCase):
 
     def setUp(self):
-        super(TestQuantumGatewayContext, self).setUp(neutron_contexts,
+        super(TestNeutronGatewayContext, self).setUp(neutron_contexts,
                                                      TO_PATCH)
         self.config.side_effect = self.test_config.get
         self.maxDiff = None
@@ -133,7 +133,7 @@ class TestQuantumGatewayContext(CharmTestCase):
         self.get_os_codename_install_source.return_value = 'folsom'
         _host_ip.return_value = '10.5.0.1'
         _secret.return_value = 'testsecret'
-        ctxt = neutron_contexts.QuantumGatewayContext()()
+        ctxt = neutron_contexts.NeutronGatewayContext()()
         self.assertEquals(ctxt, {
             'shared_secret': 'testsecret',
             'enable_dvr': True,

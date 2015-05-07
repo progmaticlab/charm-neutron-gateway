@@ -118,7 +118,7 @@ class L3AgentContext(OSContextGenerator):
         return ctxt
 
 
-class QuantumGatewayContext(OSContextGenerator):
+class NeutronGatewayContext(OSContextGenerator):
 
     def __call__(self):
         api_settings = NeutronAPIContext()()

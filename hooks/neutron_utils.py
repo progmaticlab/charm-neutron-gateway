@@ -64,7 +64,7 @@ from neutron_contexts import (
     CORE_PLUGIN, OVS, NVP, NSX, N1KV,
     NEUTRON, QUANTUM,
     networking_name,
-    QuantumGatewayContext,
+    NeutronGatewayContext,
     L3AgentContext,
     remap_plugin,
 )
@@ -302,7 +302,7 @@ NOVA_CONFIG_FILES = {
         'hook_contexts': [context.SharedDBContext(ssl_dir=NOVA_CONF_DIR),
                           context.PostgresqlDBContext(),
                           NetworkServiceContext(),
-                          QuantumGatewayContext(),
+                          NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
                           context.NotificationDriverContext()],
@@ -312,12 +312,12 @@ NOVA_CONFIG_FILES = {
 
 QUANTUM_SHARED_CONFIG_FILES = {
     QUANTUM_DHCP_AGENT_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['quantum-dhcp-agent']
     },
     QUANTUM_METADATA_AGENT_CONF: {
         'hook_contexts': [NetworkServiceContext(),
-                          QuantumGatewayContext()],
+                          NeutronGatewayContext()],
         'services': ['quantum-metadata-agent']
     },
 }
@@ -325,16 +325,16 @@ QUANTUM_SHARED_CONFIG_FILES.update(NOVA_CONFIG_FILES)
 
 NEUTRON_SHARED_CONFIG_FILES = {
     NEUTRON_DHCP_AGENT_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-dhcp-agent']
     },
     NEUTRON_DNSMASQ_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-dhcp-agent']
     },
     NEUTRON_METADATA_AGENT_CONF: {
         'hook_contexts': [NetworkServiceContext(),
-                          QuantumGatewayContext()],
+                          NeutronGatewayContext()],
         'services': ['neutron-metadata-agent']
     },
 }
@@ -343,7 +343,7 @@ NEUTRON_SHARED_CONFIG_FILES.update(NOVA_CONFIG_FILES)
 QUANTUM_OVS_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
-                          QuantumGatewayContext(),
+                          NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
                           context.NotificationDriverContext()],
@@ -354,11 +354,11 @@ QUANTUM_OVS_CONFIG_FILES = {
     },
     QUANTUM_L3_AGENT_CONF: {
         'hook_contexts': [NetworkServiceContext(),
-                          QuantumGatewayContext()],
+                          NeutronGatewayContext()],
         'services': ['quantum-l3-agent']
     },
     QUANTUM_OVS_PLUGIN_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['quantum-plugin-openvswitch-agent']
     },
     EXT_PORT_CONF: {
@@ -375,7 +375,7 @@ QUANTUM_OVS_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
 NEUTRON_OVS_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          QuantumGatewayContext(),
+                          NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
                           context.NotificationDriverContext()],
@@ -392,33 +392,33 @@ NEUTRON_OVS_CONFIG_FILES = {
     NEUTRON_L3_AGENT_CONF: {
         'hook_contexts': [NetworkServiceContext(),
                           L3AgentContext(),
-                          QuantumGatewayContext()],
+                          NeutronGatewayContext()],
         'services': ['neutron-l3-agent', 'neutron-vpn-agent']
     },
     NEUTRON_METERING_AGENT_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-metering-agent',
                      'neutron-metering-agent']
     },
     NEUTRON_LBAAS_AGENT_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-lbaas-agent']
     },
     NEUTRON_VPNAAS_AGENT_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-vpn-agent',
                      'neutron-vpn-agent']
     },
     NEUTRON_FWAAS_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-l3-agent', 'neutron-vpn-agent']
     },
     NEUTRON_OVS_PLUGIN_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-openvswitch-agent']
     },
     NEUTRON_ML2_PLUGIN_CONF: {
-        'hook_contexts': [QuantumGatewayContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-openvswitch-agent']
     },
     EXT_PORT_CONF: {
@@ -435,7 +435,7 @@ NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 QUANTUM_NVP_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
-                          QuantumGatewayContext(),
+                          NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['quantum-dhcp-agent', 'quantum-metadata-agent']
     },
@@ -445,7 +445,7 @@ QUANTUM_NVP_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
 NEUTRON_NVP_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          QuantumGatewayContext(),
+                          NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['neutron-dhcp-agent', 'neutron-metadata-agent']
     },
@@ -455,7 +455,7 @@ NEUTRON_NVP_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 NEUTRON_N1KV_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          QuantumGatewayContext(),
+                          NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['neutron-l3-agent',
                      'neutron-dhcp-agent',
@@ -464,7 +464,7 @@ NEUTRON_N1KV_CONFIG_FILES = {
     NEUTRON_L3_AGENT_CONF: {
         'hook_contexts': [NetworkServiceContext(),
                           L3AgentContext(),
-                          QuantumGatewayContext()],
+                          NeutronGatewayContext()],
         'services': ['neutron-l3-agent']
     },
 }
