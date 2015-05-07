@@ -42,6 +42,7 @@ from charmhelpers.contrib.openstack.utils import (
     git_install_requested,
     git_clone_and_install,
     git_src_dir,
+    git_pip_venv_dir,
     get_hostname
 )
 
@@ -60,9 +61,6 @@ from charmhelpers.contrib.openstack.context import (
 )
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
-from charmhelpers.contrib.python.packages import (
-    pip_get_virtualenv_path,
-)
 from quantum_contexts import (
     CORE_PLUGIN, OVS, NVP, NSX, N1KV,
     NEUTRON, QUANTUM,
@@ -901,7 +899,7 @@ def git_post_install(projects_yaml):
 
     service_name = 'quantum-gateway'
     user_name = 'neutron'
-    bin_dir = os.path.join(pip_get_virtualenv_path(), 'bin')
+    bin_dir = os.path.join(git_pip_venv_dir(), 'bin')
     neutron_api_context = {
         'service_description': 'Neutron API server',
         'service_name': service_name,
