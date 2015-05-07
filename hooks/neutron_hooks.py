@@ -41,7 +41,7 @@ from charmhelpers.core.sysctl import create as create_sysctl
 from charmhelpers.contrib.charmsupport import nrpe
 
 import sys
-from quantum_utils import (
+from neutron_utils import (
     L3HA_PACKAGES,
     register_configs,
     restart_map,

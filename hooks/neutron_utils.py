@@ -60,7 +60,7 @@ from charmhelpers.contrib.openstack.context import (
 )
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
-from quantum_contexts import (
+from neutron_contexts import (
     CORE_PLUGIN, OVS, NVP, NSX, N1KV,
     NEUTRON, QUANTUM,
     networking_name,

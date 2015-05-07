@@ -3,7 +3,7 @@ from mock import (
     MagicMock,
     patch
 )
-import quantum_contexts
+import neutron_contexts
 import sys
 from contextlib import contextmanager
 
@@ -50,60 +50,60 @@ class DummyNeutronAPIContext():
 class TestL3AgentContext(CharmTestCase):
 
     def setUp(self):
-        super(TestL3AgentContext, self).setUp(quantum_contexts,
+        super(TestL3AgentContext, self).setUp(neutron_contexts,
                                               TO_PATCH)
         self.config.side_effect = self.test_config.get
 
-    @patch('quantum_contexts.NeutronAPIContext')
+    @patch('neutron_contexts.NeutronAPIContext')
     def test_no_ext_netid(self,  _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
             DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'none')
         self.test_config.set('external-network-id', '')
         self.eligible_leader.return_value = False
-        self.assertEquals(quantum_contexts.L3AgentContext()(),
+        self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',
                            'handle_internal_only_router': False,
                            'plugin': 'ovs'})
 
-    @patch('quantum_contexts.NeutronAPIContext')
+    @patch('neutron_contexts.NeutronAPIContext')
     def test_hior_leader(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
             DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'leader')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
-        self.assertEquals(quantum_contexts.L3AgentContext()(),
+        self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',
                            'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
-    @patch('quantum_contexts.NeutronAPIContext')
+    @patch('neutron_contexts.NeutronAPIContext')
     def test_hior_all(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
             DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'all')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
-        self.assertEquals(quantum_contexts.L3AgentContext()(),
+        self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',
                            'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
 
-    @patch('quantum_contexts.NeutronAPIContext')
+    @patch('neutron_contexts.NeutronAPIContext')
     def test_dvr(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
             DummyNeutronAPIContext(return_value={'enable_dvr': True})
-        self.assertEquals(quantum_contexts.L3AgentContext()()['agent_mode'],
+        self.assertEquals(neutron_contexts.L3AgentContext()()['agent_mode'],
                           'dvr_snat')
 
 
 class TestQuantumGatewayContext(CharmTestCase):
 
     def setUp(self):
-        super(TestQuantumGatewayContext, self).setUp(quantum_contexts,
+        super(TestQuantumGatewayContext, self).setUp(neutron_contexts,
                                                      TO_PATCH)
         self.config.side_effect = self.test_config.get
         self.maxDiff = None
@@ -111,8 +111,8 @@ class TestQuantumGatewayContext(CharmTestCase):
     @patch('charmhelpers.contrib.openstack.context.relation_get')
     @patch('charmhelpers.contrib.openstack.context.related_units')
     @patch('charmhelpers.contrib.openstack.context.relation_ids')
-    @patch.object(quantum_contexts, 'get_shared_secret')
-    @patch.object(quantum_contexts, 'get_host_ip')
+    @patch.object(neutron_contexts, 'get_shared_secret')
+    @patch.object(neutron_contexts, 'get_host_ip')
     def test_all(self, _host_ip, _secret, _rids, _runits, _rget):
         rdata = {'l2-population': 'True',
                  'enable-dvr': 'True',
@@ -133,7 +133,7 @@ class TestQuantumGatewayContext(CharmTestCase):
         self.get_os_codename_install_source.return_value = 'folsom'
         _host_ip.return_value = '10.5.0.1'
         _secret.return_value = 'testsecret'
-        ctxt = quantum_contexts.QuantumGatewayContext()()
+        ctxt = neutron_contexts.QuantumGatewayContext()()
         self.assertEquals(ctxt, {
             'shared_secret': 'testsecret',
             'enable_dvr': True,
@@ -158,7 +158,7 @@ class TestQuantumGatewayContext(CharmTestCase):
 class TestSharedSecret(CharmTestCase):
 
     def setUp(self):
-        super(TestSharedSecret, self).setUp(quantum_contexts,
+        super(TestSharedSecret, self).setUp(neutron_contexts,
                                             TO_PATCH)
         self.config.side_effect = self.test_config.get
 
@@ -168,10 +168,10 @@ class TestSharedSecret(CharmTestCase):
         _path.exists.return_value = False
         _uuid4.return_value = 'secret_thing'
         with patch_open() as (_open, _file):
-            self.assertEquals(quantum_contexts.get_shared_secret(),
+            self.assertEquals(neutron_contexts.get_shared_secret(),
                               'secret_thing')
             _open.assert_called_with(
-                quantum_contexts.SHARED_SECRET.format('quantum'), 'w')
+                neutron_contexts.SHARED_SECRET.format('quantum'), 'w')
             _file.write.assert_called_with('secret_thing')
 
     @patch('os.path')
@@ -179,16 +179,16 @@ class TestSharedSecret(CharmTestCase):
         _path.exists.return_value = True
         with patch_open() as (_open, _file):
             _file.read.return_value = 'secret_thing\n'
-            self.assertEquals(quantum_contexts.get_shared_secret(),
+            self.assertEquals(neutron_contexts.get_shared_secret(),
                               'secret_thing')
             _open.assert_called_with(
-                quantum_contexts.SHARED_SECRET.format('quantum'), 'r')
+                neutron_contexts.SHARED_SECRET.format('quantum'), 'r')
 
 
 class TestHostIP(CharmTestCase):
 
     def setUp(self):
-        super(TestHostIP, self).setUp(quantum_contexts,
+        super(TestHostIP, self).setUp(neutron_contexts,
                                       TO_PATCH)
         self.config.side_effect = self.test_config.get
         # Save and inject
@@ -206,12 +206,12 @@ class TestHostIP(CharmTestCase):
             del sys.modules[mod]
 
     def test_get_host_ip_already_ip(self):
-        self.assertEquals(quantum_contexts.get_host_ip('10.5.0.1'),
+        self.assertEquals(neutron_contexts.get_host_ip('10.5.0.1'),
                           '10.5.0.1')
 
     def test_get_host_ip_noarg(self):
         self.unit_get.return_value = "10.5.0.1"
-        self.assertEquals(quantum_contexts.get_host_ip(),
+        self.assertEquals(neutron_contexts.get_host_ip(),
                           '10.5.0.1')
 
     @patch('dns.resolver.query')
@@ -219,7 +219,7 @@ class TestHostIP(CharmTestCase):
         class NXDOMAIN(Exception):
             pass
         _query.side_effect = NXDOMAIN()
-        self.assertRaises(NXDOMAIN, quantum_contexts.get_host_ip,
+        self.assertRaises(NXDOMAIN, neutron_contexts.get_host_ip,
                           'missing.example.com')
 
     @patch('dns.resolver.query')
@@ -227,7 +227,7 @@ class TestHostIP(CharmTestCase):
         data = MagicMock()
         data.address = '10.5.0.1'
         _query.return_value = [data]
-        self.assertEquals(quantum_contexts.get_host_ip('myhost.example.com'),
+        self.assertEquals(neutron_contexts.get_host_ip('myhost.example.com'),
                           '10.5.0.1')
         _query.assert_called_with('myhost.example.com', 'A')
 
@@ -236,39 +236,39 @@ class TestMisc(CharmTestCase):
 
     def setUp(self):
         super(TestMisc,
-              self).setUp(quantum_contexts,
+              self).setUp(neutron_contexts,
                           TO_PATCH)
 
     def test_lt_havana(self):
         self.get_os_codename_install_source.return_value = 'folsom'
-        self.assertEquals(quantum_contexts.networking_name(), 'quantum')
+        self.assertEquals(neutron_contexts.networking_name(), 'quantum')
 
     def test_ge_havana(self):
         self.get_os_codename_install_source.return_value = 'havana'
-        self.assertEquals(quantum_contexts.networking_name(), 'neutron')
+        self.assertEquals(neutron_contexts.networking_name(), 'neutron')
 
     def test_remap_plugin(self):
         self.get_os_codename_install_source.return_value = 'havana'
-        self.assertEquals(quantum_contexts.remap_plugin('nvp'), 'nvp')
-        self.assertEquals(quantum_contexts.remap_plugin('nsx'), 'nvp')
+        self.assertEquals(neutron_contexts.remap_plugin('nvp'), 'nvp')
+        self.assertEquals(neutron_contexts.remap_plugin('nsx'), 'nvp')
 
     def test_remap_plugin_icehouse(self):
         self.get_os_codename_install_source.return_value = 'icehouse'
-        self.assertEquals(quantum_contexts.remap_plugin('nvp'), 'nsx')
-        self.assertEquals(quantum_contexts.remap_plugin('nsx'), 'nsx')
+        self.assertEquals(neutron_contexts.remap_plugin('nvp'), 'nsx')
+        self.assertEquals(neutron_contexts.remap_plugin('nsx'), 'nsx')
 
     def test_remap_plugin_noop(self):
         self.get_os_codename_install_source.return_value = 'icehouse'
-        self.assertEquals(quantum_contexts.remap_plugin('ovs'), 'ovs')
+        self.assertEquals(neutron_contexts.remap_plugin('ovs'), 'ovs')
 
     def test_core_plugin(self):
         self.get_os_codename_install_source.return_value = 'havana'
         self.config.return_value = 'ovs'
-        self.assertEquals(quantum_contexts.core_plugin(),
-                          quantum_contexts.NEUTRON_OVS_PLUGIN)
+        self.assertEquals(neutron_contexts.core_plugin(),
+                          neutron_contexts.NEUTRON_OVS_PLUGIN)
 
     def test_core_plugin_ml2(self):
         self.get_os_codename_install_source.return_value = 'icehouse'
         self.config.return_value = 'ovs'
-        self.assertEquals(quantum_contexts.core_plugin(),
-                          quantum_contexts.NEUTRON_ML2_PLUGIN)
+        self.assertEquals(neutron_contexts.core_plugin(),
+                          neutron_contexts.NEUTRON_ML2_PLUGIN)

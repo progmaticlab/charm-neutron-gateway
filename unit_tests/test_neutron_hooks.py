@@ -2,12 +2,12 @@ from mock import MagicMock, patch, call
 import yaml
 import charmhelpers.core.hookenv as hookenv
 hookenv.config = MagicMock()
-import quantum_utils as utils
+import neutron_utils as utils
 _register_configs = utils.register_configs
 _restart_map = utils.restart_map
 utils.register_configs = MagicMock()
 utils.restart_map = MagicMock()
-import quantum_hooks as hooks
+import neutron_hooks as hooks
 utils.register_configs = _register_configs
 utils.restart_map = _restart_map
 
