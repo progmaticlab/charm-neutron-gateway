@@ -899,7 +899,7 @@ def git_post_install(projects_yaml):
 
     service_name = 'quantum-gateway'
     user_name = 'neutron'
-    bin_dir = os.path.join(git_pip_venv_dir(), 'bin')
+    bin_dir = os.path.join(git_pip_venv_dir(projects_yaml), 'bin')
     neutron_api_context = {
         'service_description': 'Neutron API server',
         'service_name': service_name,
