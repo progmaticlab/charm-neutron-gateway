@@ -879,6 +879,9 @@ def git_post_install(projects_yaml):
         shutil.copytree(c['src'], c['dest'])
 
     symlinks = [
+        {'src': os.path.join(git_pip_venv_dir(projects_yaml),
+                             'bin/neutron-rootwrap'),
+         'link': '/usr/local/bin/neutron-rootwrap'},
         {'src': '/usr/local/bin/neutron-rootwrap',
          'link': '/usr/bin/neutron-rootwrap'},
     ]
