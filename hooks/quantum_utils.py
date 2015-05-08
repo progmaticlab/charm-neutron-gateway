@@ -187,6 +187,7 @@ L3HA_PACKAGES = ['keepalived']
 
 BASE_GIT_PACKAGES = [
     'dnsmasq',
+    'libff-dev',
     'libxml2-dev',
     'libxslt1-dev',
     'python-dev',
