@@ -3,4 +3,4 @@
 exclude_lines =
     if __name__ == .__main__.:
 include=
-    hooks/quantum_*
+    hooks/neutron_*

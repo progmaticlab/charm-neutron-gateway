@@ -2,7 +2,7 @@ from mock import patch, MagicMock
 
 with patch('charmhelpers.core.hookenv.config') as config:
     config.return_value = 'neutron'
-    import quantum_utils as utils  # noqa
+    import neutron_utils as utils  # noqa
 
 # Need to do some early patching to get the module loaded.
 _register_configs = utils.register_configs

@@ -26,5 +26,5 @@ test:
 	@juju test -v -p AMULET_HTTP_PROXY,AMULET_OS_VIP --timeout 2700
 
 publish: lint unit_test
-	bzr push lp:charms/quantum-gateway
-	bzr push lp:charms/trusty/quantum-gateway
+	bzr push lp:charms/neutron-gateway
+	bzr push lp:charms/trusty/neutron-gateway

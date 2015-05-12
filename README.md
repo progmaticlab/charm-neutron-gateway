@@ -14,12 +14,8 @@ be suitable for all.
 Neutron supports a rich plugin/extension framework for propriety networking
 solutions and supports (in core) Nicira NVP, NEC, Cisco and others...
 
-The Openstack charms currently only support the fully free OpenvSwitch plugin
-and implements the 'Provider Router with Private Networks' use case.
-
 See the upstream [Neutron documentation](http://docs.openstack.org/trunk/openstack-network/admin/content/use_cases_single_router.html)
 for more details.
-
 
 Usage
 -----
@@ -40,10 +36,10 @@ Neutron is deployed baked into these charms from install onwards:
 
 The Neutron Gateway can then be added to the deploying:
 
-    juju deploy quantum-gateway
-    juju add-relation quantum-gateway mysql
-    juju add-relation quantum-gateway rabbitmq-server
-    juju add-relation quantum-gateway nova-cloud-controller
+    juju deploy neutron-gateway
+    juju add-relation neutron-gateway mysql
+    juju add-relation neutron-gateway rabbitmq-server
+    juju add-relation neutron-gateway nova-cloud-controller
 
 The gateway provides two key services; L3 network routing and DHCP services.
 
@@ -60,13 +56,13 @@ External Port Configuration
 If the port to be used for external traffic is consistent accross all physical
 servers then is can be specified by simply setting ext-port to the nic id:
 
-    quantum-gateway:
+    neutron-gateway:
         ext-port: eth2
 
 However, if it varies between hosts then the mac addresses of the external
 nics for each host can be passed as a space seperated list:
 
-    quantum-gateway:
+    neutron-gateway:
         ext-port: <MAC ext port host 1> <MAC ext port host 2> <MAC ext port host 3>
 
 
@@ -74,25 +70,25 @@ Multiple Floating Pools
 =======================
 
 If multiple floating pools are needed then an L3 agent (which corresponds to
-a quantum-gateway for the sake of this charm) is needed for each one. Each
+a neutron-gateway for the sake of this charm) is needed for each one. Each
 gateway needs to be deployed as a seperate service so that the external
 network id can be set differently for each gateway e.g.
 
-    juju deploy quantum-gateway quantum-gateway-extnet1
-    juju add-relation quantum-gateway-extnet1 mysql
-    juju add-relation quantum-gateway-extnet1 rabbitmq-server
-    juju add-relation quantum-gateway-extnet1 nova-cloud-controller
-    juju deploy quantum-gateway quantum-gateway-extnet2
-    juju add-relation quantum-gateway-extnet2 mysql
-    juju add-relation quantum-gateway-extnet2 rabbitmq-server
-    juju add-relation quantum-gateway-extnet2 nova-cloud-controller
+    juju deploy neutron-gateway neutron-gateway-extnet1
+    juju add-relation neutron-gateway-extnet1 mysql
+    juju add-relation neutron-gateway-extnet1 rabbitmq-server
+    juju add-relation neutron-gateway-extnet1 nova-cloud-controller
+    juju deploy neutron-gateway neutron-gateway-extnet2
+    juju add-relation neutron-gateway-extnet2 mysql
+    juju add-relation neutron-gateway-extnet2 rabbitmq-server
+    juju add-relation neutron-gateway-extnet2 nova-cloud-controller
 
     Create extnet1 and extnet2 via neutron client and take a note of their ids
 
-    juju set quantum-gateway-extnet1 "run-internal-router=leader"
-    juju set quantum-gateway-extnet2 "run-internal-router=none"
-    juju set quantum-gateway-extnet1 "external-network-id=<extnet1 id>"
-    juju set quantum-gateway-extnet2 "external-network-id=<extnet2 id>"
+    juju set neutron-gateway-extnet1 "run-internal-router=leader"
+    juju set neutron-gateway-extnet2 "run-internal-router=none"
+    juju set neutron-gateway-extnet1 "external-network-id=<extnet1 id>"
+    juju set neutron-gateway-extnet2 "external-network-id=<extnet2 id>"
 
 Instance MTU
 ============
@@ -102,7 +98,7 @@ packet fragmentation due to GRE overhead. One solution is to increase the MTU on
 physical hosts and network equipment. When this is not possible or practical the
 charm's instance-mtu option can be used to reduce instance MTU via DHCP.
 
-    juju set quantum-gateway instance-mtu=1400
+    juju set neutron-gateway instance-mtu=1400
 
 OpenStack upstream documentation recomments a MTU value of 1400:
 [Openstack documentation](http://docs.openstack.org/admin-guide-cloud/content/openvswitch_plugin.html)
@@ -202,9 +198,3 @@ The following is a full list of current tip repos (may not be up-to-date):
     - {name: neutron,
        repository: 'git://github.com/openstack/neutron',
        branch: master}
-
-TODO
-----
-
- * Provide more network configuration use cases.
- * Support VLAN in addition to GRE+OpenFlow for L2 separation.

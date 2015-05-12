@@ -14,11 +14,11 @@ from charmhelpers.core.hookenv import (
     config,
 )
 
-from quantum_utils import (
+from neutron_utils import (
     git_install,
 )
 
-from quantum_hooks import (
+from neutron_hooks import (
     config_changed,
 )
 

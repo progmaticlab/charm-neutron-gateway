@@ -1,4 +1,4 @@
-name: quantum-gateway
+name: neutron-gateway
 summary: Virtual Networking for OpenStack - Neutron Gateway
 maintainer: James Page <james.page@ubuntu.com>
 description: |
