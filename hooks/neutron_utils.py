@@ -299,9 +299,7 @@ NOVA_CONF = "/etc/nova/nova.conf"
 
 NOVA_CONFIG_FILES = {
     NOVA_CONF: {
-        'hook_contexts': [context.SharedDBContext(ssl_dir=NOVA_CONF_DIR),
-                          context.PostgresqlDBContext(),
-                          NetworkServiceContext(),
+        'hook_contexts': [NetworkServiceContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),

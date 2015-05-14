@@ -551,7 +551,6 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
             'api_paste_config': '/etc/nova/api-paste.ini',
             'enabled_apis': 'metadata',
             'multi_host': 'True',
-            'sql_connection': db_uri,
             'service_neutron_metadata_proxy': 'True',
             'rabbit_userid': 'neutron',
             'rabbit_virtual_host': 'openstack',
