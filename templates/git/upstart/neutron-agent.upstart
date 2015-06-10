@@ -18,7 +18,7 @@ pre-start script
   fi
 end script
 
-exec start-stop-daemon --start --chuid neutron --exec /usr/local/bin/{{ process_name }} -- \
+exec start-stop-daemon --start --chuid neutron --exec {{ executable_name }} -- \
      {% for config_file in config_files -%}
      --config-file={{ config_file }} \
      {% endfor -%}

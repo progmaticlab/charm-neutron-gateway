@@ -7,7 +7,7 @@ stop on runlevel [!2345]
 pre-start script
   [ ! -x /usr/local/bin/{{ process_name }} ] && exit 0 
   start-stop-daemon --start --chuid neutron \
-    --exec /usr/local/bin/{{ process_name }} -- \
+    --exec {{ executable_name }} -- \
     --log-file {{ log_file }} \
     --config-file {{ config_file }} --verbose
 end script
