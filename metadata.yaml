@@ -13,7 +13,7 @@ description: |
   .
   This charm provides central Neutron networking services as part
   of a Neutron based Openstack deployment
-categories:
+tags:
     - openstack
 provides:
   nrpe-external-master:

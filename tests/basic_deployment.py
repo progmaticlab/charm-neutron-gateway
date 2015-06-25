@@ -4,10 +4,8 @@ import amulet
 import os
 import time
 import yaml
-try:
-    from quantumclient.v2_0 import client as neutronclient
-except ImportError:
-    from neutronclient.v2_0 import client as neutronclient
+
+from neutronclient.v2_0 import client as neutronclient
 
 from charmhelpers.contrib.openstack.amulet.deployment import (
     OpenStackAmuletDeployment
@@ -23,13 +21,13 @@ from charmhelpers.contrib.openstack.amulet.utils import (
 u = OpenStackAmuletUtils(DEBUG)
 
 
-class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
-    """Amulet tests on a basic quantum-gateway deployment."""
+class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
+    """Amulet tests on a basic neutron-gateway deployment."""
 
     def __init__(self, series, openstack=None, source=None, git=False,
                  stable=True):
         """Deploy the entire test environment."""
-        super(QuantumGatewayBasicDeployment, self).__init__(series, openstack,
+        super(NeutronGatewayBasicDeployment, self).__init__(series, openstack,
                                                             source, stable)
         self.git = git
         self._add_services()
@@ -41,34 +39,34 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
     def _add_services(self):
         """Add services
 
-           Add the services that we're testing, where quantum-gateway is local,
+           Add the services that we're testing, where neutron-gateway is local,
            and the rest of the service are from lp branches that are
            compatible with the local charm (e.g. stable or next).
            """
-        this_service = {'name': 'quantum-gateway'}
+        this_service = {'name': 'neutron-gateway'}
         other_services = [{'name': 'mysql'},
                           {'name': 'rabbitmq-server'}, {'name': 'keystone'},
                           {'name': 'nova-cloud-controller'}]
-        super(QuantumGatewayBasicDeployment, self)._add_services(this_service,
+        super(NeutronGatewayBasicDeployment, self)._add_services(this_service,
                                                                  other_services)
 
     def _add_relations(self):
         """Add all of the relations for the services."""
         relations = {
           'keystone:shared-db': 'mysql:shared-db',
-          'quantum-gateway:shared-db': 'mysql:shared-db',
-          'quantum-gateway:amqp': 'rabbitmq-server:amqp',
+          'neutron-gateway:shared-db': 'mysql:shared-db',
+          'neutron-gateway:amqp': 'rabbitmq-server:amqp',
           'nova-cloud-controller:quantum-network-service': \
-                                      'quantum-gateway:quantum-network-service',
+                                      'neutron-gateway:quantum-network-service',
           'nova-cloud-controller:shared-db': 'mysql:shared-db',
           'nova-cloud-controller:identity-service': 'keystone:identity-service',
           'nova-cloud-controller:amqp': 'rabbitmq-server:amqp'
         }
-        super(QuantumGatewayBasicDeployment, self)._add_relations(relations)
+        super(NeutronGatewayBasicDeployment, self)._add_relations(relations)
 
     def _configure_services(self):
         """Configure all of the services."""
-        quantum_gateway_config = {}
+        neutron_gateway_config = {}
         if self.git:
             branch = 'stable/' + self._get_openstack_release_string()
             amulet_http_proxy = os.environ.get('AMULET_HTTP_PROXY')
@@ -85,15 +83,15 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'http_proxy': amulet_http_proxy,
                 'https_proxy': amulet_http_proxy,
             }
-            quantum_gateway_config['openstack-origin-git'] = yaml.dump(openstack_origin_git)
+            neutron_gateway_config['openstack-origin-git'] = yaml.dump(openstack_origin_git)
         keystone_config = {'admin-password': 'openstack',
                            'admin-token': 'ubuntutesting'}
         nova_cc_config = {'network-manager': 'Quantum',
                           'quantum-security-groups': 'yes'}
-        configs = {'quantum-gateway': quantum_gateway_config,
+        configs = {'neutron-gateway': neutron_gateway_config,
                    'keystone': keystone_config,
                    'nova-cloud-controller': nova_cc_config}
-        super(QuantumGatewayBasicDeployment, self)._configure_services(configs)
+        super(NeutronGatewayBasicDeployment, self)._configure_services(configs)
 
     def _initialize_tests(self):
         """Perform final initialization before tests get run."""
@@ -102,7 +100,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         self.keystone_sentry = self.d.sentry.unit['keystone/0']
         self.rabbitmq_sentry = self.d.sentry.unit['rabbitmq-server/0']
         self.nova_cc_sentry = self.d.sentry.unit['nova-cloud-controller/0']
-        self.quantum_gateway_sentry = self.d.sentry.unit['quantum-gateway/0']
+        self.neutron_gateway_sentry = self.d.sentry.unit['neutron-gateway/0']
 
         # Let things settle a bit before moving forward
         time.sleep(30)
@@ -148,16 +146,16 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
             self.mysql_sentry: ['status mysql'],
             self.keystone_sentry: ['status keystone'],
             self.nova_cc_sentry: nova_cc_services,
-            self.quantum_gateway_sentry: neutron_services
+            self.neutron_gateway_sentry: neutron_services
         }
 
         ret = u.validate_services(commands)
         if ret:
             amulet.raise_status(amulet.FAIL, msg=ret)
 
-    def test_quantum_gateway_shared_db_relation(self):
-        """Verify the quantum-gateway to mysql shared-db relation data"""
-        unit = self.quantum_gateway_sentry
+    def test_neutron_gateway_shared_db_relation(self):
+        """Verify the neutron-gateway to mysql shared-db relation data"""
+        unit = self.neutron_gateway_sentry
         relation = ['shared-db', 'mysql:shared-db']
         expected = {
             'private-address': u.valid_ip,
@@ -168,13 +166,13 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
-            message = u.relation_error('quantum-gateway shared-db', ret)
+            message = u.relation_error('neutron-gateway shared-db', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_mysql_shared_db_relation(self):
-        """Verify the mysql to quantum-gateway shared-db relation data"""
+        """Verify the mysql to neutron-gateway shared-db relation data"""
         unit = self.mysql_sentry
-        relation = ['shared-db', 'quantum-gateway:shared-db']
+        relation = ['shared-db', 'neutron-gateway:shared-db']
         expected = {
             'private-address': u.valid_ip,
             'password': u.not_null,
@@ -186,9 +184,9 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
             message = u.relation_error('mysql shared-db', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_quantum_gateway_amqp_relation(self):
-        """Verify the quantum-gateway to rabbitmq-server amqp relation data"""
-        unit = self.quantum_gateway_sentry
+    def test_neutron_gateway_amqp_relation(self):
+        """Verify the neutron-gateway to rabbitmq-server amqp relation data"""
+        unit = self.neutron_gateway_sentry
         relation = ['amqp', 'rabbitmq-server:amqp']
         expected = {
             'username': 'neutron',
@@ -198,13 +196,13 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
-            message = u.relation_error('quantum-gateway amqp', ret)
+            message = u.relation_error('neutron-gateway amqp', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_rabbitmq_amqp_relation(self):
-        """Verify the rabbitmq-server to quantum-gateway amqp relation data"""
+        """Verify the rabbitmq-server to neutron-gateway amqp relation data"""
         unit = self.rabbitmq_sentry
-        relation = ['amqp', 'quantum-gateway:amqp']
+        relation = ['amqp', 'neutron-gateway:amqp']
         expected = {
             'private-address': u.valid_ip,
             'password': u.not_null,
@@ -216,10 +214,10 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
             message = u.relation_error('rabbitmq amqp', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_quantum_gateway_network_service_relation(self):
-        """Verify the quantum-gateway to nova-cc quantum-network-service
+    def test_neutron_gateway_network_service_relation(self):
+        """Verify the neutron-gateway to nova-cc quantum-network-service
            relation data"""
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         relation = ['quantum-network-service',
                     'nova-cloud-controller:quantum-network-service']
         expected = {
@@ -228,15 +226,15 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
-            message = u.relation_error('quantum-gateway network-service', ret)
+            message = u.relation_error('neutron-gateway network-service', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_nova_cc_network_service_relation(self):
-        """Verify the nova-cc to quantum-gateway quantum-network-service
+        """Verify the nova-cc to neutron-gateway quantum-network-service
            relation data"""
         unit = self.nova_cc_sentry
         relation = ['quantum-network-service',
-                    'quantum-gateway:quantum-network-service']
+                    'neutron-gateway:quantum-network-service']
         expected = {
             'service_protocol': 'http',
             'service_tenant': 'services',
@@ -280,26 +278,26 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() <= self.trusty_juno:
             services.append('neutron-vpn-agent')
 
-        u.log.debug("Making config change on quantum-gateway...")
-        self.d.configure('quantum-gateway', {'debug': 'True'})
+        u.log.debug("Making config change on neutron-gateway...")
+        self.d.configure('neutron-gateway', {'debug': 'True'})
 
         time = 60
         for s in services:
             u.log.debug("Checking that service restarted: {}".format(s))
-            if not u.service_restarted(self.quantum_gateway_sentry, s, conf,
+            if not u.service_restarted(self.neutron_gateway_sentry, s, conf,
                                        pgrep_full=True, sleep_time=time):
-                self.d.configure('quantum-gateway', {'debug': 'False'})
+                self.d.configure('neutron-gateway', {'debug': 'False'})
                 msg = "service {} didn't restart after config change".format(s)
                 amulet.raise_status(amulet.FAIL, msg=msg)
             time = 0
 
-        self.d.configure('quantum-gateway', {'debug': 'False'})
+        self.d.configure('neutron-gateway', {'debug': 'False'})
 
     def test_neutron_config(self):
         """Verify the data in the neutron config file."""
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         rabbitmq_relation = self.rabbitmq_sentry.relation('amqp',
-                                                         'quantum-gateway:amqp')
+                                                         'neutron-gateway:amqp')
 
         conf = '/etc/neutron/neutron.conf'
         expected = {
@@ -338,9 +336,9 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() < self.precise_icehouse:
             return
 
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/plugins/ml2/ml2_conf.ini'
-        quantum_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
+        neutron_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
         expected = {
             'ml2': {
                 'type_drivers': 'gre,vxlan,vlan,flat',
@@ -355,7 +353,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
             },
             'ovs': {
                 'enable_tunneling': 'True',
-                'local_ip': quantum_gateway_relation['private-address']
+                'local_ip': neutron_gateway_relation['private-address']
             },
             'agent': {
                 'tunnel_types': 'gre',
@@ -375,7 +373,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def test_dhcp_agent_config(self):
         """Verify the data in the dhcp agent config file."""
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/dhcp_agent.ini'
         expected = {
             'state_path': '/var/lib/neutron',
@@ -398,7 +396,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() < self.precise_havana:
             return
 
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/fwaas_driver.ini'
         expected = {
             'driver': 'neutron.services.firewall.drivers.linux.'
@@ -413,10 +411,10 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def test_l3_agent_config(self):
         """Verify the data in the l3 agent config file."""
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         nova_cc_relation = self.nova_cc_sentry.relation(\
                                       'quantum-network-service',
-                                      'quantum-gateway:quantum-network-service')
+                                      'neutron-gateway:quantum-network-service')
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
@@ -446,7 +444,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() < self.precise_havana:
             return
 
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/lbaas_agent.ini'
         expected = {
             'DEFAULT': {
@@ -471,13 +469,13 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def test_metadata_agent_config(self):
         """Verify the data in the metadata agent config file."""
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
-        quantum_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
+        neutron_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
         nova_cc_relation = self.nova_cc_sentry.relation(\
                                       'quantum-network-service',
-                                      'quantum-gateway:quantum-network-service')
+                                      'neutron-gateway:quantum-network-service')
 
         conf = '/etc/neutron/metadata_agent.ini'
         expected = {
@@ -489,7 +487,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
             'root_helper': 'sudo neutron-rootwrap '
                              '/etc/neutron/rootwrap.conf',
             'state_path': '/var/lib/neutron',
-            'nova_metadata_ip': quantum_gateway_relation['private-address'],
+            'nova_metadata_ip': neutron_gateway_relation['private-address'],
             'nova_metadata_port': '8775'
         }
 
@@ -507,7 +505,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() < self.precise_havana:
             return
 
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/metering_agent.ini'
         expected = {
             'driver': 'neutron.services.metering.drivers.iptables.'
@@ -525,19 +523,19 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def test_nova_config(self):
         """Verify the data in the nova config file."""
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         conf = '/etc/nova/nova.conf'
         mysql_relation = self.mysql_sentry.relation('shared-db',
-                                                    'quantum-gateway:shared-db')
+                                                    'neutron-gateway:shared-db')
         db_uri = "mysql://{}:{}@{}/{}".format('nova',
                                               mysql_relation['password'],
                                               mysql_relation['db_host'],
                                               'nova')
         rabbitmq_relation = self.rabbitmq_sentry.relation('amqp',
-                                                         'quantum-gateway:amqp')
+                                                         'neutron-gateway:amqp')
         nova_cc_relation = self.nova_cc_sentry.relation(\
                                       'quantum-network-service',
-                                      'quantum-gateway:quantum-network-service')
+                                      'neutron-gateway:quantum-network-service')
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
@@ -577,13 +575,13 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() >= self.precise_icehouse:
             return
 
-        unit = self.quantum_gateway_sentry
-        quantum_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
+        unit = self.neutron_gateway_sentry
+        neutron_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
 
         conf = '/etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini'
         expected = {
             'ovs': {
-                'local_ip': quantum_gateway_relation['private-address'],
+                'local_ip': neutron_gateway_relation['private-address'],
                 'tenant_network_type': 'gre',
                 'enable_tunneling': 'True',
                 'tunnel_id_ranges': '1:1000'
@@ -607,7 +605,7 @@ class QuantumGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() < self.precise_havana:
             return
 
-        unit = self.quantum_gateway_sentry
+        unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/vpn_agent.ini'
         expected = {
             'vpnagent': {
