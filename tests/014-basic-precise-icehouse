@@ -2,10 +2,10 @@
 
 """Amulet tests on a basic quantum-gateway deployment on precise-icehouse."""
 
-from basic_deployment import QuantumGatewayBasicDeployment
+from basic_deployment import NeutronGatewayBasicDeployment
 
 if __name__ == '__main__':
-    deployment = QuantumGatewayBasicDeployment(series='precise',
+    deployment = NeutronGatewayBasicDeployment(series='precise',
                                         openstack='cloud:precise-icehouse',
                                         source='cloud:precise-updates/icehouse')
     deployment.run_tests()

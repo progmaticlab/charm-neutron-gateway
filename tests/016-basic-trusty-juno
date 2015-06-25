@@ -2,10 +2,10 @@
 
 """Amulet tests on a basic quantum-gateway deployment on trusty-juno."""
 
-from basic_deployment import QuantumGatewayBasicDeployment
+from basic_deployment import NeutronGatewayBasicDeployment
 
 if __name__ == '__main__':
-    deployment = QuantumGatewayBasicDeployment(series='trusty',
+    deployment = NeutronGatewayBasicDeployment(series='trusty',
                                                openstack='cloud:trusty-juno',
                                                source='cloud:trusty-updates/juno')
     deployment.run_tests()
