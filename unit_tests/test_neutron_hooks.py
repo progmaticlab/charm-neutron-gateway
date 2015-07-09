@@ -339,7 +339,8 @@ class TestQuantumHooks(CharmTestCase):
     def test_neutron_plugin_changed(self):
         self.use_l3ha.return_value = True
         self._call_hook('neutron-plugin-api-relation-changed')
-        self.apt_install.assert_called_with(['keepalived'], fatal=True)
+        self.apt_install.assert_called_with(['keepalived', 'conntrack'],
+                                            fatal=True)
         self.assertTrue(self.CONFIGS.write_all.called)
 
     def test_cluster_departed_nvp(self):

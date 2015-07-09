@@ -183,7 +183,7 @@ LEGACY_FILES_MAP = {
     },
 }
 LEGACY_RES_MAP = ['res_monitor']
-L3HA_PACKAGES = ['keepalived']
+L3HA_PACKAGES = ['keepalived', 'conntrack']
 
 BASE_GIT_PACKAGES = [
     'dnsmasq',
