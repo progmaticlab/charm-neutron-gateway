@@ -1,11 +1,65 @@
 options:
+  debug:
+    default: False
+    type: boolean
+    description: Enable debug logging.
+  verbose:
+    default: False
+    type: boolean
+    description: Enable verbose logging.
+  use-syslog:
+    type: boolean
+    default: False
+    description: |
+      Setting this to True will allow supporting services to log to syslog.
+  openstack-origin:
+    default: distro
+    type: string
+    description: |
+      Repository from which to install.  May be one of the following:
+      distro (default), ppa:somecustom/ppa, a deb url sources entry,
+      or a supported Cloud Archive release pocket.
+
+      Supported Cloud Archive sources include:
+
+      cloud:<series>-<openstack-release>
+      cloud:<series>-<openstack-release>/updates
+      cloud:<series>-<openstack-release>/staging
+      cloud:<series>-<openstack-release>/proposed
+
+      For series=Precise we support cloud archives for openstack-release:
+         * icehouse
+
+      For series=Trusty we support cloud archives for openstack-release:
+         * juno
+         * kilo
+         * ...
+
+      NOTE: updating this setting to a source that is known to provide
+      a later version of OpenStack will trigger a software upgrade.
+
+      NOTE: when openstack-origin-git is specified, openstack specific
+      packages will be installed from source rather than from the
+      openstack-origin repository.
+  openstack-origin-git:
+    default:
+    type: string
+    description: |
+      Specifies a YAML-formatted dictionary listing the git
+      repositories and branches from which to install OpenStack and
+      its dependencies.
+
+      Note that the installed config files will be determined based on
+      the OpenStack release of the openstack-origin option.
+
+      For more details see README.md.
   plugin:
     default: ovs
     type: string
     description: |
       Network configuration plugin to use for quantum.
       Supported values include:
-      .
+
         ovs - OpenVSwitch
         nvp|nsx - Nicira NVP/VMware NSX
         n1kv - Cisco N1kv
@@ -25,34 +79,6 @@ options:
       their corresponding bridge. The bridges will allow usage of flat or
       VLAN network types with Neutron and should match this defined in
       bridge-mappings.
-  openstack-origin:
-    type: string
-    default: distro
-    description: |
-      Optional configuration to support use of additional sources such as:
-      .
-        - ppa:myteam/ppa
-        - cloud:precise-folsom/proposed
-        - cloud:precise-folsom
-        - deb http://my.archive.com/ubuntu main|KEYID
-      .
-      Note that quantum/neutron is only supported >= Folsom.
-
-      Note that when openstack-origin-git is specified, openstack
-      specific packages will be installed from source rather than
-      from the openstack-origin repository.
-  openstack-origin-git:
-    default:
-    type: string
-    description: |
-      Specifies a YAML-formatted dictionary listing the git
-      repositories and branches from which to install OpenStack and
-      its dependencies.
-
-      Note that the installed config files will be determined based on
-      the OpenStack release of the openstack-origin option.
-
-      For more details see README.md.
   run-internal-router:
     type: string
     default: all
@@ -87,19 +113,6 @@ options:
     type: string
     description: RabbitMQ Nova Virtual Host
     default: openstack
-  debug:
-    default: False
-    type: boolean
-    description: Enable debug logging
-  verbose:
-    default: False
-    type: boolean
-    description: Enable verbose logging
-  use-syslog:
-    type: boolean
-    default: False
-    description: |
-      If set to True, supporting services will log to syslog.
   instance-mtu:
     type: int
     default:
@@ -165,7 +178,7 @@ options:
     description: |
       The IP address and netmask of the OpenStack Data network (e.g.,
       192.168.0.0/24)
-      .
+
       This network will be used for tenant network traffic in overlay
       networks.
   sysctl:
