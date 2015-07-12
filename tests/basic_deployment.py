@@ -47,6 +47,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         other_services = [{'name': 'mysql'},
                           {'name': 'rabbitmq-server'}, {'name': 'keystone'},
                           {'name': 'nova-cloud-controller'}]
+        if self._get_openstack_release() >= self.trusty_kilo:
+            other_services.append({'name': 'neutron-api'})
         super(NeutronGatewayBasicDeployment, self)._add_services(this_service,
                                                                  other_services)
 
@@ -62,11 +64,16 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
           'nova-cloud-controller:identity-service': 'keystone:identity-service',
           'nova-cloud-controller:amqp': 'rabbitmq-server:amqp'
         }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            relations['neutron-api:shared-db'] = 'mysql:shared-db'
+            relations['neutron-api:amqp'] = 'rabbitmq-server:amqp'
+            relations['neutron-api:neutron-api'] = 'nova-cloud-controller:neutron-api'
+            relations['neutron-api:identity-service'] = 'keystone:identity-service'
         super(NeutronGatewayBasicDeployment, self)._add_relations(relations)
 
     def _configure_services(self):
         """Configure all of the services."""
-        neutron_gateway_config = {}
+        neutron_api_config = neutron_gateway_config = {}
         if self.git:
             release = self._get_openstack_release_string()
             reqs_branch = 'stable/' + release
@@ -93,7 +100,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                            'admin-token': 'ubuntutesting'}
         nova_cc_config = {'network-manager': 'Quantum',
                           'quantum-security-groups': 'yes'}
-        configs = {'neutron-gateway': neutron_gateway_config,
+        configs = {'neutron-api': neutron_api_config,
+                   'neutron-gateway': neutron_gateway_config,
                    'keystone': keystone_config,
                    'nova-cloud-controller': nova_cc_config}
         super(NeutronGatewayBasicDeployment, self)._configure_services(configs)
@@ -255,7 +263,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'keystone_host': u.valid_ip,
             'quantum_plugin': 'ovs',
             'auth_host': u.valid_ip,
-            'service_username': 'quantum_s3_ec2_nova',
+            'service_username': 'nova',
             'service_tenant_name': 'services'
         }
 
@@ -309,11 +317,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'DEFAULT': {
                 'verbose': 'False',
                 'debug': 'False',
-                'lock_path': '/var/lock/neutron',
-                'rabbit_userid': 'neutron',
-                'rabbit_virtual_host': 'openstack',
-                'rabbit_password': rabbitmq_relation['password'],
-                'rabbit_host': rabbitmq_relation['hostname'],
+                'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin',
                 'control_exchange': 'neutron',
                 'notification_driver': 'neutron.openstack.common.notifier.'
                                        'list_notifier',
@@ -325,9 +329,28 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                '/etc/neutron/rootwrap.conf'
             }
         }
-
-        expected['DEFAULT']['core_plugin'] = \
-                                      'neutron.plugins.ml2.plugin.Ml2Plugin'
+        if self._get_openstack_release() >= self.trusty_kilo:
+            oslo_concurrency = {
+                'oslo_concurrency': {
+                    'lock_path':'/var/lock/neutron'
+                }
+            }
+            oslo_messaging_rabbit = {
+                'oslo_messaging_rabbit': {
+                    'rabbit_userid': 'neutron',
+                    'rabbit_virtual_host': 'openstack',
+                    'rabbit_password': rabbitmq_relation['password'],
+                    'rabbit_host': rabbitmq_relation['hostname'],
+                }
+            }
+            expected.update(oslo_concurrency)
+            expected.update(oslo_messaging_rabbit)
+        else:
+            expected['DEFAULT']['lock_path'] = '/var/lock/neutron'
+            expected['DEFAULT']['rabbit_userid'] = 'neutron'
+            expected['DEFAULT']['rabbit_virtual_host'] = 'openstack'
+            expected['DEFAULT']['rabbit_password'] = rabbitmq_relation['password']
+            expected['DEFAULT']['rabbit_host'] = rabbitmq_relation['hostname']
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -403,11 +426,18 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/fwaas_driver.ini'
-        expected = {
-            'driver': 'neutron.services.firewall.drivers.linux.'
-                      'iptables_fwaas.IptablesFwaasDriver',
-            'enabled': 'True'
-        }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            expected = {
+                'driver': 'neutron_fwaas.services.firewall.drivers.'
+                          'linux.iptables_fwaas.IptablesFwaasDriver',
+                'enabled': 'True'
+            }
+        else:
+            expected = {
+                'driver': 'neutron.services.firewall.drivers.'
+                          'linux.iptables_fwaas.IptablesFwaasDriver',
+                'enabled': 'True'
+            }
 
         ret = u.validate_config_data(unit, conf, 'fwaas', expected)
         if ret:
@@ -437,6 +467,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'ovs_use_veth': 'True',
             'handle_internal_only_routers': 'True'
         }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            expected['admin_user'] = 'nova'
 
         ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
         if ret:
@@ -465,6 +497,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'user_group': 'nogroup'
             }
         }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            expected['DEFAULT']['device_driver'] = ('neutron_lbaas.services.' +
+            'loadbalancer.drivers.haproxy.namespace_driver.HaproxyNSDriver')
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -495,6 +530,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'nova_metadata_ip': neutron_gateway_relation['private-address'],
             'nova_metadata_port': '8775'
         }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            expected['admin_user'] = 'nova'
 
         if self._get_openstack_release() >= self.precise_icehouse:
             expected['cache_url'] = 'memory://?default_ttl=5'
@@ -545,34 +582,66 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                                    endpoint_type='publicURL')
 
         expected = {
-            'logdir': '/var/log/nova',
-            'state_path': '/var/lib/nova',
-            'lock_path': '/var/lock/nova',
-            'root_helper': 'sudo nova-rootwrap /etc/nova/rootwrap.conf',
-            'verbose': 'False',
-            'use_syslog': 'False',
-            'api_paste_config': '/etc/nova/api-paste.ini',
-            'enabled_apis': 'metadata',
-            'multi_host': 'True',
-            'service_neutron_metadata_proxy': 'True',
-            'rabbit_userid': 'neutron',
-            'rabbit_virtual_host': 'openstack',
-            'rabbit_password': rabbitmq_relation['password'],
-            'rabbit_host': rabbitmq_relation['hostname'],
-            'network_api_class': 'nova.network.neutronv2.api.API',
-            'neutron_auth_strategy': 'keystone',
-            'neutron_url': nova_cc_relation['quantum_url'],
-            'neutron_admin_tenant_name': 'services',
-            'neutron_admin_username': 'quantum_s3_ec2_nova',
-            'neutron_admin_password': nova_cc_relation['service_password'],
-            'neutron_admin_auth_url': ep
-
+            'DEFAULT': {
+                'logdir': '/var/log/nova',
+                'state_path': '/var/lib/nova',
+                'root_helper': 'sudo nova-rootwrap /etc/nova/rootwrap.conf',
+                'verbose': 'False',
+                'use_syslog': 'False',
+                'api_paste_config': '/etc/nova/api-paste.ini',
+                'enabled_apis': 'metadata',
+                'multi_host': 'True',
+                'network_api_class': 'nova.network.neutronv2.api.API',
+            }
         }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            neutron = {
+                'neutron': {
+                    'auth_strategy': 'keystone',
+                    'url': nova_cc_relation['quantum_url'],
+                    'admin_tenant_name': 'services',
+                    'admin_username': 'nova',
+                    'admin_password': nova_cc_relation['service_password'],
+                    'admin_auth_url': ep,
+                    'service_metadata': 'True',
+                }
+            }
+            oslo_concurrency = {
+                'oslo_concurrency': {
+                    'lock_path':'/var/lock/nova'
+                }
+            }
+            oslo_messaging_rabbit = {
+                'oslo_messaging_rabbit': {
+                    'rabbit_userid': 'neutron',
+                    'rabbit_virtual_host': 'openstack',
+                    'rabbit_password': rabbitmq_relation['password'],
+                    'rabbit_host': rabbitmq_relation['hostname'],
+                }
+            }
+            expected.update(oslo_concurrency)
+            expected.update(oslo_messaging_rabbit)
+        else:
+            d = 'DEFAULT'
+            expected[d]['lock_path'] = '/var/lock/nova'
+            expected[d]['rabbit_userid'] = 'neutron'
+            expected[d]['rabbit_virtual_host'] = 'openstack'
+            expected[d]['rabbit_password'] = rabbitmq_relation['password']
+            expected[d]['rabbit_host'] = rabbitmq_relation['hostname']
+            expected[d]['service_neutron_metadata_proxy'] = 'True'
+            expected[d]['neutron_auth_strategy'] = 'keystone'
+            expected[d]['neutron_url'] = nova_cc_relation['quantum_url']
+            expected[d]['neutron_admin_tenant_name'] = 'services'
+            expected[d]['neutron_admin_username'] = 'quantum_s3_ec2_nova'
+            expected[d]['neutron_admin_password'] = \
+                                           nova_cc_relation['service_password']
+            expected[d]['neutron_admin_auth_url'] = ep
 
-        ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
-        if ret:
-            message = "nova config error: {}".format(ret)
-            amulet.raise_status(amulet.FAIL, msg=message)
+        for section, pairs in expected.iteritems():
+            ret = u.validate_config_data(unit, conf, section, pairs)
+            if ret:
+                message = "nova config error: {}".format(ret)
+                amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_ovs_neutron_plugin_config(self):
         """Verify the data in the ovs neutron plugin config file. The ovs
@@ -621,6 +690,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'ipsec_status_check_interval': '60'
             }
         }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            expected['vpnagent']['vpn_device_driver'] = ('neutron_vpnaas.' +
+                'services.vpn.device_drivers.ipsec.OpenSwanDriver')
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
