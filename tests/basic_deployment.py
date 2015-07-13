@@ -73,7 +73,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def _configure_services(self):
         """Configure all of the services."""
-        neutron_api_config = neutron_gateway_config = {}
+        neutron_gateway_config = {}
         if self.git:
             amulet_http_proxy = os.environ.get('AMULET_HTTP_PROXY')
 
@@ -123,12 +123,12 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'https_proxy': amulet_http_proxy,
                 }
             neutron_gateway_config['openstack-origin-git'] = yaml.dump(openstack_origin_git)
+            neutron_gateway_config['openstack-origin-git'] = yaml.dump(openstack_origin_git)
         keystone_config = {'admin-password': 'openstack',
                            'admin-token': 'ubuntutesting'}
         nova_cc_config = {'network-manager': 'Quantum',
                           'quantum-security-groups': 'yes'}
-        configs = {'neutron-api': neutron_api_config,
-                   'neutron-gateway': neutron_gateway_config,
+        configs = {'neutron-gateway': neutron_gateway_config,
                    'keystone': keystone_config,
                    'nova-cloud-controller': nova_cc_config}
         super(NeutronGatewayBasicDeployment, self)._configure_services(configs)
