@@ -290,9 +290,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'keystone_host': u.valid_ip,
             'quantum_plugin': 'ovs',
             'auth_host': u.valid_ip,
-            'service_username': 'nova',
+            'service_username': 'quantum_s3_ec2_nova',
             'service_tenant_name': 'services'
         }
+        if self._get_openstack_release() >= self.trusty_kilo:
+            expected['service_username'] = 'nova'
 
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
