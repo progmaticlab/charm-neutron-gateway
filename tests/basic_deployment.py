@@ -79,9 +79,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
             release = self._get_openstack_release_string()
             reqs_branch = 'stable/' + release
+            neutron_branch = 'stable/' + release
 
             if self._get_openstack_release() >= self.trusty_kilo:
-                neutron_branch = 'stable/' + release
                 openstack_origin_git = {
                     'repositories': [
                         {'name': 'requirements',
@@ -107,7 +107,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             else:
                 reqs_repo = 'git://github.com/openstack/requirements'
                 neutron_repo = 'git://github.com/openstack/neutron'
-                neutron_branch = 'stable/' + release
                 if self._get_openstack_release() == self.trusty_icehouse:
                     reqs_repo = 'git://github.com/coreycb/requirements'
                     neutron_repo = 'git://github.com/coreycb/neutron'
