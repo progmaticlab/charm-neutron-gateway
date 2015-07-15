@@ -632,7 +632,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'admin_username': 'nova',
                     'admin_password': nova_cc_relation['service_password'],
                     'admin_auth_url': ep,
-                    'service_metadata': 'True',
+                    'service_metadata_proxy': 'True',
                 }
             }
             oslo_concurrency = {
