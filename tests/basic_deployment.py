@@ -648,6 +648,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'rabbit_host': rabbitmq_relation['hostname'],
                 }
             }
+            expected.update(neutron)
             expected.update(oslo_concurrency)
             expected.update(oslo_messaging_rabbit)
         else:
