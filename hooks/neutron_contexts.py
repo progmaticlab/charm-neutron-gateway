@@ -42,6 +42,7 @@ NEUTRON_NVP_PLUGIN = \
 NEUTRON_N1KV_PLUGIN = \
     "neutron.plugins.cisco.n1kv.n1kv_neutron_plugin.N1kvNeutronPluginV2"
 NEUTRON_NSX_PLUGIN = "vmware"
+NEUTRON_OVS_ODL_PLUGIN = "ml2"
 
 NEUTRON = 'neutron'
 QUANTUM = 'quantum'
@@ -58,6 +59,7 @@ OVS = 'ovs'
 NVP = 'nvp'
 N1KV = 'n1kv'
 NSX = 'nsx'
+OVS_ODL = 'ovs-odl'
 
 CORE_PLUGIN = {
     QUANTUM: {
@@ -68,7 +70,8 @@ CORE_PLUGIN = {
         OVS: NEUTRON_OVS_PLUGIN,
         NVP: NEUTRON_NVP_PLUGIN,
         N1KV: NEUTRON_N1KV_PLUGIN,
-        NSX: NEUTRON_NSX_PLUGIN
+        NSX: NEUTRON_NSX_PLUGIN,
+        OVS_ODL: NEUTRON_OVS_ODL_PLUGIN,
     },
 }
 

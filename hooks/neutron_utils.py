@@ -62,7 +62,7 @@ from charmhelpers.contrib.openstack.context import (
 import charmhelpers.contrib.openstack.templating as templating
 from charmhelpers.contrib.openstack.neutron import headers_package
 from neutron_contexts import (
-    CORE_PLUGIN, OVS, NVP, NSX, N1KV,
+    CORE_PLUGIN, OVS, NVP, NSX, N1KV, OVS_ODL,
     NEUTRON, QUANTUM,
     networking_name,
     NeutronGatewayContext,
@@ -153,7 +153,18 @@ NEUTRON_GATEWAY_PKGS = {
         "nova-api-metadata",
         "neutron-common",
         "neutron-l3-agent"
-    ]
+    ],
+    OVS_ODL: [
+        "openvswitch-switch",
+        "neutron-l3-agent",
+        "neutron-dhcp-agent",
+        'python-mysqldb',
+        'python-psycopg2',
+        'python-oslo.config',  # Force upgrade
+        "nova-api-metadata",
+        "neutron-plugin-metering-agent",
+        "neutron-lbaas-agent",
+    ],
 }
 NEUTRON_GATEWAY_PKGS[NSX] = NEUTRON_GATEWAY_PKGS[NVP]
 
@@ -165,7 +176,8 @@ GATEWAY_PKGS = {
 EARLY_PACKAGES = {
     OVS: ['openvswitch-datapath-dkms'],
     NVP: [],
-    N1KV: []
+    N1KV: [],
+    OVS_ODL: [],
 }
 
 LEGACY_HA_TEMPLATE_FILES = 'files'
@@ -434,6 +446,58 @@ NEUTRON_OVS_CONFIG_FILES = {
 }
 NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 
+NEUTRON_OVS_ODL_CONFIG_FILES = {
+    NEUTRON_CONF: {
+        'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
+                          NeutronGatewayContext(),
+                          SyslogContext(),
+                          context.ZeroMQContext(),
+                          context.NotificationDriverContext()],
+        'services': ['neutron-l3-agent',
+                     'neutron-dhcp-agent',
+                     'neutron-metadata-agent',
+                     'neutron-plugin-metering-agent',
+                     'neutron-metering-agent',
+                     'neutron-lbaas-agent',
+                     'neutron-plugin-vpn-agent',
+                     'neutron-vpn-agent']
+    },
+    NEUTRON_L3_AGENT_CONF: {
+        'hook_contexts': [NetworkServiceContext(),
+                          L3AgentContext(),
+                          NeutronGatewayContext()],
+        'services': ['neutron-l3-agent', 'neutron-vpn-agent']
+    },
+    NEUTRON_METERING_AGENT_CONF: {
+        'hook_contexts': [NeutronGatewayContext()],
+        'services': ['neutron-plugin-metering-agent',
+                     'neutron-metering-agent']
+    },
+    NEUTRON_LBAAS_AGENT_CONF: {
+        'hook_contexts': [NeutronGatewayContext()],
+        'services': ['neutron-lbaas-agent']
+    },
+    NEUTRON_VPNAAS_AGENT_CONF: {
+        'hook_contexts': [NeutronGatewayContext()],
+        'services': ['neutron-plugin-vpn-agent',
+                     'neutron-vpn-agent']
+    },
+    NEUTRON_FWAAS_CONF: {
+        'hook_contexts': [NeutronGatewayContext()],
+        'services': ['neutron-l3-agent', 'neutron-vpn-agent']
+    },
+    EXT_PORT_CONF: {
+        'hook_contexts': [ExternalPortContext()],
+        'services': ['ext-port']
+    },
+    PHY_NIC_MTU_CONF: {
+        'hook_contexts': [PhyNICMTUContext()],
+        'services': ['os-charm-phy-nic-mtu']
+    }
+}
+NEUTRON_OVS_ODL_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
+
+
 QUANTUM_NVP_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
@@ -482,6 +546,7 @@ CONFIG_FILES = {
         NVP: NEUTRON_NVP_CONFIG_FILES,
         OVS: NEUTRON_OVS_CONFIG_FILES,
         N1KV: NEUTRON_N1KV_CONFIG_FILES,
+        OVS_ODL: NEUTRON_OVS_ODL_CONFIG_FILES
     },
 }
 
@@ -668,7 +733,7 @@ def do_openstack_upgrade():
 
 
 def configure_ovs():
-    if config('plugin') == OVS:
+    if config('plugin') in [OVS, OVS_ODL]:
         if not service_running('openvswitch-switch'):
             full_restart()
         add_bridge(INT_BRIDGE)
