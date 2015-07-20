@@ -280,7 +280,8 @@ class TestQuantumUtils(CharmTestCase):
         for conf in confs:
             configs.register.assert_any_call(
                 conf,
-                neutron_utils.CONFIG_FILES['neutron'][neutron_utils.OVS_ODL][conf]
+                neutron_utils.CONFIG_FILES['neutron']
+                                          [neutron_utils.OVS_ODL][conf]
                                           ['hook_contexts']
             )
 
@@ -338,7 +339,6 @@ class TestQuantumUtils(CharmTestCase):
         }
 
         self.assertDictEqual(neutron_utils.restart_map(), ex_map)
-
 
     def test_restart_map_ovs_odl(self):
         self.config.return_value = 'ovs-odl'
