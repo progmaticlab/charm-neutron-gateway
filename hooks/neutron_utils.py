@@ -158,9 +158,6 @@ NEUTRON_GATEWAY_PKGS = {
         "openvswitch-switch",
         "neutron-l3-agent",
         "neutron-dhcp-agent",
-        'python-mysqldb',
-        'python-psycopg2',
-        'python-oslo.config',  # Force upgrade
         "nova-api-metadata",
         "neutron-plugin-metering-agent",
         "neutron-lbaas-agent",
