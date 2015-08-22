@@ -13,8 +13,8 @@ from charmhelpers.contrib.openstack.amulet.deployment import (
 
 from charmhelpers.contrib.openstack.amulet.utils import (
     OpenStackAmuletUtils,
-    DEBUG, # flake8: noqa
-    ERROR
+    DEBUG,
+    #ERROR
 )
 
 # Use DEBUG to turn on debug logging
@@ -45,30 +45,36 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
            """
         this_service = {'name': 'neutron-gateway'}
         other_services = [{'name': 'mysql'},
-                          {'name': 'rabbitmq-server'}, {'name': 'keystone'},
+                          {'name': 'rabbitmq-server'},
+                          {'name': 'keystone'},
                           {'name': 'nova-cloud-controller'}]
         if self._get_openstack_release() >= self.trusty_kilo:
             other_services.append({'name': 'neutron-api'})
-        super(NeutronGatewayBasicDeployment, self)._add_services(this_service,
-                                                                 other_services)
+
+        super(NeutronGatewayBasicDeployment, self)._add_services(
+            this_service, other_services)
 
     def _add_relations(self):
         """Add all of the relations for the services."""
         relations = {
-          'keystone:shared-db': 'mysql:shared-db',
-          'neutron-gateway:shared-db': 'mysql:shared-db',
-          'neutron-gateway:amqp': 'rabbitmq-server:amqp',
-          'nova-cloud-controller:quantum-network-service': \
-                                      'neutron-gateway:quantum-network-service',
-          'nova-cloud-controller:shared-db': 'mysql:shared-db',
-          'nova-cloud-controller:identity-service': 'keystone:identity-service',
-          'nova-cloud-controller:amqp': 'rabbitmq-server:amqp'
+            'keystone:shared-db': 'mysql:shared-db',
+            'neutron-gateway:shared-db': 'mysql:shared-db',
+            'neutron-gateway:amqp': 'rabbitmq-server:amqp',
+            'nova-cloud-controller:quantum-network-service':
+            'neutron-gateway:quantum-network-service',
+            'nova-cloud-controller:shared-db': 'mysql:shared-db',
+            'nova-cloud-controller:identity-service':
+            'keystone:identity-service',
+            'nova-cloud-controller:amqp': 'rabbitmq-server:amqp'
         }
         if self._get_openstack_release() >= self.trusty_kilo:
-            relations['neutron-api:shared-db'] = 'mysql:shared-db'
-            relations['neutron-api:amqp'] = 'rabbitmq-server:amqp'
-            relations['neutron-api:neutron-api'] = 'nova-cloud-controller:neutron-api'
-            relations['neutron-api:identity-service'] = 'keystone:identity-service'
+            relations.update({
+                'neutron-api:shared-db': 'mysql:shared-db',
+                'neutron-api:amqp': 'rabbitmq-server:amqp',
+                'neutron-api:neutron-api':
+                'nova-cloud-controller:neutron-api',
+                'neutron-api:identity-service': 'keystone:identity-service'
+            })
         super(NeutronGatewayBasicDeployment, self)._add_relations(relations)
 
     def _configure_services(self):
@@ -83,16 +89,16 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 openstack_origin_git = {
                     'repositories': [
                         {'name': 'requirements',
-                         'repository': 'git://github.com/openstack/requirements',
+                         'repository': 'git://github.com/openstack/requirements',  # noqa
                          'branch': branch},
                         {'name': 'neutron-fwaas',
-                         'repository': 'git://github.com/openstack/neutron-fwaas',
+                         'repository': 'git://github.com/openstack/neutron-fwaas',  # noqa
                          'branch': branch},
                         {'name': 'neutron-lbaas',
-                         'repository': 'git://github.com/openstack/neutron-lbaas',
+                         'repository': 'git://github.com/openstack/neutron-lbaas',  # noqa
                          'branch': branch},
                         {'name': 'neutron-vpnaas',
-                         'repository': 'git://github.com/openstack/neutron-vpnaas',
+                         'repository': 'git://github.com/openstack/neutron-vpnaas',  # noqa
                          'branch': branch},
                         {'name': 'neutron',
                          'repository': 'git://github.com/openstack/neutron',
@@ -122,7 +128,10 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'http_proxy': amulet_http_proxy,
                     'https_proxy': amulet_http_proxy,
                 }
-            neutron_gateway_config['openstack-origin-git'] = yaml.dump(openstack_origin_git)
+
+            neutron_gateway_config['openstack-origin-git'] = \
+                yaml.dump(openstack_origin_git)
+
         keystone_config = {'admin-password': 'openstack',
                            'admin-token': 'ubuntutesting'}
         nova_cc_config = {'network-manager': 'Quantum',
@@ -137,7 +146,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         # Access the sentries for inspecting service units
         self.mysql_sentry = self.d.sentry.unit['mysql/0']
         self.keystone_sentry = self.d.sentry.unit['keystone/0']
-        self.rabbitmq_sentry = self.d.sentry.unit['rabbitmq-server/0']
+        self.rmq_sentry = self.d.sentry.unit['rabbitmq-server/0']
         self.nova_cc_sentry = self.d.sentry.unit['nova-cloud-controller/0']
         self.neutron_gateway_sentry = self.d.sentry.unit['neutron-gateway/0']
 
@@ -149,7 +158,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                                       user='admin',
                                                       password='openstack',
                                                       tenant='admin')
-
 
         # Authenticate admin with neutron
         ep = self.keystone.service_catalog.url_for(service_type='identity',
@@ -240,7 +248,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def test_rabbitmq_amqp_relation(self):
         """Verify the rabbitmq-server to neutron-gateway amqp relation data"""
-        unit = self.rabbitmq_sentry
+        unit = self.rmq_sentry
         relation = ['amqp', 'neutron-gateway:amqp']
         expected = {
             'private-address': u.valid_ip,
@@ -337,8 +345,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_neutron_config(self):
         """Verify the data in the neutron config file."""
         unit = self.neutron_gateway_sentry
-        rabbitmq_relation = self.rabbitmq_sentry.relation('amqp',
-                                                         'neutron-gateway:amqp')
+        rmq_ng_rel = self.rmq_sentry.relation('amqp',
+                                              'neutron-gateway:amqp')
 
         conf = '/etc/neutron/neutron.conf'
         expected = {
@@ -360,25 +368,27 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() >= self.trusty_kilo:
             oslo_concurrency = {
                 'oslo_concurrency': {
-                    'lock_path':'/var/lock/neutron'
+                    'lock_path': '/var/lock/neutron'
                 }
             }
             oslo_messaging_rabbit = {
                 'oslo_messaging_rabbit': {
                     'rabbit_userid': 'neutron',
                     'rabbit_virtual_host': 'openstack',
-                    'rabbit_password': rabbitmq_relation['password'],
-                    'rabbit_host': rabbitmq_relation['hostname'],
+                    'rabbit_password': rmq_ng_rel['password'],
+                    'rabbit_host': rmq_ng_rel['hostname'],
                 }
             }
             expected.update(oslo_concurrency)
             expected.update(oslo_messaging_rabbit)
         else:
-            expected['DEFAULT']['lock_path'] = '/var/lock/neutron'
-            expected['DEFAULT']['rabbit_userid'] = 'neutron'
-            expected['DEFAULT']['rabbit_virtual_host'] = 'openstack'
-            expected['DEFAULT']['rabbit_password'] = rabbitmq_relation['password']
-            expected['DEFAULT']['rabbit_host'] = rabbitmq_relation['hostname']
+            expected['DEFAULT'].update({
+                'lock_path': '/var/lock/neutron',
+                'rabbit_userid': 'neutron',
+                'rabbit_virtual_host': 'openstack',
+                'rabbit_password': rmq_ng_rel['password'],
+                'rabbit_host': rmq_ng_rel['hostname']
+            })
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -394,7 +404,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/plugins/ml2/ml2_conf.ini'
-        neutron_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
+        ng_db_rel = unit.relation('shared-db', 'mysql:shared-db')
         expected = {
             'ml2': {
                 'type_drivers': 'gre,vxlan,vlan,flat',
@@ -409,7 +419,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             },
             'ovs': {
                 'enable_tunneling': 'True',
-                'local_ip': neutron_gateway_relation['private-address']
+                'local_ip': ng_db_rel['private-address']
             },
             'agent': {
                 'tunnel_types': 'gre',
@@ -475,9 +485,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_l3_agent_config(self):
         """Verify the data in the l3 agent config file."""
         unit = self.neutron_gateway_sentry
-        nova_cc_relation = self.nova_cc_sentry.relation(\
-                                      'quantum-network-service',
-                                      'neutron-gateway:quantum-network-service')
+
+        nova_cc_relation = self.nova_cc_sentry.relation(
+            'quantum-network-service',
+            'neutron-gateway:quantum-network-service')
+
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
@@ -526,8 +538,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             }
         }
         if self._get_openstack_release() >= self.trusty_kilo:
-            expected['DEFAULT']['device_driver'] = ('neutron_lbaas.services.' +
-            'loadbalancer.drivers.haproxy.namespace_driver.HaproxyNSDriver')
+            expected['DEFAULT']['device_driver'] = \
+                ('neutron_lbaas.services.loadbalancer.drivers.haproxy.'
+                 'namespace_driver.HaproxyNSDriver')
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -540,10 +553,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         unit = self.neutron_gateway_sentry
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
-        neutron_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
-        nova_cc_relation = self.nova_cc_sentry.relation(\
-                                      'quantum-network-service',
-                                      'neutron-gateway:quantum-network-service')
+        ng_db_rel = unit.relation('shared-db', 'mysql:shared-db')
+
+        nova_cc_relation = self.nova_cc_sentry.relation(
+            'quantum-network-service',
+            'neutron-gateway:quantum-network-service')
 
         conf = '/etc/neutron/metadata_agent.ini'
         expected = {
@@ -553,9 +567,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'admin_user': 'quantum_s3_ec2_nova',
             'admin_password': nova_cc_relation['service_password'],
             'root_helper': 'sudo neutron-rootwrap '
-                             '/etc/neutron/rootwrap.conf',
+                           '/etc/neutron/rootwrap.conf',
             'state_path': '/var/lib/neutron',
-            'nova_metadata_ip': neutron_gateway_relation['private-address'],
+            'nova_metadata_ip': ng_db_rel['private-address'],
             'nova_metadata_port': '8775'
         }
         if self._get_openstack_release() >= self.trusty_kilo:
@@ -590,22 +604,20 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
         if ret:
             message = "metering agent config error: {}".format(ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_nova_config(self):
         """Verify the data in the nova config file."""
         unit = self.neutron_gateway_sentry
         conf = '/etc/nova/nova.conf'
-        mysql_relation = self.mysql_sentry.relation('shared-db',
-                                                    'neutron-gateway:shared-db')
-        db_uri = "mysql://{}:{}@{}/{}".format('nova',
-                                              mysql_relation['password'],
-                                              mysql_relation['db_host'],
-                                              'nova')
-        rabbitmq_relation = self.rabbitmq_sentry.relation('amqp',
-                                                         'neutron-gateway:amqp')
-        nova_cc_relation = self.nova_cc_sentry.relation(\
-                                      'quantum-network-service',
-                                      'neutron-gateway:quantum-network-service')
+
+        rmq_ng_rel = self.rmq_sentry.relation('amqp',
+                                              'neutron-gateway:amqp')
+
+        nova_cc_relation = self.nova_cc_sentry.relation(
+            'quantum-network-service',
+            'neutron-gateway:quantum-network-service')
+
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
@@ -636,35 +648,35 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             }
             oslo_concurrency = {
                 'oslo_concurrency': {
-                    'lock_path':'/var/lock/nova'
+                    'lock_path': '/var/lock/nova'
                 }
             }
             oslo_messaging_rabbit = {
                 'oslo_messaging_rabbit': {
                     'rabbit_userid': 'neutron',
                     'rabbit_virtual_host': 'openstack',
-                    'rabbit_password': rabbitmq_relation['password'],
-                    'rabbit_host': rabbitmq_relation['hostname'],
+                    'rabbit_password': rmq_ng_rel['password'],
+                    'rabbit_host': rmq_ng_rel['hostname'],
                 }
             }
             expected.update(neutron)
             expected.update(oslo_concurrency)
             expected.update(oslo_messaging_rabbit)
         else:
-            d = 'DEFAULT'
-            expected[d]['lock_path'] = '/var/lock/nova'
-            expected[d]['rabbit_userid'] = 'neutron'
-            expected[d]['rabbit_virtual_host'] = 'openstack'
-            expected[d]['rabbit_password'] = rabbitmq_relation['password']
-            expected[d]['rabbit_host'] = rabbitmq_relation['hostname']
-            expected[d]['service_neutron_metadata_proxy'] = 'True'
-            expected[d]['neutron_auth_strategy'] = 'keystone'
-            expected[d]['neutron_url'] = nova_cc_relation['quantum_url']
-            expected[d]['neutron_admin_tenant_name'] = 'services'
-            expected[d]['neutron_admin_username'] = 'quantum_s3_ec2_nova'
-            expected[d]['neutron_admin_password'] = \
-                                           nova_cc_relation['service_password']
-            expected[d]['neutron_admin_auth_url'] = ep
+            expected['DEFAULT'].update({
+                'lock_path': '/var/lock/nova',
+                'rabbit_userid': 'neutron',
+                'rabbit_virtual_host': 'openstack',
+                'rabbit_password': rmq_ng_rel['password'],
+                'rabbit_host': rmq_ng_rel['hostname'],
+                'service_neutron_metadata_proxy': 'True',
+                'neutron_auth_strategy': 'keystone',
+                'neutron_url': nova_cc_relation['quantum_url'],
+                'neutron_admin_tenant_name': 'services',
+                'neutron_admin_username': 'quantum_s3_ec2_nova',
+                'neutron_admin_password': nova_cc_relation['service_password'],
+                'neutron_admin_auth_url': ep
+            })
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -679,12 +691,12 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             return
 
         unit = self.neutron_gateway_sentry
-        neutron_gateway_relation = unit.relation('shared-db', 'mysql:shared-db')
+        ng_db_rel = unit.relation('shared-db', 'mysql:shared-db')
 
         conf = '/etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini'
         expected = {
             'ovs': {
-                'local_ip': neutron_gateway_relation['private-address'],
+                'local_ip': ng_db_rel['private-address'],
                 'tenant_network_type': 'gre',
                 'enable_tunneling': 'True',
                 'tunnel_id_ranges': '1:1000'
@@ -720,8 +732,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             }
         }
         if self._get_openstack_release() >= self.trusty_kilo:
-            expected['vpnagent']['vpn_device_driver'] = ('neutron_vpnaas.' +
-                'services.vpn.device_drivers.ipsec.OpenSwanDriver')
+            expected['vpnagent']['vpn_device_driver'] = \
+                ('neutron_vpnaas.services.vpn.device_drivers.'
+                 'ipsec.OpenSwanDriver')
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -743,7 +756,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         # Create a network and verify that it exists
         network = {'name': net_name}
-        self.neutron.create_network({'network':network})
+        self.neutron.create_network({'network': network})
 
         networks = self.neutron.list_networks(name=net_name)
         net_len = len(networks['networks'])
