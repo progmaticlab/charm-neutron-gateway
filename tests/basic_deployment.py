@@ -48,6 +48,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                           {'name': 'rabbitmq-server'},
                           {'name': 'keystone'},
                           {'name': 'nova-cloud-controller'}]
+# why neutron-api only in > K?
         if self._get_openstack_release() >= self.trusty_kilo:
             other_services.append({'name': 'neutron-api'})
 
@@ -67,6 +68,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'keystone:identity-service',
             'nova-cloud-controller:amqp': 'rabbitmq-server:amqp'
         }
+# why neutron-api only in > K?
         if self._get_openstack_release() >= self.trusty_kilo:
             relations.update({
                 'neutron-api:shared-db': 'mysql:shared-db',
@@ -168,40 +170,101 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                             tenant_name='admin',
                                             region_name='RegionOne')
 
-    def test_services(self):
+    def test_100_services(self):
         """Verify the expected services are running on the corresponding
            service units."""
-        neutron_services = ['status neutron-dhcp-agent',
-                            'status neutron-lbaas-agent',
-                            'status neutron-metadata-agent',
-                            'status neutron-metering-agent',
-                            'status neutron-ovs-cleanup',
-                            'status neutron-plugin-openvswitch-agent']
+        neutron_services = ['neutron-dhcp-agent',
+                            'neutron-lbaas-agent',
+                            'neutron-metadata-agent',
+                            'neutron-metering-agent',
+                            'neutron-ovs-cleanup',
+                            'neutron-plugin-openvswitch-agent']
 
         if self._get_openstack_release() <= self.trusty_juno:
-            neutron_services.append('status neutron-vpn-agent')
+            neutron_services.append('neutron-vpn-agent')
 
-        nova_cc_services = ['status nova-api-ec2',
-                            'status nova-api-os-compute',
-                            'status nova-objectstore',
-                            'status nova-cert',
-                            'status nova-scheduler']
-        if self._get_openstack_release() >= self.precise_grizzly:
-            nova_cc_services.append('status nova-conductor')
+        nova_cc_services = ['nova-api-ec2',
+                            'nova-api-os-compute',
+                            'nova-objectstore',
+                            'nova-cert',
+                            'nova-scheduler',
+                            'nova-conductor']
 
         commands = {
-            self.mysql_sentry: ['status mysql'],
-            self.keystone_sentry: ['status keystone'],
+            self.mysql_sentry: ['mysql'],
+            self.keystone_sentry: ['keystone'],
             self.nova_cc_sentry: nova_cc_services,
             self.neutron_gateway_sentry: neutron_services
         }
 
-        ret = u.validate_services(commands)
+        ret = u.validate_services_by_name(commands)
         if ret:
             amulet.raise_status(amulet.FAIL, msg=ret)
 
-    def test_neutron_gateway_shared_db_relation(self):
+    def test_102_service_catalog(self):
+        """Verify that the service catalog endpoint data is valid."""
+        u.log.debug('Checking keystone service catalog...')
+        endpoint_check = {
+            'adminURL': u.valid_url,
+            'id': u.not_null,
+            'region': 'RegionOne',
+            'publicURL': u.valid_url,
+            'internalURL': u.valid_url
+        }
+        expected = {
+            'network': [endpoint_check],
+            'compute': [endpoint_check],
+            'identity': [endpoint_check]
+        }
+        actual = self.keystone.service_catalog.get_endpoints()
+
+        ret = u.validate_svc_catalog_endpoint_data(expected, actual)
+        if ret:
+            amulet.raise_status(amulet.FAIL, msg=ret)
+
+    def test_104_network_endpoint(self):
+        """Verify the neutron network endpoint data."""
+        u.log.debug('Checking neutron network api endpoint data...')
+        endpoints = self.keystone.endpoints.list()
+        admin_port = internal_port = public_port = '9696'
+        expected = {
+            'id': u.not_null,
+            'region': 'RegionOne',
+            'adminurl': u.valid_url,
+            'internalurl': u.valid_url,
+            'publicurl': u.valid_url,
+            'service_id': u.not_null
+        }
+        ret = u.validate_endpoint_data(endpoints, admin_port, internal_port,
+                                       public_port, expected)
+
+        if ret:
+            amulet.raise_status(amulet.FAIL,
+                                msg='glance endpoint: {}'.format(ret))
+
+    def test_110_users(self):
+        """Verify expected users."""
+        u.log.debug('Checking keystone users...')
+        expected = [
+            {'name': 'quantum_nova',
+             'enabled': True,
+             'tenantId': u.not_null,
+             'id': u.not_null,
+             'email': 'juju@localhost'},
+            {'name': 'admin',
+             'enabled': True,
+             'tenantId': u.not_null,
+             'id': u.not_null,
+             'email': 'juju@localhost'}
+        ]
+        actual = self.keystone.users.list()
+        ret = u.validate_user_data(expected, actual)
+        if ret:
+            amulet.raise_status(amulet.FAIL, msg=ret)
+
+    def test_200_neutron_gateway_mysql_shared_db_relation(self):
         """Verify the neutron-gateway to mysql shared-db relation data"""
+        u.log.debug('Checking neutron-gateway:mysql db relation data...')
         unit = self.neutron_gateway_sentry
         relation = ['shared-db', 'mysql:shared-db']
         expected = {
@@ -216,8 +279,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             message = u.relation_error('neutron-gateway shared-db', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_mysql_shared_db_relation(self):
+    def test_201_mysql_neutron_gateway_shared_db_relation(self):
         """Verify the mysql to neutron-gateway shared-db relation data"""
+        u.log.debug('Checking mysql:neutron-gateway db relation data...')
         unit = self.mysql_sentry
         relation = ['shared-db', 'neutron-gateway:shared-db']
         expected = {
@@ -231,8 +295,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             message = u.relation_error('mysql shared-db', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_neutron_gateway_amqp_relation(self):
+    def test_202_neutron_gateway_rabbitmq_amqp_relation(self):
         """Verify the neutron-gateway to rabbitmq-server amqp relation data"""
+        u.log.debug('Checking neutron-gateway:rmq amqp relation data...')
         unit = self.neutron_gateway_sentry
         relation = ['amqp', 'rabbitmq-server:amqp']
         expected = {
@@ -246,9 +311,10 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             message = u.relation_error('neutron-gateway amqp', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_rabbitmq_amqp_relation(self):
+    def test_203_rabbitmq_neutron_gateway_amqp_relation(self):
         """Verify the rabbitmq-server to neutron-gateway amqp relation data"""
-        unit = self.rmq_sentry
+        u.log.debug('Checking rmq:neutron-gateway amqp relation data...')
+        unit = self.rabbitmq_sentry
         relation = ['amqp', 'neutron-gateway:amqp']
         expected = {
             'private-address': u.valid_ip,
@@ -261,9 +327,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             message = u.relation_error('rabbitmq amqp', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_neutron_gateway_network_service_relation(self):
+    def test_204_neutron_gateway_network_service_relation(self):
         """Verify the neutron-gateway to nova-cc quantum-network-service
            relation data"""
+        u.log.debug('Checking neutron-gateway:nova-cc net svc '
+                    'relation data...')
         unit = self.neutron_gateway_sentry
         relation = ['quantum-network-service',
                     'nova-cloud-controller:quantum-network-service']
@@ -276,9 +344,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             message = u.relation_error('neutron-gateway network-service', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_nova_cc_network_service_relation(self):
+    def test_205_nova_cc_network_service_relation(self):
         """Verify the nova-cc to neutron-gateway quantum-network-service
            relation data"""
+        u.log.debug('Checking nova-cc:neutron-gateway net svc '
+                    'relation data...')
         unit = self.nova_cc_sentry
         relation = ['quantum-network-service',
                     'neutron-gateway:quantum-network-service']
@@ -297,56 +367,27 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'keystone_host': u.valid_ip,
             'quantum_plugin': 'ovs',
             'auth_host': u.valid_ip,
-            'service_username': 'quantum_s3_ec2_nova',
             'service_tenant_name': 'services'
         }
+
         if self._get_openstack_release() >= self.trusty_kilo:
-            expected['service_username'] = 'nova'
+            # Kilo or later
+            expected['service_username'] = 'quantum_nova'
+        else:
+            # Juno or earlier
+            expected['service_username'] = 'quantum_s3_ec2_nova'
 
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
             message = u.relation_error('nova-cc network-service', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_z_restart_on_config_change(self):
-        """Verify that the specified services are restarted when the config
-           is changed.
-
-           Note(coreycb): The method name with the _z_ is a little odd
-           but it forces the test to run last.  It just makes things
-           easier because restarting services requires re-authorization.
-           """
-        conf = '/etc/neutron/neutron.conf'
-
-        services = ['neutron-dhcp-agent',
-                    'neutron-lbaas-agent',
-                    'neutron-metadata-agent',
-                    'neutron-metering-agent',
-                    'neutron-openvswitch-agent']
-
-        if self._get_openstack_release() <= self.trusty_juno:
-            services.append('neutron-vpn-agent')
-
-        u.log.debug("Making config change on neutron-gateway...")
-        self.d.configure('neutron-gateway', {'debug': 'True'})
-
-        time = 60
-        for s in services:
-            u.log.debug("Checking that service restarted: {}".format(s))
-            if not u.service_restarted(self.neutron_gateway_sentry, s, conf,
-                                       pgrep_full=True, sleep_time=time):
-                self.d.configure('neutron-gateway', {'debug': 'False'})
-                msg = "service {} didn't restart after config change".format(s)
-                amulet.raise_status(amulet.FAIL, msg=msg)
-            time = 0
-
-        self.d.configure('neutron-gateway', {'debug': 'False'})
-
-    def test_neutron_config(self):
+    def test_300_neutron_config(self):
         """Verify the data in the neutron config file."""
+        u.log.debug('Checking neutron gateway config file data...')
         unit = self.neutron_gateway_sentry
-        rmq_ng_rel = self.rmq_sentry.relation('amqp',
-                                              'neutron-gateway:amqp')
+        rmq_ng_rel = self.rmq_sentry.relation(
+            'amqp', 'neutron-gateway:amqp')
 
         conf = '/etc/neutron/neutron.conf'
         expected = {
@@ -358,36 +399,34 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'notification_driver': 'neutron.openstack.common.notifier.'
                                        'list_notifier',
                 'list_notifier_drivers': 'neutron.openstack.common.'
-                                         'notifier.rabbit_notifier'
+                                         'notifier.rabbit_notifier',
+                'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin'
             },
             'agent': {
                 'root_helper': 'sudo /usr/bin/neutron-rootwrap '
                                '/etc/neutron/rootwrap.conf'
             }
         }
+
         if self._get_openstack_release() >= self.trusty_kilo:
-            oslo_concurrency = {
-                'oslo_concurrency': {
-                    'lock_path': '/var/lock/neutron'
-                }
-            }
-            oslo_messaging_rabbit = {
-                'oslo_messaging_rabbit': {
-                    'rabbit_userid': 'neutron',
-                    'rabbit_virtual_host': 'openstack',
-                    'rabbit_password': rmq_ng_rel['password'],
-                    'rabbit_host': rmq_ng_rel['hostname'],
-                }
-            }
-            expected.update(oslo_concurrency)
-            expected.update(oslo_messaging_rabbit)
-        else:
-            expected['DEFAULT'].update({
-                'lock_path': '/var/lock/neutron',
+            # Kilo or later
+            expected['oslo_messaging_rabbit'] = {
                 'rabbit_userid': 'neutron',
                 'rabbit_virtual_host': 'openstack',
                 'rabbit_password': rmq_ng_rel['password'],
-                'rabbit_host': rmq_ng_rel['hostname']
+                'rabbit_host': rmq_ng_rel['hostname'],
+            }
+            expected['oslo_concurrency'] = {
+                'lock_path': '/var/lock/neutron'
+            }
+        else:
+            # Juno or earlier
+            expected['DEFAULT'].update({
+                'rabbit_userid': 'neutron',
+                'rabbit_virtual_host': 'openstack',
+                'rabbit_password': rmq_ng_rel['password'],
+                'rabbit_host': rmq_ng_rel['hostname'],
+                'lock_path': '/var/lock/neutron',
             })
 
         for section, pairs in expected.iteritems():
@@ -396,15 +435,17 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 message = "neutron config error: {}".format(ret)
                 amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_ml2_config(self):
+    def test_301_neutron_ml2_config(self):
         """Verify the data in the ml2 config file. This is only available
            since icehouse."""
+        u.log.debug('Checking neutron gateway ml2 config file data...')
         if self._get_openstack_release() < self.precise_icehouse:
             return
 
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/plugins/ml2/ml2_conf.ini'
         ng_db_rel = unit.relation('shared-db', 'mysql:shared-db')
+
         expected = {
             'ml2': {
                 'type_drivers': 'gre,vxlan,vlan,flat',
@@ -437,8 +478,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 message = "ml2 config error: {}".format(ret)
                 amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_dhcp_agent_config(self):
+    def test_302_neutron_dhcp_agent_config(self):
         """Verify the data in the dhcp agent config file."""
+        u.log.debug('Checking neutron gateway dhcp agent config file data...')
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/dhcp_agent.ini'
         expected = {
@@ -450,46 +492,45 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                            '/etc/neutron/rootwrap.conf',
             'ovs_use_veth': 'True'
         }
+        section = 'DEFAULT'
 
-        ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
+        ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
             message = "dhcp agent config error: {}".format(ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_fwaas_driver_config(self):
+    def test_303_neutron_fwaas_driver_config(self):
         """Verify the data in the fwaas driver config file.  This is only
            available since havana."""
-        if self._get_openstack_release() < self.precise_havana:
-            return
-
+        u.log.debug('Checking neutron gateway fwaas config file data...')
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/fwaas_driver.ini'
-        if self._get_openstack_release() >= self.trusty_kilo:
-            expected = {
-                'driver': 'neutron_fwaas.services.firewall.drivers.'
-                          'linux.iptables_fwaas.IptablesFwaasDriver',
-                'enabled': 'True'
-            }
-        else:
-            expected = {
-                'driver': 'neutron.services.firewall.drivers.'
-                          'linux.iptables_fwaas.IptablesFwaasDriver',
-                'enabled': 'True'
-            }
+        expected = {
+            'enabled': 'True'
+        }
+        section = 'fwaas'
 
-        ret = u.validate_config_data(unit, conf, 'fwaas', expected)
+        if self._get_openstack_release() >= self.trusty_kilo:
+            # Kilo or later
+            expected['driver'] = ('neutron_fwaas.services.firewall.drivers.'
+                                  'linux.iptables_fwaas.IptablesFwaasDriver')
+        else:
+            # Juno or earlier
+            expected['driver'] = ('neutron.services.firewall.drivers.linux.'
+                                  'iptables_fwaas.IptablesFwaasDriver')
+
+        ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
             message = "fwaas driver config error: {}".format(ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_l3_agent_config(self):
+    def test_304_neutron_l3_agent_config(self):
         """Verify the data in the l3 agent config file."""
+        u.log.debug('Checking neutron gateway l3 agent config file data...')
         unit = self.neutron_gateway_sentry
-
-        nova_cc_relation = self.nova_cc_sentry.relation(
+        ncc_ng_rel = self.nova_cc_sentry.relation(
             'quantum-network-service',
             'neutron-gateway:quantum-network-service')
-
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
@@ -500,24 +541,31 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'auth_url': ep,
             'auth_region': 'RegionOne',
             'admin_tenant_name': 'services',
-            'admin_user': 'quantum_s3_ec2_nova',
-            'admin_password': nova_cc_relation['service_password'],
+            'admin_password': ncc_ng_rel['service_password'],
             'root_helper': 'sudo /usr/bin/neutron-rootwrap '
                            '/etc/neutron/rootwrap.conf',
             'ovs_use_veth': 'True',
             'handle_internal_only_routers': 'True'
         }
-        if self._get_openstack_release() >= self.trusty_kilo:
-            expected['admin_user'] = 'nova'
+        section = 'DEFAULT'
 
-        ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
+        if self._get_openstack_release() >= self.trusty_kilo:
+            # Kilo or later
+            expected['admin_user'] = 'quantum_nova'
+#?            expected['admin_user'] = 'nova'
+        else:
+            # Juno or earlier
+            expected['admin_user'] = 'quantum_s3_ec2_nova'
+
+        ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
             message = "l3 agent config error: {}".format(ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_lbaas_agent_config(self):
+    def test_305_neutron_lbaas_agent_config(self):
         """Verify the data in the lbaas agent config file. This is only
            available since havana."""
+        u.log.debug('Checking neutron gateway lbaas config file data...')
         if self._get_openstack_release() < self.precise_havana:
             return
 
@@ -525,21 +573,26 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         conf = '/etc/neutron/lbaas_agent.ini'
         expected = {
             'DEFAULT': {
-                'periodic_interval': '10',
                 'interface_driver': 'neutron.agent.linux.interface.'
                                     'OVSInterfaceDriver',
+                'periodic_interval': '10',
                 'ovs_use_veth': 'False',
-                'device_driver': 'neutron.services.loadbalancer.drivers.'
-                                 'haproxy.namespace_driver.HaproxyNSDriver'
             },
             'haproxy': {
                 'loadbalancer_state_path': '$state_path/lbaas',
                 'user_group': 'nogroup'
             }
         }
+
         if self._get_openstack_release() >= self.trusty_kilo:
+            # Kilo or later
             expected['DEFAULT']['device_driver'] = \
                 ('neutron_lbaas.services.loadbalancer.drivers.haproxy.'
+                 'namespace_driver.HaproxyNSDriver')
+        else:
+            # Juno or earlier
+            expected['DEFAULT']['device_driver'] = \
+                ('neutron.services.loadbalancer.drivers.haproxy.'
                  'namespace_driver.HaproxyNSDriver')
 
         for section, pairs in expected.iteritems():
@@ -548,13 +601,15 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 message = "lbaas agent config error: {}".format(ret)
                 amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_metadata_agent_config(self):
+    def test_306_neutron_metadata_agent_config(self):
         """Verify the data in the metadata agent config file."""
+        u.log.debug('Checking neutron gateway metadata agent '
+                    'config file data...')
         unit = self.neutron_gateway_sentry
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
-        ng_db_rel = unit.relation('shared-db', 'mysql:shared-db')
-
+        ng_db_rel = unit.relation('shared-db',
+                                                 'mysql:shared-db')
         nova_cc_relation = self.nova_cc_sentry.relation(
             'quantum-network-service',
             'neutron-gateway:quantum-network-service')
@@ -564,31 +619,34 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'auth_url': ep,
             'auth_region': 'RegionOne',
             'admin_tenant_name': 'services',
-            'admin_user': 'quantum_s3_ec2_nova',
             'admin_password': nova_cc_relation['service_password'],
             'root_helper': 'sudo neutron-rootwrap '
                            '/etc/neutron/rootwrap.conf',
             'state_path': '/var/lib/neutron',
             'nova_metadata_ip': ng_db_rel['private-address'],
-            'nova_metadata_port': '8775'
+            'nova_metadata_port': '8775',
+            'cache_url': 'memory://?default_ttl=5'
         }
+        section = 'DEFAULT'
+
         if self._get_openstack_release() >= self.trusty_kilo:
-            expected['admin_user'] = 'nova'
+            # Kilo or later
+            expected['admin_user'] = 'quantum_nova'
+#?            expected['admin_user'] = 'nova'
+        else:
+            # Juno or earlier
+            expected['admin_user'] = 'quantum_s3_ec2_nova'
 
-        if self._get_openstack_release() >= self.precise_icehouse:
-            expected['cache_url'] = 'memory://?default_ttl=5'
-
-        ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
+        ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
             message = "metadata agent config error: {}".format(ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_metering_agent_config(self):
+    def test_307_neutron_metering_agent_config(self):
         """Verify the data in the metering agent config file.  This is only
            available since havana."""
-        if self._get_openstack_release() < self.precise_havana:
-            return
-
+        u.log.debug('Checking neutron gateway metering agent '
+                    'config file data...')
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/metering_agent.ini'
         expected = {
@@ -600,24 +658,24 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                 'OVSInterfaceDriver',
             'use_namespaces': 'True'
         }
+        section = 'DEFAULT'
 
-        ret = u.validate_config_data(unit, conf, 'DEFAULT', expected)
+        ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
             message = "metering agent config error: {}".format(ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_nova_config(self):
+    def test_308_neutron_nova_config(self):
         """Verify the data in the nova config file."""
+        u.log.debug('Checking neutron gateway nova config file data...')
         unit = self.neutron_gateway_sentry
         conf = '/etc/nova/nova.conf'
 
-        rmq_ng_rel = self.rmq_sentry.relation('amqp',
-                                              'neutron-gateway:amqp')
-
+        rabbitmq_relation = self.rabbitmq_sentry.relation(
+            'amqp', 'neutron-gateway:amqp')
         nova_cc_relation = self.nova_cc_sentry.relation(
             'quantum-network-service',
             'neutron-gateway:quantum-network-service')
-
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
 
@@ -634,48 +692,43 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'network_api_class': 'nova.network.neutronv2.api.API',
             }
         }
+
         if self._get_openstack_release() >= self.trusty_kilo:
-            neutron = {
-                'neutron': {
-                    'auth_strategy': 'keystone',
-                    'url': nova_cc_relation['quantum_url'],
-                    'admin_tenant_name': 'services',
-                    'admin_username': 'nova',
-                    'admin_password': nova_cc_relation['service_password'],
-                    'admin_auth_url': ep,
-                    'service_metadata_proxy': 'True',
-                }
-            }
-            oslo_concurrency = {
-                'oslo_concurrency': {
-                    'lock_path': '/var/lock/nova'
-                }
-            }
-            oslo_messaging_rabbit = {
-                'oslo_messaging_rabbit': {
-                    'rabbit_userid': 'neutron',
-                    'rabbit_virtual_host': 'openstack',
-                    'rabbit_password': rmq_ng_rel['password'],
-                    'rabbit_host': rmq_ng_rel['hostname'],
-                }
-            }
-            expected.update(neutron)
-            expected.update(oslo_concurrency)
-            expected.update(oslo_messaging_rabbit)
-        else:
-            expected['DEFAULT'].update({
-                'lock_path': '/var/lock/nova',
+            # Kilo or later
+            expected['oslo_messaging_rabbit'] = {
                 'rabbit_userid': 'neutron',
                 'rabbit_virtual_host': 'openstack',
-                'rabbit_password': rmq_ng_rel['password'],
-                'rabbit_host': rmq_ng_rel['hostname'],
-                'service_neutron_metadata_proxy': 'True',
+                'rabbit_password': rabbitmq_relation['password'],
+                'rabbit_host': rabbitmq_relation['hostname'],
+            }
+            expected['oslo_concurrency'] = {
+                'lock_path': '/var/lock/nova'
+            }
+            expected['neutron'] = {
+                'auth_strategy': 'keystone',
+                'url': nova_cc_relation['quantum_url'],
+                'admin_tenant_name': 'services',
+                'admin_username': 'quantum_nova',
+                'admin_password': nova_cc_relation['service_password'],
+                'admin_auth_url': ep,
+                'service_metadata_proxy': 'True',
+                'metadata_proxy_shared_secret': u.not_null
+            }
+        else:
+            # Juno or earlier
+            expected['DEFAULT'].update({
+                'rabbit_userid': 'neutron',
+                'rabbit_virtual_host': 'openstack',
+                'rabbit_password': rabbitmq_relation['password'],
+                'rabbit_host': rabbitmq_relation['hostname'],
+                'lock_path': '/var/lock/nova',
                 'neutron_auth_strategy': 'keystone',
                 'neutron_url': nova_cc_relation['quantum_url'],
                 'neutron_admin_tenant_name': 'services',
                 'neutron_admin_username': 'quantum_s3_ec2_nova',
                 'neutron_admin_password': nova_cc_relation['service_password'],
-                'neutron_admin_auth_url': ep
+                'neutron_admin_auth_url': ep,
+                'service_neutron_metadata_proxy': 'True',
             })
 
         for section, pairs in expected.iteritems():
@@ -684,57 +737,30 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 message = "nova config error: {}".format(ret)
                 amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_ovs_neutron_plugin_config(self):
-        """Verify the data in the ovs neutron plugin config file. The ovs
-           plugin is not used by default since icehouse."""
-        if self._get_openstack_release() >= self.precise_icehouse:
-            return
-
-        unit = self.neutron_gateway_sentry
-        ng_db_rel = unit.relation('shared-db', 'mysql:shared-db')
-
-        conf = '/etc/neutron/plugins/openvswitch/ovs_neutron_plugin.ini'
-        expected = {
-            'ovs': {
-                'local_ip': ng_db_rel['private-address'],
-                'tenant_network_type': 'gre',
-                'enable_tunneling': 'True',
-                'tunnel_id_ranges': '1:1000'
-            },
-            'agent': {
-                'polling_interval': '10',
-                'root_helper': 'sudo /usr/bin/neutron-rootwrap '
-                '/etc/neutron/rootwrap.conf'
-            }
-        }
-
-        for section, pairs in expected.iteritems():
-            ret = u.validate_config_data(unit, conf, section, pairs)
-            if ret:
-                message = "ovs neutron plugin config error: {}".format(ret)
-                amulet.raise_status(amulet.FAIL, msg=message)
-
-    def test_vpn_agent_config(self):
+    def test_309_neutron_vpn_agent_config(self):
         """Verify the data in the vpn agent config file.  This isn't available
            prior to havana."""
-        if self._get_openstack_release() < self.precise_havana:
-            return
-
+        u.log.debug('Checking neutron gateway vpn agent config file data...')
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/vpn_agent.ini'
         expected = {
-            'vpnagent': {
-                'vpn_device_driver': 'neutron.services.vpn.device_drivers.'
-                                     'ipsec.OpenSwanDriver'
-            },
             'ipsec': {
                 'ipsec_status_check_interval': '60'
             }
         }
+
         if self._get_openstack_release() >= self.trusty_kilo:
-            expected['vpnagent']['vpn_device_driver'] = \
-                ('neutron_vpnaas.services.vpn.device_drivers.'
-                 'ipsec.OpenSwanDriver')
+            # Kilo or later
+            expected['vpnagent'] = {
+                'vpn_device_driver': 'neutron_vpnaas.services.vpn.'
+                                     'device_drivers.ipsec.OpenSwanDriver'
+            }
+        else:
+            # Juno or earlier
+            expected['vpnagent'] = {
+                'vpn_device_driver': 'neutron.services.vpn.device_drivers.'
+                                     'ipsec.OpenSwanDriver'
+            }
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)
@@ -742,8 +768,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 message = "vpn agent config error: {}".format(ret)
                 amulet.raise_status(amulet.FAIL, msg=message)
 
-    def test_create_network(self):
+    def test_400_create_network(self):
         """Create a network, verify that it exists, and then delete it."""
+        u.log.debug('Creating neutron network...')
         self.neutron.format = 'json'
         net_name = 'ext_net'
 
@@ -764,9 +791,55 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             msg = "Expected 1 network, found {}".format(net_len)
             amulet.raise_status(amulet.FAIL, msg=msg)
 
+        u.log.debug('Confirming new neutron network...')
         network = networks['networks'][0]
         if network['name'] != net_name:
             amulet.raise_status(amulet.FAIL, msg="network ext_net not found")
 
         #Cleanup
+        u.log.debug('Deleting neutron network...')
         self.neutron.delete_network(network['id'])
+
+    def test_900_restart_on_config_change(self):
+        """Verify that the specified services are restarted when the
+        config is changed."""
+
+        sentry = self.neutron_gateway_sentry
+        juju_service = 'neutron-gateway'
+
+        # Expected default and alternate values
+        set_default = {'debug': 'False'}
+        set_alternate = {'debug': 'True'}
+
+        # Services which are expected to restart upon config change,
+        # and corresponding config files affected by the change
+        conf_file = '/etc/neutron/neutron.conf'
+        services = {
+            'neutron-dhcp-agent': conf_file,
+            'neutron-lbaas-agent': conf_file,
+            'neutron-metadata-agent': conf_file,
+            'neutron-metering-agent': conf_file,
+            'neutron-openvswitch-agent': conf_file
+        }
+
+        if self._get_openstack_release() <= self.trusty_juno:
+            services.update({'neutron-vpn-agent': conf_file})
+
+        # Make config change, check for service restarts
+        u.log.debug('Making config change on {}...'.format(juju_service))
+        mtime = u.get_sentry_time(sentry)
+        self.d.configure(juju_service, set_alternate)
+
+        sleep_time = 90
+        for s, conf_file in services.iteritems():
+            u.log.debug("Checking that service restarted: {}".format(s))
+            if not u.validate_service_config_changed(sentry, mtime, s,
+                                                     conf_file,
+                                                     pgrep_full=True,
+                                                     sleep_time=sleep_time):
+                self.d.configure(juju_service, set_default)
+                msg = "service {} didn't restart after config change".format(s)
+                amulet.raise_status(amulet.FAIL, msg=msg)
+            sleep_time = 0
+
+        self.d.configure(juju_service, set_default)
