@@ -250,6 +250,13 @@ def get_packages():
             packages.append('openswan')
         if source >= 'kilo':
             packages.append('python-neutron-fwaas')
+        if source >= 'liberty':
+            # Switch out mysql driver
+            packages.remove('python-mysqldb')
+            packages.append('python-pymysql')
+            # Switch out to actual metering agent package
+            packages.remove('neutron-plugin-metering-agent')
+            packages.append('neutron-metering-agent')
     packages.extend(determine_l3ha_packages())
 
     if git_install_requested():
