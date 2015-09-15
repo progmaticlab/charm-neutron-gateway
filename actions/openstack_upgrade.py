@@ -25,7 +25,7 @@ def openstack_upgrade():
     code to run, otherwise a full service level upgrade will fire
     on config-changed."""
 
-    if (do_action_openstack_upgrade(get_common_package,
+    if (do_action_openstack_upgrade(get_common_package(),
                                     do_openstack_upgrade,
                                     CONFIGS)):
         CONFIGS.write_all()
