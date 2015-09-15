@@ -38,7 +38,7 @@ options:
       NOTE: updating this setting to a source that is known to provide
       a later version of OpenStack will trigger a software upgrade.
 
-      NOTE: when openstack-origin-git is specified, openstack specific
+      NOTE: when openstack-origin-git is specified, OpenStack specific
       packages will be installed from source rather than from the
       openstack-origin repository.
   openstack-origin-git:
@@ -126,7 +126,7 @@ options:
       Configure DHCP services to provide MTU configuration to instances
       within the cloud.  This is useful in deployments where its not
       possible to increase MTU on switches and physical servers to
-      accomodate the packet overhead of using GRE tunnels.
+      accommodate the packet overhead of using GRE tunnels.
   enable-l3-agent:
     type: boolean
     default: True
@@ -147,7 +147,7 @@ options:
     description: |
       Used by the nrpe-external-master subordinate charm.
       A string that will be prepended to instance name to set the host name
-      in nagios. So for instance the hostname would be something like:
+      in Nagios. So for instance the hostname would be something like:
           juju-myservice-0
       If you're running multiple environments with the same services in them
       this allows you to differentiate between them.
@@ -155,7 +155,7 @@ options:
     default: ""
     type: string
     description: |
-      A comma-separated list of nagios servicegroups.
+      A comma-separated list of Nagios servicegroups.
       If left empty, the nagios_context will be used as the servicegroup
   bridge-mappings:
     type: string
@@ -201,7 +201,7 @@ options:
       If True will enable Pacemaker to monitor the neutron-ha-monitor daemon
       on every neutron-gateway unit, which detects neutron agents status and
       reschedule resources hosting on failed agents, detects local errors and
-      release resources when network is unreachable or do neccessary recover
+      release resources when network is unreachable or do necessary recover
       tasks. This feature targets to < Juno which doesn't natively support HA
       in Neutron itself.
   ha-bindiface:

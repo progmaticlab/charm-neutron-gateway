@@ -4,11 +4,11 @@ Overview
 Neutron provides flexible software defined networking (SDN) for OpenStack.
 
 This charm is designed to be used in conjunction with the rest of the OpenStack
-related charms in the charm store) to virtualized the network that Nova Compute
+related charms in the charm store to virtualize the network that Nova Compute
 instances plug into.
 
-Its designed as a replacement for nova-network; however it does not yet
-support all of the features as nova-network (such as multihost) so may not
+It's designed as a replacement for nova-network; however it does not yet
+support all of the features of nova-network (such as multihost) so may not
 be suitable for all.
 
 Neutron supports a rich plugin/extension framework for propriety networking
@@ -20,14 +20,14 @@ for more details.
 Usage
 -----
 
-In order to use Neutron with Openstack, you will need to deploy the
+In order to use Neutron with OpenStack, you will need to deploy the
 nova-compute and nova-cloud-controller charms with the network-manager
 configuration set to 'Neutron':
 
     nova-cloud-controller:
         network-manager: Neutron
 
-This decision must be made prior to deploying Openstack with Juju as
+This decision must be made prior to deploying OpenStack with Juju as
 Neutron is deployed baked into these charms from install onwards:
 
     juju deploy nova-compute
@@ -43,7 +43,7 @@ The Neutron Gateway can then be added to the deploying:
 
 The gateway provides two key services; L3 network routing and DHCP services.
 
-These are both required in a fully functional Neutron Openstack deployment.
+These are both required in a fully functional Neutron OpenStack deployment.
 
 See upstream [Neutron multi extnet](http://docs.openstack.org/trunk/config-reference/content/adv_cfg_l3_agent_multi_extnet.html)
 
@@ -53,14 +53,14 @@ Configuration Options
 External Port Configuration
 ===========================
 
-If the port to be used for external traffic is consistent accross all physical
+If the port to be used for external traffic is consistent across all physical
 servers then is can be specified by simply setting ext-port to the nic id:
 
     neutron-gateway:
         ext-port: eth2
 
 However, if it varies between hosts then the mac addresses of the external
-nics for each host can be passed as a space seperated list:
+nics for each host can be passed as a space separated list:
 
     neutron-gateway:
         ext-port: <MAC ext port host 1> <MAC ext port host 2> <MAC ext port host 3>
@@ -71,7 +71,7 @@ Multiple Floating Pools
 
 If multiple floating pools are needed then an L3 agent (which corresponds to
 a neutron-gateway for the sake of this charm) is needed for each one. Each
-gateway needs to be deployed as a seperate service so that the external
+gateway needs to be deployed as a separate service so that the external
 network id can be set differently for each gateway e.g.
 
     juju deploy neutron-gateway neutron-gateway-extnet1
@@ -100,8 +100,8 @@ charm's instance-mtu option can be used to reduce instance MTU via DHCP.
 
     juju set neutron-gateway instance-mtu=1400
 
-OpenStack upstream documentation recomments a MTU value of 1400:
-[Openstack documentation](http://docs.openstack.org/admin-guide-cloud/content/openvswitch_plugin.html)
+OpenStack upstream documentation recommends a MTU value of 1400:
+[OpenStack documentation](http://docs.openstack.org/admin-guide-cloud/content/openvswitch_plugin.html)
 
 Note that this option was added in Havana and will be ignored in older releases.
 
@@ -125,7 +125,7 @@ The minimum openstack-origin-git config required to deploy from source is:
 Note that there are only two 'name' values the charm knows about: 'requirements'
 and 'neutron'. These repositories must correspond to these 'name' values.
 Additionally, the requirements repository must be specified first and the
-neutron repository must be specified last. All other repostories are installed
+neutron repository must be specified last. All other repositories are installed
 in the order in which they are specified.
 
 The following is a full list of current tip repos (may not be up-to-date):
