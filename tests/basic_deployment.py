@@ -47,10 +47,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         other_services = [{'name': 'mysql'},
                           {'name': 'rabbitmq-server'},
                           {'name': 'keystone'},
-                          {'name': 'nova-cloud-controller'}]
-# why neutron-api only in > K?
-        if self._get_openstack_release() >= self.trusty_kilo:
-            other_services.append({'name': 'neutron-api'})
+                          {'name': 'nova-cloud-controller'},
+                          {'name': 'neutron-api'}]
 
         super(NeutronGatewayBasicDeployment, self)._add_services(
             this_service, other_services)
@@ -64,19 +62,14 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'nova-cloud-controller:quantum-network-service':
             'neutron-gateway:quantum-network-service',
             'nova-cloud-controller:shared-db': 'mysql:shared-db',
-            'nova-cloud-controller:identity-service':
-            'keystone:identity-service',
-            'nova-cloud-controller:amqp': 'rabbitmq-server:amqp'
+            'nova-cloud-controller:identity-service': 'keystone:'
+                                                      'identity-service',
+            'nova-cloud-controller:amqp': 'rabbitmq-server:amqp',
+            'neutron-api:shared-db': 'mysql:shared-db',
+            'neutron-api:amqp': 'rabbitmq-server:amqp',
+            'neutron-api:neutron-api': 'nova-cloud-controller:neutron-api',
+            'neutron-api:identity-service': 'keystone:identity-service'
         }
-# why neutron-api only in > K?
-        if self._get_openstack_release() >= self.trusty_kilo:
-            relations.update({
-                'neutron-api:shared-db': 'mysql:shared-db',
-                'neutron-api:amqp': 'rabbitmq-server:amqp',
-                'neutron-api:neutron-api':
-                'nova-cloud-controller:neutron-api',
-                'neutron-api:identity-service': 'keystone:identity-service'
-            })
         super(NeutronGatewayBasicDeployment, self)._add_relations(relations)
 
     def _configure_services(self):
@@ -151,6 +144,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self.rmq_sentry = self.d.sentry.unit['rabbitmq-server/0']
         self.nova_cc_sentry = self.d.sentry.unit['nova-cloud-controller/0']
         self.neutron_gateway_sentry = self.d.sentry.unit['neutron-gateway/0']
+        self.neutron_api_sentry = self.d.sentry.unit['neutron-api/0']
 
         # Let things settle a bit before moving forward
         time.sleep(30)
@@ -246,17 +240,37 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         """Verify expected users."""
         u.log.debug('Checking keystone users...')
         expected = [
-            {'name': 'quantum_nova',
+            {'name': 'admin',
              'enabled': True,
              'tenantId': u.not_null,
              'id': u.not_null,
              'email': 'juju@localhost'},
-            {'name': 'admin',
+            {'name': 'quantum',
              'enabled': True,
              'tenantId': u.not_null,
              'id': u.not_null,
              'email': 'juju@localhost'}
         ]
+
+        if self._get_openstack_release() >= self.trusty_kilo:
+            # Kilo or later
+            expected.append({
+                'name': 'nova',
+                'enabled': True,
+                'tenantId': u.not_null,
+                'id': u.not_null,
+                'email': 'juju@localhost'
+            })
+        else:
+            # Juno and earlier
+            expected.append({
+                'name': 's3_ec2_nova',
+                'enabled': True,
+                'tenantId': u.not_null,
+                'id': u.not_null,
+                'email': 'juju@localhost'
+            })
+
         actual = self.keystone.users.list()
         ret = u.validate_user_data(expected, actual)
         if ret:
@@ -314,7 +328,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_203_rabbitmq_neutron_gateway_amqp_relation(self):
         """Verify the rabbitmq-server to neutron-gateway amqp relation data"""
         u.log.debug('Checking rmq:neutron-gateway amqp relation data...')
-        unit = self.rabbitmq_sentry
+        unit = self.rmq_sentry
         relation = ['amqp', 'neutron-gateway:amqp']
         expected = {
             'private-address': u.valid_ip,
@@ -372,14 +386,165 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         if self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
-            expected['service_username'] = 'quantum_nova'
+            expected['service_username'] = 'nova'
         else:
             # Juno or earlier
-            expected['service_username'] = 'quantum_s3_ec2_nova'
+            expected['service_username'] = 's3_ec2_nova'
 
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
             message = u.relation_error('nova-cc network-service', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_206_neutron_api_shared_db_relation(self):
+        """Verify the neutron-api to mysql shared-db relation data"""
+        u.log.debug('Checking neutron-api:mysql db relation data...')
+        unit = self.neutron_api_sentry
+        relation = ['shared-db', 'mysql:shared-db']
+        expected = {
+            'private-address': u.valid_ip,
+            'database': 'neutron',
+            'username': 'neutron',
+            'hostname': u.valid_ip
+        }
+
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('neutron-api shared-db', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_207_shared_db_neutron_api_relation(self):
+        """Verify the mysql to neutron-api shared-db relation data"""
+        u.log.debug('Checking mysql:neutron-api db relation data...')
+        unit = self.mysql_sentry
+        relation = ['shared-db', 'neutron-api:shared-db']
+        expected = {
+            'db_host': u.valid_ip,
+            'private-address': u.valid_ip,
+            'password': u.not_null
+        }
+
+        if self._get_openstack_release() == self.precise_icehouse:
+            # Precise
+            expected['allowed_units'] = 'nova-cloud-controller/0 neutron-api/0'
+        else:
+            # Not Precise
+            expected['allowed_units'] = 'neutron-api/0'
+
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('mysql shared-db', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_208_neutron_api_amqp_relation(self):
+        """Verify the neutron-api to rabbitmq-server amqp relation data"""
+        u.log.debug('Checking neutron-api:amqp relation data...')
+        unit = self.neutron_api_sentry
+        relation = ['amqp', 'rabbitmq-server:amqp']
+        expected = {
+            'username': 'neutron',
+            'private-address': u.valid_ip,
+            'vhost': 'openstack'
+        }
+
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('neutron-api amqp', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_209_amqp_neutron_api_relation(self):
+        """Verify the rabbitmq-server to neutron-api amqp relation data"""
+        u.log.debug('Checking amqp:neutron-api relation data...')
+        unit = self.rmq_sentry
+        relation = ['amqp', 'neutron-api:amqp']
+        expected = {
+            'hostname': u.valid_ip,
+            'private-address': u.valid_ip,
+            'password': u.not_null
+        }
+
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('rabbitmq amqp', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_210_neutron_api_keystone_identity_relation(self):
+        """Verify the neutron-api to keystone identity-service relation data"""
+        u.log.debug('Checking neutron-api:keystone id relation data...')
+        unit = self.neutron_api_sentry
+        relation = ['identity-service', 'keystone:identity-service']
+        api_ip = unit.relation('identity-service',
+                               'keystone:identity-service')['private-address']
+        api_endpoint = 'http://{}:9696'.format(api_ip)
+        expected = {
+            'private-address': u.valid_ip,
+            'quantum_region': 'RegionOne',
+            'quantum_service': 'quantum',
+            'quantum_admin_url': api_endpoint,
+            'quantum_internal_url': api_endpoint,
+            'quantum_public_url': api_endpoint,
+        }
+
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('neutron-api identity-service', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_211_keystone_neutron_api_identity_relation(self):
+        """Verify the keystone to neutron-api identity-service relation data"""
+        u.log.debug('Checking keystone:neutron-api id relation data...')
+        unit = self.keystone_sentry
+        relation = ['identity-service', 'neutron-api:identity-service']
+        rel_ks_id = unit.relation('identity-service',
+                                  'neutron-api:identity-service')
+        id_ip = rel_ks_id['private-address']
+        expected = {
+            'admin_token': 'ubuntutesting',
+            'auth_host': id_ip,
+            'auth_port': "35357",
+            'auth_protocol': 'http',
+            'private-address': id_ip,
+            'service_host': id_ip,
+        }
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('neutron-api identity-service', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_212_neutron_api_novacc_relation(self):
+        """Verify the neutron-api to nova-cloud-controller relation data"""
+        u.log.debug('Checking neutron-api:novacc relation data...')
+        unit = self.neutron_api_sentry
+        relation = ['neutron-api', 'nova-cloud-controller:neutron-api']
+        api_ip = unit.relation('identity-service',
+                               'keystone:identity-service')['private-address']
+        api_endpoint = 'http://{}:9696'.format(api_ip)
+        expected = {
+            'private-address': api_ip,
+            'neutron-plugin': 'ovs',
+            'neutron-security-groups': "no",
+            'neutron-url': api_endpoint,
+        }
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('neutron-api neutron-api', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+
+    def test_213_novacc_neutron_api_relation(self):
+        """Verify the nova-cloud-controller to neutron-api relation data"""
+        u.log.debug('Checking novacc:neutron-api relation data...')
+        unit = self.nova_cc_sentry
+        relation = ['neutron-api', 'neutron-api:neutron-api']
+        cc_ip = unit.relation('neutron-api',
+                              'neutron-api:neutron-api')['private-address']
+        cc_endpoint = 'http://{}:8774/v2'.format(cc_ip)
+        expected = {
+            'private-address': cc_ip,
+            'nova_url': cc_endpoint,
+        }
+        ret = u.validate_relation_data(unit, relation, expected)
+        if ret:
+            message = u.relation_error('nova-cc neutron-api', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_300_neutron_config(self):
@@ -400,7 +565,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                        'list_notifier',
                 'list_notifier_drivers': 'neutron.openstack.common.'
                                          'notifier.rabbit_notifier',
-                'core_plugin': 'neutron.plugins.ml2.plugin.Ml2Plugin'
             },
             'agent': {
                 'root_helper': 'sudo /usr/bin/neutron-rootwrap '
@@ -551,11 +715,10 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         if self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
-            expected['admin_user'] = 'quantum_nova'
-#?            expected['admin_user'] = 'nova'
+            expected['admin_user'] = 'nova'
         else:
             # Juno or earlier
-            expected['admin_user'] = 'quantum_s3_ec2_nova'
+            expected['admin_user'] = 's3_ec2_nova'
 
         ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
@@ -609,7 +772,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         ep = self.keystone.service_catalog.url_for(service_type='identity',
                                                    endpoint_type='publicURL')
         ng_db_rel = unit.relation('shared-db',
-                                                 'mysql:shared-db')
+                                  'mysql:shared-db')
         nova_cc_relation = self.nova_cc_sentry.relation(
             'quantum-network-service',
             'neutron-gateway:quantum-network-service')
@@ -631,11 +794,10 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         if self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
-            expected['admin_user'] = 'quantum_nova'
-#?            expected['admin_user'] = 'nova'
+            expected['admin_user'] = 'nova'
         else:
             # Juno or earlier
-            expected['admin_user'] = 'quantum_s3_ec2_nova'
+            expected['admin_user'] = 's3_ec2_nova'
 
         ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
@@ -671,7 +833,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         unit = self.neutron_gateway_sentry
         conf = '/etc/nova/nova.conf'
 
-        rabbitmq_relation = self.rabbitmq_sentry.relation(
+        rabbitmq_relation = self.rmq_sentry.relation(
             'amqp', 'neutron-gateway:amqp')
         nova_cc_relation = self.nova_cc_sentry.relation(
             'quantum-network-service',
@@ -708,7 +870,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'auth_strategy': 'keystone',
                 'url': nova_cc_relation['quantum_url'],
                 'admin_tenant_name': 'services',
-                'admin_username': 'quantum_nova',
+                'admin_username': 'nova',
                 'admin_password': nova_cc_relation['service_password'],
                 'admin_auth_url': ep,
                 'service_metadata_proxy': 'True',
@@ -725,7 +887,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'neutron_auth_strategy': 'keystone',
                 'neutron_url': nova_cc_relation['quantum_url'],
                 'neutron_admin_tenant_name': 'services',
-                'neutron_admin_username': 'quantum_s3_ec2_nova',
+                'neutron_admin_username': 's3_ec2_nova',
                 'neutron_admin_password': nova_cc_relation['service_password'],
                 'neutron_admin_auth_url': ep,
                 'service_neutron_metadata_proxy': 'True',
