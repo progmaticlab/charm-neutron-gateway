@@ -104,8 +104,7 @@ def config_changed():
             CONFIGS.write_all()
     elif not config('action-managed-upgrade'):
         if openstack_upgrade_available(get_common_package()):
-            do_openstack_upgrade()
-            CONFIGS.write_all()
+            do_openstack_upgrade(CONFIGS)
 
     update_nrpe_config()
 

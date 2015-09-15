@@ -13,7 +13,6 @@ from test_utils import (
 TO_PATCH = [
     'do_openstack_upgrade',
     'register_configs',
-    'CONFIGS'
 ]
 
 
@@ -36,7 +35,6 @@ class TestNeutronGWUpgradeActions(CharmTestCase):
         openstack_upgrade.openstack_upgrade()
 
         self.assertTrue(self.do_openstack_upgrade.called)
-        self.assertTrue(self.CONFIGS.write_all.called)
 
     @patch('charmhelpers.contrib.openstack.utils.config')
     @patch('charmhelpers.contrib.openstack.utils.action_set')
@@ -51,4 +49,3 @@ class TestNeutronGWUpgradeActions(CharmTestCase):
         openstack_upgrade.openstack_upgrade()
 
         self.assertFalse(self.do_openstack_upgrade.called)
-        self.assertFalse(self.CONFIGS.write_all.called)
