@@ -162,7 +162,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
         self.assertTrue(_zmq_joined.called)
-        self.create_sysctl.assert_called()
+        self.assertTrue(self.create_sysctl.called)
 
     @patch.object(hooks, 'git_install_requested')
     def test_config_changed_upgrade(self, git_requested):
@@ -235,7 +235,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
         self.assertTrue(_zmq_joined.called)
-        self.create_sysctl.assert_called()
+        self.assertTrue(self.create_sysctl.called)
 
     def test_upgrade_charm(self):
         _install = self.patch('install')
