@@ -27,8 +27,8 @@ def openstack_upgrade():
     on config-changed."""
 
     if do_action_openstack_upgrade(get_common_package(),
-                                do_openstack_upgrade,
-                                CONFIGS):
+                                   do_openstack_upgrade,
+                                   CONFIGS):
         config_changed()
 
 
