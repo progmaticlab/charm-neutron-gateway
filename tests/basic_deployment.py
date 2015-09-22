@@ -614,7 +614,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'ml2': {
                 'type_drivers': 'gre,vxlan,vlan,flat',
                 'tenant_network_types': 'gre,vxlan,vlan,flat',
-                'mechanism_drivers': 'openvswitch,l2population'
+                'mechanism_drivers': 'openvswitch,hyperv,l2population'
             },
             'ml2_type_gre': {
                 'tunnel_id_ranges': '1:1000'
