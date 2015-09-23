@@ -9,13 +9,13 @@ from charmhelpers.contrib.openstack.utils import (
 
 from neutron_utils import (
     do_openstack_upgrade,
-    register_configs,
     get_common_package,
 )
 
-from neutron_hooks import config_changed
-
-CONFIGS = register_configs()
+from neutron_hooks import (
+    config_changed,
+    CONFIGS,
+)
 
 
 def openstack_upgrade():
