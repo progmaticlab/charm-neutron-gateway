@@ -974,6 +974,8 @@ def git_post_install(projects_yaml):
     neutron_ovs_cleanup_context = {
         'service_description': 'Neutron OVS cleanup',
         'service_name': service_name,
+        'user_name': user_name,
+        'start_dir': '/var/lib/neutron',
         'process_name': 'neutron-ovs-cleanup',
         'executable_name': os.path.join(bin_dir, 'neutron-ovs-cleanup'),
         'config_file': '/etc/neutron/neutron.conf',
