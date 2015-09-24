@@ -244,7 +244,8 @@ class TestQuantumUtils(CharmTestCase):
         self.test_config.set('openstack-origin', 'cloud:precise-havana')
         self.test_config.set('plugin', 'ovs')
         self.get_os_codename_install_source.return_value = 'havana'
-        neutron_utils.do_openstack_upgrade()
+        configs = neutron_utils.register_configs()
+        neutron_utils.do_openstack_upgrade(configs)
         self.assertTrue(self.log.called)
         self.apt_update.assert_called_with(fatal=True)
         dpkg_opts = [

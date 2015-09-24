@@ -652,7 +652,7 @@ def services():
     return list(set(_services))
 
 
-def do_openstack_upgrade():
+def do_openstack_upgrade(configs):
     """
     Perform an upgrade.  Takes care of upgrading packages, rewriting
     configs, database migrations and potentially any other post-upgrade
@@ -672,6 +672,7 @@ def do_openstack_upgrade():
                 fatal=True, dist=True)
     apt_install(get_early_packages(), fatal=True)
     apt_install(get_packages(), fatal=True)
+    configs.write_all()
 
 
 def configure_ovs():
