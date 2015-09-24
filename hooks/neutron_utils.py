@@ -652,7 +652,7 @@ def services():
     return list(set(_services))
 
 
-def do_openstack_upgrade():
+def do_openstack_upgrade(configs):
     """
     Perform an upgrade.  Takes care of upgrading packages, rewriting
     configs, database migrations and potentially any other post-upgrade
@@ -672,6 +672,7 @@ def do_openstack_upgrade():
                 fatal=True, dist=True)
     apt_install(get_early_packages(), fatal=True)
     apt_install(get_packages(), fatal=True)
+    configs.write_all()
 
 
 def configure_ovs():
@@ -973,6 +974,8 @@ def git_post_install(projects_yaml):
     neutron_ovs_cleanup_context = {
         'service_description': 'Neutron OVS cleanup',
         'service_name': service_name,
+        'user_name': user_name,
+        'start_dir': '/var/lib/neutron',
         'process_name': 'neutron-ovs-cleanup',
         'executable_name': os.path.join(bin_dir, 'neutron-ovs-cleanup'),
         'config_file': '/etc/neutron/neutron.conf',
