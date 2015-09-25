@@ -878,6 +878,8 @@ class TestQuantumAgentReallocation(CharmTestCase):
         neutron_ovs_cleanup_context = {
             'service_description': 'Neutron OVS cleanup',
             'service_name': service_name,
+            'user_name': user_name,
+            'start_dir': '/var/lib/neutron',
             'process_name': 'neutron-ovs-cleanup',
             'executable_name': 'joined-string',
             'config_file': '/etc/neutron/neutron.conf',
