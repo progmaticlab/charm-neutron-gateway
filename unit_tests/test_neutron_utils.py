@@ -277,6 +277,26 @@ class TestQuantumUtils(CharmTestCase):
                                           ['hook_contexts']
             )
 
+    def test_register_configs_ovs_odl(self):
+        self.config.side_effect = self.test_config.get
+        self.test_config.set('plugin', 'ovs-odl')
+        self.is_relation_made.return_value = False
+        self.get_os_codename_install_source.return_value = 'icehouse'
+        configs = neutron_utils.register_configs()
+        confs = [neutron_utils.NEUTRON_DHCP_AGENT_CONF,
+                 neutron_utils.NEUTRON_METADATA_AGENT_CONF,
+                 neutron_utils.NOVA_CONF,
+                 neutron_utils.NEUTRON_CONF,
+                 neutron_utils.NEUTRON_L3_AGENT_CONF,
+                 neutron_utils.EXT_PORT_CONF]
+        for conf in confs:
+            configs.register.assert_any_call(
+                conf,
+                neutron_utils.CONFIG_FILES['neutron']
+                                          [neutron_utils.OVS_ODL][conf]
+                                          ['hook_contexts']
+            )
+
     def test_register_configs_amqp_nova(self):
         self.config.return_value = 'ovs'
         self.is_relation_made.return_value = True
@@ -313,6 +333,40 @@ class TestQuantumUtils(CharmTestCase):
             ['neutron-lbaas-agent'],
             neutron_utils.NEUTRON_OVS_PLUGIN_CONF:
             ['neutron-plugin-openvswitch-agent'],
+            neutron_utils.NEUTRON_METADATA_AGENT_CONF:
+            ['neutron-metadata-agent'],
+            neutron_utils.NEUTRON_VPNAAS_AGENT_CONF: [
+                'neutron-plugin-vpn-agent',
+                'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent',
+                                                  'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_DHCP_AGENT_CONF: ['neutron-dhcp-agent'],
+            neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent',
+                                               'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_METERING_AGENT_CONF:
+            ['neutron-metering-agent', 'neutron-plugin-metering-agent'],
+            neutron_utils.NOVA_CONF: ['nova-api-metadata'],
+            neutron_utils.EXT_PORT_CONF: ['ext-port'],
+            neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
+        }
+
+        self.assertDictEqual(neutron_utils.restart_map(), ex_map)
+
+    def test_restart_map_ovs_odl(self):
+        self.config.return_value = 'ovs-odl'
+        self.get_os_codename_install_source.return_value = 'icehouse'
+        ex_map = {
+            neutron_utils.NEUTRON_CONF: ['neutron-l3-agent',
+                                         'neutron-dhcp-agent',
+                                         'neutron-metadata-agent',
+                                         'neutron-plugin-metering-agent',
+                                         'neutron-metering-agent',
+                                         'neutron-lbaas-agent',
+                                         'neutron-plugin-vpn-agent',
+                                         'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
+            neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
+            ['neutron-lbaas-agent'],
             neutron_utils.NEUTRON_METADATA_AGENT_CONF:
             ['neutron-metadata-agent'],
             neutron_utils.NEUTRON_VPNAAS_AGENT_CONF: [
