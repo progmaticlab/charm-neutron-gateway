@@ -221,9 +221,10 @@ class TestQuantumUtils(CharmTestCase):
             call('br-ex'),
             call('br-data')
         ])
-        self.assertTrue(self.add_bridge_port.called)
+        calls = [call('br-data', 'eth0', promisc=True)]
+        self.add_bridge_port.assert_has_calls(calls)
 
-        # Now test with bridge:port format
+        # Now test with bridge:port format and bogus bridge
         self.test_config.set('data-port', 'br-foo:eth0')
         self.add_bridge.reset_mock()
         self.add_bridge_port.reset_mock()
@@ -235,6 +236,21 @@ class TestQuantumUtils(CharmTestCase):
         ])
         # Not called since we have a bogus bridge in data-ports
         self.assertFalse(self.add_bridge_port.called)
+
+        # Now test with bridge:port format
+        self.test_config.set('bridge-mappings', 'net1:br1')
+        self.test_config.set('data-port', 'br1:eth0.100 br1:eth0.200')
+        self.add_bridge.reset_mock()
+        self.add_bridge_port.reset_mock()
+        neutron_utils.configure_ovs()
+        self.add_bridge.assert_has_calls([
+            call('br-int'),
+            call('br-ex'),
+            call('br1')
+        ])
+        calls = [call('br1', 'eth0.100', promisc=True),
+                 call('br1', 'eth0.200', promisc=True)]
+        self.add_bridge_port.assert_has_calls(calls)
 
     @patch.object(neutron_utils, 'git_install_requested')
     def test_do_openstack_upgrade(self, git_requested):
