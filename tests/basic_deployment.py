@@ -14,7 +14,7 @@ from charmhelpers.contrib.openstack.amulet.deployment import (
 from charmhelpers.contrib.openstack.amulet.utils import (
     OpenStackAmuletUtils,
     DEBUG,
-    #ERROR
+    # ERROR
 )
 
 # Use DEBUG to turn on debug logging
@@ -936,7 +936,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self.neutron.format = 'json'
         net_name = 'ext_net'
 
-        #Verify that the network doesn't exist
+        # Verify that the network doesn't exist
         networks = self.neutron.list_networks(name=net_name)
         net_count = len(networks['networks'])
         if net_count != 0:
@@ -958,7 +958,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         if network['name'] != net_name:
             amulet.raise_status(amulet.FAIL, msg="network ext_net not found")
 
-        #Cleanup
+        # Cleanup
         u.log.debug('Deleting neutron network...')
         self.neutron.delete_network(network['id'])
 
@@ -992,18 +992,16 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         mtime = u.get_sentry_time(sentry)
         self.d.configure(juju_service, set_alternate)
 
-#        sleep_time = 90
+        # sleep_time = 90
         for s, conf_file in services.iteritems():
             u.log.debug("Checking that service restarted: {}".format(s))
             if not u.validate_service_config_changed(sentry, mtime, s,
                                                      conf_file):
-#                                                     conf_file,
-#                                                     sleep_time=sleep_time):
                 self.d.configure(juju_service, set_default)
                 msg = "service {} didn't restart after config change".format(s)
                 amulet.raise_status(amulet.FAIL, msg=msg)
 
             # Only do initial sleep on first service check
-#            sleep_time = 0
+            # sleep_time = 0
 
         self.d.configure(juju_service, set_default)
