@@ -374,6 +374,7 @@ NEUTRON_SHARED_CONFIG_FILES.update(NOVA_CONFIG_FILES)
 QUANTUM_OVS_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
+                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
@@ -406,6 +407,7 @@ QUANTUM_OVS_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
 NEUTRON_OVS_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
+                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
@@ -466,6 +468,7 @@ NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 NEUTRON_OVS_ODL_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
+                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
@@ -518,6 +521,7 @@ NEUTRON_OVS_ODL_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 QUANTUM_NVP_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
+                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['quantum-dhcp-agent', 'quantum-metadata-agent']
@@ -528,6 +532,7 @@ QUANTUM_NVP_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
 NEUTRON_NVP_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
+                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['neutron-dhcp-agent', 'neutron-metadata-agent']
@@ -538,6 +543,7 @@ NEUTRON_NVP_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 NEUTRON_N1KV_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
+                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['neutron-l3-agent',
