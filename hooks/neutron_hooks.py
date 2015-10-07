@@ -36,7 +36,7 @@ from charmhelpers.contrib.openstack.utils import (
     configure_installation_source,
     openstack_upgrade_available,
     os_requires_version,
-    os_workload_status,
+    set_os_workload_status,
 )
 from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
@@ -76,8 +76,6 @@ CONFIGS = register_configs()
 
 
 @hooks.hook('install.real')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 def install():
     status_set('maintenance', 'Executing pre-install')
     execd_preinstall()
@@ -107,8 +105,6 @@ def install():
 
 
 @hooks.hook('config-changed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @restart_on_change(restart_map())
 def config_changed():
     global CONFIGS
@@ -168,8 +164,6 @@ def upgrade_charm():
 
 
 @hooks.hook('shared-db-relation-joined')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 def db_joined(relation_id=None):
     if is_relation_made('pgsql-db'):
         # raise error
@@ -184,8 +178,6 @@ def db_joined(relation_id=None):
 
 
 @hooks.hook('pgsql-db-relation-joined')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 def pgsql_db_joined(relation_id=None):
     if is_relation_made('shared-db'):
         # raise error
@@ -198,8 +190,6 @@ def pgsql_db_joined(relation_id=None):
 
 
 @hooks.hook('amqp-nova-relation-joined')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 def amqp_nova_joined(relation_id=None):
     relation_set(relation_id=relation_id,
                  username=config('nova-rabbit-user'),
@@ -207,8 +197,6 @@ def amqp_nova_joined(relation_id=None):
 
 
 @hooks.hook('amqp-relation-joined')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 def amqp_joined(relation_id=None):
     relation_set(relation_id=relation_id,
                  username=config('rabbit-user'),
@@ -217,8 +205,6 @@ def amqp_joined(relation_id=None):
 
 @hooks.hook('amqp-nova-relation-departed')
 @hooks.hook('amqp-nova-relation-changed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @restart_on_change(restart_map())
 def amqp_nova_changed():
     if 'amqp-nova' not in CONFIGS.complete_contexts():
@@ -228,8 +214,6 @@ def amqp_nova_changed():
 
 
 @hooks.hook('amqp-relation-departed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @restart_on_change(restart_map())
 def amqp_departed():
     if 'amqp' not in CONFIGS.complete_contexts():
@@ -243,16 +227,12 @@ def amqp_departed():
             'amqp-relation-changed',
             'cluster-relation-changed',
             'cluster-relation-joined')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @restart_on_change(restart_map())
 def db_amqp_changed():
     CONFIGS.write_all()
 
 
 @hooks.hook('neutron-plugin-api-relation-changed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @restart_on_change(restart_map())
 def neutron_plugin_api_changed():
     if use_l3ha():
@@ -262,8 +242,6 @@ def neutron_plugin_api_changed():
 
 
 @hooks.hook('quantum-network-service-relation-changed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @restart_on_change(restart_map())
 def nm_changed():
     CONFIGS.write_all()
@@ -302,8 +280,6 @@ def stop():
 
 
 @hooks.hook('zeromq-configuration-relation-joined')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @os_requires_version('kilo', 'neutron-common')
 def zeromq_configuration_relation_joined(relid=None):
     relation_set(relation_id=relid,
@@ -312,8 +288,6 @@ def zeromq_configuration_relation_joined(relid=None):
 
 
 @hooks.hook('zeromq-configuration-relation-changed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 @restart_on_change(restart_map(), stopstart=True)
 def zeromq_configuration_relation_changed():
     CONFIGS.write_all()
@@ -347,8 +321,6 @@ def update_nrpe_config():
 
 @hooks.hook('ha-relation-joined')
 @hooks.hook('ha-relation-changed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 def ha_relation_joined():
     if config('ha-legacy-mode'):
         log('ha-relation-changed update_legacy_ha_files')
@@ -373,8 +345,6 @@ def ha_relation_joined():
 
 
 @hooks.hook('ha-relation-departed')
-@os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                    charm_func=check_optional_relations)
 def ha_relation_destroyed():
     # If e.g. we want to upgrade to Juno and use native Neutron HA support then
     # we need to un-corosync-cluster to enable the transition.
@@ -386,5 +356,7 @@ def ha_relation_destroyed():
 if __name__ == '__main__':
     try:
         hooks.execute(sys.argv)
+        set_os_workload_status(CONFIGS, REQUIRED_INTERFACES,
+                               charm_func=check_optional_relations)
     except UnregisteredHookError as e:
         log('Unknown hook {} - skipping.'.format(e))
