@@ -239,8 +239,8 @@ GIT_PACKAGE_BLACKLIST = [
 # The interface is said to be satisfied if anyone of the interfaces in the
 # list has a complete context.
 REQUIRED_INTERFACES = {
-    'database': ['shared-db', 'pgsql-db'],
-    'messaging': ['amqp', 'zeromq-configuration', 'nova-amqp'],
+    'messaging': ['amqp', 'zeromq-configuration'],
+    'neutron-plugin-api': ['neutron-plugin-api'],
 }
 
 
@@ -374,7 +374,6 @@ NEUTRON_SHARED_CONFIG_FILES.update(NOVA_CONFIG_FILES)
 QUANTUM_OVS_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
-                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
@@ -407,7 +406,6 @@ QUANTUM_OVS_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
 NEUTRON_OVS_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
@@ -468,7 +466,6 @@ NEUTRON_OVS_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 NEUTRON_OVS_ODL_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
@@ -521,7 +518,6 @@ NEUTRON_OVS_ODL_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 QUANTUM_NVP_CONFIG_FILES = {
     QUANTUM_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=QUANTUM_CONF_DIR),
-                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['quantum-dhcp-agent', 'quantum-metadata-agent']
@@ -532,7 +528,6 @@ QUANTUM_NVP_CONFIG_FILES.update(QUANTUM_SHARED_CONFIG_FILES)
 NEUTRON_NVP_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['neutron-dhcp-agent', 'neutron-metadata-agent']
@@ -543,7 +538,6 @@ NEUTRON_NVP_CONFIG_FILES.update(NEUTRON_SHARED_CONFIG_FILES)
 NEUTRON_N1KV_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
-                          context.SharedDBContext(),
                           NeutronGatewayContext(),
                           SyslogContext()],
         'services': ['neutron-l3-agent',
@@ -1267,9 +1261,6 @@ def check_optional_relations(configs):
             return ('blocked',
                     'hacluster missing configuration: '
                     'vip, vip_iface, vip_cidr')
-
-    if relation_ids('neutron-plugin-api'):
-        required_interfaces['neutron-plugin-api'] = ['neutron-plugin-api']
 
     if required_interfaces:
         set_os_workload_status(configs, required_interfaces)
