@@ -445,13 +445,11 @@ NEUTRON_OVS_CONFIG_FILES = {
         'services': ['neutron-l3-agent', 'neutron-vpn-agent']
     },
     NEUTRON_OVS_PLUGIN_CONF: {
-        'hook_contexts': [NeutronGatewayContext(),
-                          NeutronAPIContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-openvswitch-agent']
     },
     NEUTRON_ML2_PLUGIN_CONF: {
-        'hook_contexts': [NeutronGatewayContext(),
-                          NeutronAPIContext()],
+        'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-openvswitch-agent']
     },
     EXT_PORT_CONF: {

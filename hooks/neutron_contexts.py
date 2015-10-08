@@ -121,10 +121,10 @@ class L3AgentContext(OSContextGenerator):
         return ctxt
 
 
-class NeutronGatewayContext(OSContextGenerator):
+class NeutronGatewayContext(NeutronAPIContext):
 
     def __call__(self):
-        api_settings = NeutronAPIContext()()
+        api_settings = super(NeutronGatewayContext, self).__call__()
         ctxt = {
             'shared_secret': get_shared_secret(),
             'local_ip':
