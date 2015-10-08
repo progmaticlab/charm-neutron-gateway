@@ -60,9 +60,10 @@ options:
       Network configuration plugin to use for quantum.
       Supported values include:
 
-        ovs - OpenVSwitch
+        ovs - Open vSwitch
         nvp|nsx - Nicira NVP/VMware NSX
         n1kv - Cisco N1kv
+        ovs-odl - Open vSwitch with OpenDayLight Controller
   ext-port:
     type: string
     default:
