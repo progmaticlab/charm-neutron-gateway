@@ -7,7 +7,10 @@ _register_configs = utils.register_configs
 _restart_map = utils.restart_map
 utils.register_configs = MagicMock()
 utils.restart_map = MagicMock()
-import neutron_hooks as hooks
+
+with patch('charmhelpers.core.hookenv.status_set'):
+    import neutron_hooks as hooks
+
 utils.register_configs = _register_configs
 utils.restart_map = _restart_map
 

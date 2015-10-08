@@ -7,8 +7,9 @@ from test_utils import (
 
 os.environ['JUJU_UNIT_NAME'] = 'neutron-gateway'
 
-with patch('neutron_utils.register_configs') as register_configs:
-    import openstack_upgrade
+with patch('charmhelpers.core.hookenv.status_set'):
+    with patch('neutron_utils.register_configs') as register_configs:
+        import openstack_upgrade
 
 TO_PATCH = [
     'do_openstack_upgrade',

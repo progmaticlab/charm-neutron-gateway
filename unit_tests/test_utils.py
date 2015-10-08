@@ -5,9 +5,6 @@ import yaml
 
 from mock import patch
 
-patch('charmhelpers.contrib.openstack.utils.set_os_workload_status').start()
-patch('charmhelpers.core.hookenv.status_set').start()
-
 
 def load_config():
     '''

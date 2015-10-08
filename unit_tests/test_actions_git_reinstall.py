@@ -15,7 +15,8 @@ _restart_map = utils.restart_map
 utils.register_configs = MagicMock()
 utils.restart_map = MagicMock()
 
-import git_reinstall
+with patch('charmhelpers.core.hookenv.status_set'):
+    import git_reinstall
 
 # Unpatch it now that its loaded.
 utils.register_configs = _register_configs
