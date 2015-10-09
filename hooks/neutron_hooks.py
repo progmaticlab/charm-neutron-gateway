@@ -10,7 +10,9 @@ from charmhelpers.core.hookenv import (
     relation_set,
     relation_ids,
     unit_get,
-    Hooks, UnregisteredHookError
+    Hooks,
+    UnregisteredHookError,
+    status_set,
 )
 from charmhelpers.fetch import (
     apt_update,
@@ -34,6 +36,7 @@ from charmhelpers.contrib.openstack.utils import (
     configure_installation_source,
     openstack_upgrade_available,
     os_requires_version,
+    set_os_workload_status,
 )
 from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
@@ -64,6 +67,8 @@ from neutron_utils import (
     reassign_agent_resources,
     stop_neutron_ha_monitor_daemon,
     use_l3ha,
+    REQUIRED_INTERFACES,
+    check_optional_relations,
 )
 
 hooks = Hooks()
@@ -72,12 +77,14 @@ CONFIGS = register_configs()
 
 @hooks.hook('install.real')
 def install():
+    status_set('maintenance', 'Executing pre-install')
     execd_preinstall()
     src = config('openstack-origin')
     if (lsb_release()['DISTRIB_CODENAME'] == 'precise' and
             src == 'distro'):
         src = 'cloud:precise-folsom'
     configure_installation_source(src)
+    status_set('maintenance', 'Installing apt packages')
     apt_update(fatal=True)
     apt_install('python-six', fatal=True)  # Force upgrade
     if valid_plugin():
@@ -85,9 +92,12 @@ def install():
                     fatal=True)
         apt_install(filter_installed_packages(get_packages()),
                     fatal=True)
+        status_set('maintenance', 'Git install')
         git_install(config('openstack-origin-git'))
     else:
-        log('Please provide a valid plugin config', level=ERROR)
+        message = 'Please provide a valid plugin config'
+        log(message, level=ERROR)
+        status_set('blocked', message)
         sys.exit(1)
 
     # Legacy HA for Icehouse
@@ -100,10 +110,13 @@ def config_changed():
     global CONFIGS
     if git_install_requested():
         if config_value_changed('openstack-origin-git'):
+            status_set('maintenance', 'Running Git install')
             git_install(config('openstack-origin-git'))
             CONFIGS.write_all()
+
     elif not config('action-managed-upgrade'):
         if openstack_upgrade_available(get_common_package()):
+            status_set('maintenance', 'Running openstack upgrade')
             do_openstack_upgrade(CONFIGS)
 
     update_nrpe_config()
@@ -127,11 +140,14 @@ def config_changed():
         CONFIGS.write_all()
         configure_ovs()
     else:
-        log('Please provide a valid plugin config', level=ERROR)
+        message = 'Please provide a valid plugin config'
+        log(message, level=ERROR)
+        status_set('blocked', message)
         sys.exit(1)
     if config('plugin') == 'n1kv':
         if not git_install_requested():
             if config('enable-l3-agent'):
+                status_set('maintenance', 'Installing apt packages')
                 apt_install(filter_installed_packages('neutron-l3-agent'))
             else:
                 apt_purge('neutron-l3-agent')
@@ -342,3 +358,5 @@ if __name__ == '__main__':
         hooks.execute(sys.argv)
     except UnregisteredHookError as e:
         log('Unknown hook {} - skipping.'.format(e))
+    set_os_workload_status(CONFIGS, REQUIRED_INTERFACES,
+                           charm_func=check_optional_relations)

@@ -23,6 +23,8 @@ from charmhelpers.core.hookenv import (
     relations_of_type,
     unit_private_ip,
     is_relation_made,
+    relation_ids,
+    status_get,
 )
 from charmhelpers.core.templating import render
 from charmhelpers.fetch import (
@@ -35,6 +37,9 @@ from charmhelpers.contrib.network.ovs import (
     add_bridge_port,
     full_restart
 )
+from charmhelpers.contrib.hahelpers.cluster import (
+    get_hacluster_config,
+)
 from charmhelpers.contrib.openstack.utils import (
     configure_installation_source,
     get_os_codename_install_source,
@@ -43,7 +48,8 @@ from charmhelpers.contrib.openstack.utils import (
     git_clone_and_install,
     git_src_dir,
     git_pip_venv_dir,
-    get_hostname
+    get_hostname,
+    set_os_workload_status,
 )
 
 from charmhelpers.contrib.openstack.neutron import (
@@ -229,6 +235,13 @@ GIT_PACKAGE_BLACKLIST = [
     'quantum-metadata-agent',
     'quantum-plugin-openvswitch-agent',
 ]
+
+# The interface is said to be satisfied if anyone of the interfaces in the
+# list has a complete context.
+REQUIRED_INTERFACES = {
+    'messaging': ['amqp', 'zeromq-configuration'],
+    'neutron-plugin-api': ['neutron-plugin-api'],
+}
 
 
 def get_early_packages():
@@ -1236,3 +1249,21 @@ def git_post_install(projects_yaml):
     render('git/upstart/neutron-agent.upstart',
            '/etc/init/neutron-vpn-agent.conf',
            neutron_vpn_agent_context, perms=0o644)
+
+
+def check_optional_relations(configs):
+    required_interfaces = {}
+    if relation_ids('ha'):
+        required_interfaces['ha'] = ['cluster']
+        try:
+            get_hacluster_config()
+        except:
+            return ('blocked',
+                    'hacluster missing configuration: '
+                    'vip, vip_iface, vip_cidr')
+
+    if required_interfaces:
+        set_os_workload_status(configs, required_interfaces)
+        return status_get()
+    else:
+        return 'unknown', 'No optional relations'

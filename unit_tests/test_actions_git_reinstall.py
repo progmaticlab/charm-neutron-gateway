@@ -4,6 +4,10 @@ with patch('charmhelpers.core.hookenv.config') as config:
     config.return_value = 'neutron'
     import neutron_utils as utils  # noqa
 
+from test_utils import (
+    CharmTestCase
+)
+
 # Need to do some early patching to get the module loaded.
 _register_configs = utils.register_configs
 _restart_map = utils.restart_map
@@ -11,15 +15,12 @@ _restart_map = utils.restart_map
 utils.register_configs = MagicMock()
 utils.restart_map = MagicMock()
 
-import git_reinstall
+with patch('charmhelpers.core.hookenv.status_set'):
+    import git_reinstall
 
 # Unpatch it now that its loaded.
 utils.register_configs = _register_configs
 utils.restart_map = _restart_map
-
-from test_utils import (
-    CharmTestCase
-)
 
 TO_PATCH = [
     'config',
