@@ -747,6 +747,7 @@ def do_openstack_upgrade(configs):
                 fatal=True, dist=True)
     apt_install(get_early_packages(), fatal=True)
     apt_install(get_packages(), fatal=True)
+    configs.set_release(openstack_release=new_os_rel)
     configs.write_all()
 
 
