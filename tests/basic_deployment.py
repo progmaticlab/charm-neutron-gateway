@@ -432,13 +432,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'password': u.not_null
         }
 
-        if self._get_openstack_release() == self.precise_icehouse:
-            # Precise
-            expected['allowed_units'] = 'nova-cloud-controller/0 neutron-api/0'
-        else:
-            # Not Precise
-            expected['allowed_units'] = 'neutron-api/0'
-
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
             message = u.relation_error('mysql shared-db', ret)
