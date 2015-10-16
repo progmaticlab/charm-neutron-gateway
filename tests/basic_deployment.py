@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import amulet
 import os
 import time
@@ -47,7 +45,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         other_services = [{'name': 'mysql'},
                           {'name': 'rabbitmq-server'},
                           {'name': 'keystone'},
+                          {'name': 'glance'},  # satisfy workload status
                           {'name': 'nova-cloud-controller'},
+                          {'name': 'nova-compute'},  # satisfy workload stat
                           {'name': 'neutron-api'}]
 
         super(NeutronGatewayBasicDeployment, self)._add_services(
@@ -68,7 +68,15 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'neutron-api:shared-db': 'mysql:shared-db',
             'neutron-api:amqp': 'rabbitmq-server:amqp',
             'neutron-api:neutron-api': 'nova-cloud-controller:neutron-api',
-            'neutron-api:identity-service': 'keystone:identity-service'
+            'neutron-api:identity-service': 'keystone:identity-service',
+            'glance:identity-service': 'keystone:identity-service',
+            'glance:shared-db': 'mysql:shared-db',
+            'glance:amqp': 'rabbitmq-server:amqp',
+            'nova-cloud-controller:cloud-compute': 'nova-compute:'
+                                                   'cloud-compute',
+            'nova-compute:amqp': 'rabbitmq-server:amqp',
+            'nova-compute:image-service': 'glance:image-service',
+            'nova-cloud-controller:image-service': 'glance:image-service',
         }
         super(NeutronGatewayBasicDeployment, self)._add_relations(relations)
 
