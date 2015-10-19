@@ -421,19 +421,18 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         expected = {
             'db_host': u.valid_ip,
             'private-address': u.valid_ip,
-            'password': u.not_null
+            'password': u.not_null,
+            'allowed_units': u.not_null,
         }
-
-        if self._get_openstack_release() == self.precise_icehouse:
-            # Precise
-            expected['allowed_units'] = 'nova-cloud-controller/0 neutron-api/0'
-        else:
-            # Not Precise
-            expected['allowed_units'] = 'neutron-api/0'
 
         ret = u.validate_relation_data(unit, relation, expected)
         if ret:
             message = u.relation_error('mysql shared-db', ret)
+            amulet.raise_status(amulet.FAIL, msg=message)
+        relation_data = unit.relation(relation[0], relation[1])
+        allowed_units = relation_data['allowed_units'].split()
+        if 'neutron-api/0' not in allowed_units:
+            message = 'neutron-api/0 not found in allowed_units'
             amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_208_neutron_api_amqp_relation(self):
