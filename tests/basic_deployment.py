@@ -949,6 +949,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self.neutron.create_network({'network': network})
 
         networks = self.neutron.list_networks(name=net_name)
+        u.log.debug('Networks: {}'.format(networks))
         net_len = len(networks['networks'])
         if net_len != 1:
             msg = "Expected 1 network, found {}".format(net_len)
