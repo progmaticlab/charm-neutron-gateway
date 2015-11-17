@@ -13,6 +13,7 @@ from charmhelpers.fetch import (
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
     NeutronAPIContext,
+    config_flags_parser
 )
 from charmhelpers.contrib.openstack.utils import (
     get_os_codename_install_source
@@ -153,6 +154,10 @@ class NeutronGatewayContext(NeutronAPIContext):
         vlan_ranges = config('vlan-ranges')
         if vlan_ranges:
             ctxt['vlan_ranges'] = ','.join(vlan_ranges.split())
+
+        dnsmasq_flags = config('dnsmasq-flags')
+        if dnsmasq_flags:
+            ctxt['dnsmasq_flags'] = config_flags_parser(dnsmasq_flags)
 
         net_dev_mtu = api_settings['network_device_mtu']
         if net_dev_mtu:
