@@ -1,6 +1,6 @@
 name: neutron-gateway
-summary: Virtual Networking for OpenStack - Neutron Gateway
-maintainer: James Page <james.page@ubuntu.com>
+summary: OpenStack Networking - Neutron Gateway
+maintainer: OpenStack Charmers <openstack-charmers@lists.ubuntu.com>
 description: |
   Neutron is a virtual network service for Openstack, and a part of
   Netstack. Just like OpenStack Nova provides an API to dynamically
@@ -12,9 +12,9 @@ description: |
   etc.)
   .
   This charm provides central Neutron networking services as part
-  of a Neutron based Openstack deployment
+  of a Neutron based OpenStack deployment
 tags:
-    - openstack
+  - openstack
 provides:
   nrpe-external-master:
     interface: nrpe-external-master
