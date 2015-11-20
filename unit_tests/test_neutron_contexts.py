@@ -123,6 +123,8 @@ class TestNeutronGatewayContext(CharmTestCase):
         self.test_config.set('debug', False)
         self.test_config.set('verbose', True)
         self.test_config.set('instance-mtu', 1420)
+        self.test_config.set('dnsmasq-flags', 'dhcp-userclass=set:ipxe,iPXE,'
+                                              'dhcp-match=set:ipxe,175')
         self.test_config.set('vlan-ranges',
                              'physnet1:1000:2000 physnet2:2001:3000')
         self.test_config.set('flat-network-providers', 'physnet3 physnet4')
@@ -152,6 +154,10 @@ class TestNeutronGatewayContext(CharmTestCase):
             'vlan_ranges': 'physnet1:1000:2000,physnet2:2001:3000',
             'network_device_mtu': 9000,
             'veth_mtu': 9000,
+            'dnsmasq_flags': {
+                'dhcp-userclass': 'set:ipxe,iPXE',
+                'dhcp-match': 'set:ipxe,175'
+            }
         })
 
 

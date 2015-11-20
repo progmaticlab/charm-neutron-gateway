@@ -128,6 +128,12 @@ options:
       within the cloud.  This is useful in deployments where its not
       possible to increase MTU on switches and physical servers to
       accommodate the packet overhead of using GRE tunnels.
+  dnsmasq-flags:
+    type: string
+    default:
+    description: |
+      Comma-separated list of key=value config flags with the additional
+      dhcp options for neutron dnsmasq.
   enable-l3-agent:
     type: boolean
     default: True
