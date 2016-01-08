@@ -10,5 +10,5 @@ include:
     - contrib.python.packages
     - contrib.storage.linux
     - contrib.python
-    - payload.execd
+    - payload
     - contrib.charmsupport
