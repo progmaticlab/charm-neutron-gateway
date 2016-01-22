@@ -1,6 +1,5 @@
 import amulet
 import os
-import time
 import yaml
 
 from neutronclient.v2_0 import client as neutronclient
@@ -32,6 +31,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self._add_relations()
         self._configure_services()
         self._deploy()
+
+        u.log.info('Waiting on extended status checks...')
+        exclude_services = ['mysql']
+        self._auto_wait_for_status(exclude_services=exclude_services)
+
         self._initialize_tests()
 
     def _add_services(self):
@@ -154,9 +158,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self.neutron_gateway_sentry = self.d.sentry.unit['neutron-gateway/0']
         self.neutron_api_sentry = self.d.sentry.unit['neutron-api/0']
 
-        # Let things settle a bit before moving forward
-        time.sleep(30)
-
         # Authenticate admin with keystone
         self.keystone = u.authenticate_keystone_admin(self.keystone_sentry,
                                                       user='admin',
@@ -253,7 +254,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
              'tenantId': u.not_null,
              'id': u.not_null,
              'email': 'juju@localhost'},
-            {'name': 'quantum',
+            {'name': 'neutron',
              'enabled': True,
              'tenantId': u.not_null,
              'id': u.not_null,
@@ -485,11 +486,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         api_endpoint = 'http://{}:9696'.format(api_ip)
         expected = {
             'private-address': u.valid_ip,
-            'quantum_region': 'RegionOne',
-            'quantum_service': 'quantum',
-            'quantum_admin_url': api_endpoint,
-            'quantum_internal_url': api_endpoint,
-            'quantum_public_url': api_endpoint,
+            'neutron_region': 'RegionOne',
+            'neutron_service': 'neutron',
+            'neutron_admin_url': api_endpoint,
+            'neutron_internal_url': api_endpoint,
+            'neutron_public_url': api_endpoint,
         }
 
         ret = u.validate_relation_data(unit, relation, expected)
