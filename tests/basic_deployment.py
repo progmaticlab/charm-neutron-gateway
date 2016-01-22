@@ -1,6 +1,5 @@
 import amulet
 import os
-import time
 import yaml
 
 from neutronclient.v2_0 import client as neutronclient
@@ -32,6 +31,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self._add_relations()
         self._configure_services()
         self._deploy()
+
+        u.log.info('Waiting on extended status checks...')
+        exclude_services = ['mysql']
+        self._auto_wait_for_status(exclude_services=exclude_services)
+
         self._initialize_tests()
 
     def _add_services(self):
@@ -153,9 +157,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self.nova_cc_sentry = self.d.sentry.unit['nova-cloud-controller/0']
         self.neutron_gateway_sentry = self.d.sentry.unit['neutron-gateway/0']
         self.neutron_api_sentry = self.d.sentry.unit['neutron-api/0']
-
-        # Let things settle a bit before moving forward
-        time.sleep(30)
 
         # Authenticate admin with keystone
         self.keystone = u.authenticate_keystone_admin(self.keystone_sentry,
