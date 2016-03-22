@@ -12,3 +12,4 @@ include:
     - contrib.python
     - payload
     - contrib.charmsupport
+    - contrib.hardening|inc=*

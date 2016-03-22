@@ -1,12 +1,9 @@
-from mock import MagicMock, call, patch, ANY
 import collections
-import charmhelpers.contrib.openstack.templating as templating
 
-templating.OSConfigRenderer = MagicMock()
+from mock import MagicMock, call, patch, ANY
 
+import charmhelpers.core.hookenv as hookenv
 import neutron_utils
-
-
 try:
     import neutronclient
 except ImportError:
@@ -15,9 +12,6 @@ except ImportError:
 from test_utils import (
     CharmTestCase
 )
-
-import charmhelpers.core.hookenv as hookenv
-
 
 TO_PATCH = [
     'config',
@@ -248,8 +242,9 @@ class TestNeutronUtils(CharmTestCase):
                  call('br1', 'eth0.200', promisc=True)]
         self.add_bridge_port.assert_has_calls(calls)
 
+    @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
     @patch.object(neutron_utils, 'git_install_requested')
-    def test_do_openstack_upgrade(self, git_requested):
+    def test_do_openstack_upgrade(self, git_requested, mock_renderer):
         git_requested.return_value = False
         self.config.side_effect = self.test_config.get
         self.is_relation_made.return_value = False
@@ -271,7 +266,8 @@ class TestNeutronUtils(CharmTestCase):
             'cloud:precise-havana'
         )
 
-    def test_register_configs_ovs(self):
+    @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
+    def test_register_configs_ovs(self, mock_renderer):
         self.config.return_value = 'ovs'
         self.is_relation_made.return_value = False
         configs = neutron_utils.register_configs()
@@ -285,7 +281,8 @@ class TestNeutronUtils(CharmTestCase):
         for conf in confs:
             configs.register.assert_any_call(conf, ANY)
 
-    def test_register_configs_ovs_odl(self):
+    @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
+    def test_register_configs_ovs_odl(self, mock_renderer):
         self.config.side_effect = self.test_config.get
         self.test_config.set('plugin', 'ovs-odl')
         self.is_relation_made.return_value = False
@@ -300,7 +297,8 @@ class TestNeutronUtils(CharmTestCase):
         for conf in confs:
             configs.register.assert_any_call(conf, ANY)
 
-    def test_register_configs_amqp_nova(self):
+    @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
+    def test_register_configs_amqp_nova(self, mock_renderer):
         self.config.return_value = 'ovs'
         self.is_relation_made.return_value = True
         configs = neutron_utils.register_configs()
@@ -420,7 +418,8 @@ class TestNeutronUtils(CharmTestCase):
 
         self.assertDictEqual(neutron_utils.restart_map(), ex_map)
 
-    def test_register_configs_nsx(self):
+    @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
+    def test_register_configs_nsx(self, mock_renderer):
         self.config.return_value = 'nsx'
         configs = neutron_utils.register_configs()
         confs = [neutron_utils.NEUTRON_DHCP_AGENT_CONF,
@@ -443,7 +442,8 @@ class TestNeutronUtils(CharmTestCase):
             any_order=True,
         )
 
-    def test_register_configs_pre_install(self):
+    @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
+    def test_register_configs_pre_install(self, mock_renderer):
         self.config.return_value = 'ovs'
         self.is_relation_made.return_value = False
         configs = neutron_utils.register_configs()

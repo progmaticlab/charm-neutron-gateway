@@ -1,26 +1,23 @@
+import sys
+
 from mock import patch, MagicMock
+from test_utils import CharmTestCase
 
-with patch('charmhelpers.core.hookenv.config') as config:
-    config.return_value = 'neutron'
-    import neutron_utils as utils  # noqa
+# python-apt is not installed as part of test-requirements but is imported by
+# some charmhelpers modules so create a fake import.
+sys.modules['apt'] = MagicMock()
+sys.modules['apt_pkg'] = MagicMock()
 
-from test_utils import (
-    CharmTestCase
-)
-
-# Need to do some early patching to get the module loaded.
-_register_configs = utils.register_configs
-_restart_map = utils.restart_map
-
-utils.register_configs = MagicMock()
-utils.restart_map = MagicMock()
-
-with patch('charmhelpers.core.hookenv.status_set'):
-    import git_reinstall
-
-# Unpatch it now that its loaded.
-utils.register_configs = _register_configs
-utils.restart_map = _restart_map
+with patch('charmhelpers.core.hookenv.config'):
+    with patch('neutron_utils.restart_map'):
+        with patch('neutron_utils.register_configs'):
+            with patch('charmhelpers.contrib.hardening.harden.harden') as \
+                    mock_dec:
+                mock_dec.side_effect = (lambda *dargs, **dkwargs: lambda f:
+                                        lambda *args, **kwargs:
+                                            f(*args, **kwargs))
+                with patch('charmhelpers.core.hookenv.status_set'):
+                    import git_reinstall
 
 TO_PATCH = [
     'config',

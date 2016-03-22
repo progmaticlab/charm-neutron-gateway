@@ -1,6 +1,7 @@
-import logging
-import unittest
 import os
+import logging
+
+import unittest
 import yaml
 
 from mock import patch

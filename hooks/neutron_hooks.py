@@ -40,6 +40,7 @@ from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
 
 from charmhelpers.contrib.charmsupport import nrpe
+from charmhelpers.contrib.hardening.harden import harden
 
 import sys
 from neutron_utils import (
@@ -74,6 +75,7 @@ CONFIGS = register_configs()
 
 
 @hooks.hook('install.real')
+@harden()
 def install():
     status_set('maintenance', 'Executing pre-install')
     execd_preinstall()
@@ -104,6 +106,7 @@ def install():
 
 @hooks.hook('config-changed')
 @restart_on_change(restart_map())
+@harden()
 def config_changed():
     global CONFIGS
     if git_install_requested():
@@ -151,6 +154,7 @@ def config_changed():
 
 
 @hooks.hook('upgrade-charm')
+@harden()
 def upgrade_charm():
     install()
     config_changed()
@@ -317,6 +321,12 @@ def ha_relation_destroyed():
     if config('ha-legacy-mode'):
         stop_neutron_ha_monitor_daemon()
         remove_legacy_ha_files()
+
+
+@hooks.hook('update-status')
+@harden()
+def update_status():
+    log('Updating status.')
 
 
 if __name__ == '__main__':

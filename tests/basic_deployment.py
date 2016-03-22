@@ -595,33 +595,49 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             return
 
         unit = self.neutron_gateway_sentry
-        conf = '/etc/neutron/plugins/ml2/ml2_conf.ini'
-
-        expected = {
-            'ml2': {
-                'type_drivers': 'gre,vxlan,vlan,flat',
-                'tenant_network_types': 'gre,vxlan,vlan,flat',
-                'mechanism_drivers': 'openvswitch,hyperv,l2population'
-            },
-            'ml2_type_gre': {
-                'tunnel_id_ranges': '1:1000'
-            },
-            'ml2_type_vxlan': {
-                'vni_ranges': '1001:2000'
-            },
-            'ovs': {
-                'enable_tunneling': 'True',
-                'local_ip': self.get_private_address(unit)
-            },
-            'agent': {
-                'tunnel_types': 'gre',
-                'l2_population': 'False'
-            },
-            'securitygroup': {
-                'firewall_driver': 'neutron.agent.linux.iptables_firewall.'
-                                   'OVSHybridIptablesFirewallDriver'
+        if self._get_openstack_release() < self.trusty_mitaka:
+            conf = '/etc/neutron/plugins/ml2/ml2_conf.ini'
+            expected = {
+                'ml2': {
+                    'type_drivers': 'gre,vxlan,vlan,flat',
+                    'tenant_network_types': 'gre,vxlan,vlan,flat',
+                    'mechanism_drivers': 'openvswitch,hyperv,l2population'
+                },
+                'ml2_type_gre': {
+                    'tunnel_id_ranges': '1:1000'
+                },
+                'ml2_type_vxlan': {
+                    'vni_ranges': '1001:2000'
+                },
+                'ovs': {
+                    'enable_tunneling': 'True',
+                    'local_ip': self.get_private_address(unit)
+                },
+                'agent': {
+                    'tunnel_types': 'gre',
+                    'l2_population': 'False'
+                },
+                'securitygroup': {
+                    'firewall_driver': 'neutron.agent.linux.iptables_firewall.'
+                                       'OVSHybridIptablesFirewallDriver'
+                }
             }
-        }
+        else:
+            conf = '/etc/neutron/plugins/ml2/openvswitch_agent.ini'
+            expected = {
+                'ovs': {
+                    'enable_tunneling': 'True',
+                    'local_ip': self.get_private_address(unit)
+                },
+                'agent': {
+                    'tunnel_types': 'gre',
+                    'l2_population': 'False'
+                },
+                'securitygroup': {
+                    'firewall_driver': 'neutron.agent.linux.iptables_firewall.'
+                                       'OVSHybridIptablesFirewallDriver'
+                }
+            }
 
         for section, pairs in expected.iteritems():
             ret = u.validate_config_data(unit, conf, section, pairs)

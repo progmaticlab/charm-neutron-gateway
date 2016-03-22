@@ -1,18 +1,21 @@
-from mock import MagicMock, patch, call
+import sys
+
 import yaml
+
+from mock import MagicMock, patch, call
+
+# python-apt is not installed as part of test-requirements but is imported by
+# some charmhelpers modules so create a fake import.
+sys.modules['apt'] = MagicMock()
+sys.modules['apt_pkg'] = MagicMock()
+
 import charmhelpers.core.hookenv as hookenv
-hookenv.config = MagicMock()
-import neutron_utils as utils
-_register_configs = utils.register_configs
-_restart_map = utils.restart_map
-utils.register_configs = MagicMock()
-utils.restart_map = MagicMock()
-
-with patch('charmhelpers.core.hookenv.status_set'):
+with patch('charmhelpers.contrib.hardening.harden.harden') as \
+        mock_dec:
+    mock_dec.side_effect = (lambda *dargs, **dkwargs: lambda f:
+                            lambda *args, **kwargs:
+                                f(*args, **kwargs))
     import neutron_hooks as hooks
-
-utils.register_configs = _register_configs
-utils.restart_map = _restart_map
 
 from test_utils import CharmTestCase
 
@@ -54,10 +57,6 @@ TO_PATCH = [
 ]
 
 
-def passthrough(value):
-    return value
-
-
 class TestQuantumHooks(CharmTestCase):
 
     def setUp(self):
@@ -66,7 +65,8 @@ class TestQuantumHooks(CharmTestCase):
         self.test_config.set('openstack-origin', 'cloud:precise-havana')
         self.test_config.set('plugin', 'ovs')
         self.lsb_release.return_value = {'DISTRIB_CODENAME': 'precise'}
-        self.b64decode.side_effect = passthrough
+        # passthrough
+        self.b64decode.side_effect = lambda arg: arg
         hookenv.config.side_effect = self.test_config.get
         hooks.hooks._config_save = False
 
@@ -78,7 +78,7 @@ class TestQuantumHooks(CharmTestCase):
         self.valid_plugin.return_value = True
         _pkgs = ['foo', 'bar']
         self.filter_installed_packages.return_value = _pkgs
-        self._call_hook('install')
+        self._call_hook('install.real')
         self.configure_installation_source.assert_called_with(
             'cloud:precise-havana'
         )
@@ -93,7 +93,7 @@ class TestQuantumHooks(CharmTestCase):
 
     def test_install_hook_precise_nocloudarchive(self):
         self.test_config.set('openstack-origin', 'distro')
-        self._call_hook('install')
+        self._call_hook('install.real')
         self.configure_installation_source.assert_called_with(
             'cloud:precise-icehouse'
         )
@@ -101,11 +101,11 @@ class TestQuantumHooks(CharmTestCase):
     @patch('sys.exit')
     def test_install_hook_invalid_plugin(self, _exit):
         self.valid_plugin.return_value = False
-        self._call_hook('install')
+        self._call_hook('install.real')
         self.assertTrue(self.log.called)
         _exit.assert_called_with(1)
 
-    @patch.object(utils, 'git_install_requested')
+    @patch('neutron_utils.git_install_requested')
     def test_install_hook_git(self, git_requested):
         git_requested.return_value = True
         self.valid_plugin.return_value = True
@@ -126,7 +126,7 @@ class TestQuantumHooks(CharmTestCase):
         projects_yaml = yaml.dump(openstack_origin_git)
         self.test_config.set('openstack-origin', repo)
         self.test_config.set('openstack-origin-git', projects_yaml)
-        self._call_hook('install')
+        self._call_hook('install.real')
         self.configure_installation_source.assert_called_with(
             'cloud:trusty-juno'
         )
