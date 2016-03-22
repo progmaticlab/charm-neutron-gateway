@@ -56,11 +56,24 @@ class TestL3AgentContext(CharmTestCase):
         self.config.side_effect = self.test_config.get
 
     @patch('neutron_contexts.NeutronAPIContext')
-    def test_no_ext_netid(self, _NeutronAPIContext):
+    def test_new_ext_network(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
             DummyNeutronAPIContext(return_value={'enable_dvr': False})
         self.test_config.set('run-internal-router', 'none')
         self.test_config.set('external-network-id', '')
+        self.eligible_leader.return_value = False
+        self.assertEquals(neutron_contexts.L3AgentContext()(),
+                          {'agent_mode': 'legacy',
+                           'external_configuration_new': True,
+                           'handle_internal_only_router': False,
+                           'plugin': 'ovs'})
+
+    @patch('neutron_contexts.NeutronAPIContext')
+    def test_old_ext_network(self, _NeutronAPIContext):
+        _NeutronAPIContext.return_value = \
+            DummyNeutronAPIContext(return_value={'enable_dvr': False})
+        self.test_config.set('run-internal-router', 'none')
+        self.test_config.set('ext-port', 'eth1')
         self.eligible_leader.return_value = False
         self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',

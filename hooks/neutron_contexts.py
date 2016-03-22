@@ -64,6 +64,10 @@ class L3AgentContext(OSContextGenerator):
 
         if config('external-network-id'):
             ctxt['ext_net_id'] = config('external-network-id')
+
+        if not config('ext-port') and not config('external-network-id'):
+            ctxt['external_configuration_new'] = True
+
         if config('plugin'):
             ctxt['plugin'] = config('plugin')
         if api_settings['enable_dvr']:
