@@ -41,9 +41,9 @@ TO_PATCH = [
     'lsb_release',
     'mkdir',
     'copy2',
-    'NeutronAPIContext',
     'init_is_systemd',
     'os_application_version_set',
+    'NeutronAPIContext',
 ]
 
 openstack_origin_git = \
@@ -337,11 +337,11 @@ class TestNeutronUtils(CharmTestCase):
         self.config.return_value = 'ovs'
         self.get_os_codename_install_source.return_value = 'havana'
         mock_get_packages.return_value = ['neutron-vpn-agent']
+        self.os_release.return_value = 'icehouse'
         ex_map = {
             neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
                                          'neutron-metadata-agent',
                                          'neutron-plugin-openvswitch-agent',
-                                         'neutron-plugin-metering-agent',
                                          'neutron-metering-agent',
                                          'neutron-lbaas-agent',
                                          'neutron-vpn-agent'],
@@ -358,10 +358,22 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.NEUTRON_DHCP_AGENT_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_METERING_AGENT_CONF:
-            ['neutron-metering-agent', 'neutron-plugin-metering-agent'],
+            ['neutron-metering-agent'],
             neutron_utils.NOVA_CONF: ['nova-api-metadata'],
             neutron_utils.EXT_PORT_CONF: ['ext-port'],
             neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
+            neutron_utils.NEUTRON_DHCP_AA_PROFILE_PATH: ['neutron-dhcp-agent'],
+            neutron_utils.NEUTRON_OVS_AA_PROFILE_PATH:
+                ['neutron-plugin-openvswitch-agent'],
+            neutron_utils.NEUTRON_L3_AA_PROFILE_PATH: ['neutron-vpn-agent'],
+            neutron_utils.NEUTRON_LBAAS_AA_PROFILE_PATH:
+            ['neutron-lbaas-agent'],
+            neutron_utils.NEUTRON_METADATA_AA_PROFILE_PATH:
+            ['neutron-metadata-agent'],
+            neutron_utils.NEUTRON_METERING_AA_PROFILE_PATH:
+            ['neutron-metering-agent'],
+            neutron_utils.NOVA_API_METADATA_AA_PROFILE_PATH:
+            ['nova-api-metadata'],
         }
 
         self.assertDictEqual(neutron_utils.restart_map(), ex_map)
@@ -394,6 +406,18 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.NOVA_CONF: ['nova-api-metadata'],
             neutron_utils.EXT_PORT_CONF: ['ext-port'],
             neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
+            neutron_utils.NEUTRON_DHCP_AA_PROFILE_PATH: ['neutron-dhcp-agent'],
+            neutron_utils.NEUTRON_OVS_AA_PROFILE_PATH:
+                ['neutron-openvswitch-agent'],
+            neutron_utils.NEUTRON_L3_AA_PROFILE_PATH: ['neutron-vpn-agent'],
+            neutron_utils.NEUTRON_LBAAS_AA_PROFILE_PATH:
+            ['neutron-lbaas-agent'],
+            neutron_utils.NEUTRON_METADATA_AA_PROFILE_PATH:
+            ['neutron-metadata-agent'],
+            neutron_utils.NEUTRON_METERING_AA_PROFILE_PATH:
+            ['neutron-metering-agent'],
+            neutron_utils.NOVA_API_METADATA_AA_PROFILE_PATH:
+            ['nova-api-metadata'],
         }
         self.assertEqual(ex_map, neutron_utils.restart_map())
 
@@ -462,6 +486,16 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.NOVA_CONF: ['nova-api-metadata'],
             neutron_utils.EXT_PORT_CONF: ['ext-port'],
             neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
+            neutron_utils.NEUTRON_DHCP_AA_PROFILE_PATH: ['neutron-dhcp-agent'],
+            neutron_utils.NEUTRON_L3_AA_PROFILE_PATH: ['neutron-vpn-agent'],
+            neutron_utils.NEUTRON_LBAAS_AA_PROFILE_PATH:
+            ['neutron-lbaas-agent'],
+            neutron_utils.NEUTRON_METADATA_AA_PROFILE_PATH:
+            ['neutron-metadata-agent'],
+            neutron_utils.NEUTRON_METERING_AA_PROFILE_PATH:
+            ['neutron-metering-agent'],
+            neutron_utils.NOVA_API_METADATA_AA_PROFILE_PATH:
+            ['nova-api-metadata'],
         }
 
         self.assertDictEqual(neutron_utils.restart_map(), ex_map)

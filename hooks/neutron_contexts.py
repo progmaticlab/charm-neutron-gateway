@@ -14,7 +14,7 @@ from charmhelpers.fetch import (
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
     NeutronAPIContext,
-    config_flags_parser
+    config_flags_parser,
 )
 from charmhelpers.contrib.hahelpers.cluster import(
     eligible_leader

@@ -36,8 +36,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self._deploy()
 
         u.log.info('Waiting on extended status checks...')
-        exclude_services = ['mysql']
-        self._auto_wait_for_status(exclude_services=exclude_services)
+        self.exclude_services = ['mysql']
+        self._auto_wait_for_status(exclude_services=self.exclude_services)
 
         self._initialize_tests()
 
@@ -92,7 +92,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
     def _configure_services(self):
         """Configure all of the services."""
-        neutron_gateway_config = {}
+        neutron_gateway_config = {'aa-profile-mode': 'enforce'}
         if self.git:
             amulet_http_proxy = os.environ.get('AMULET_HTTP_PROXY')
 
@@ -539,7 +539,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         expected = {
             'private-address': api_ip,
             'neutron-plugin': 'ovs',
-            'neutron-security-groups': "no",
             'neutron-url': api_endpoint,
         }
         ret = u.validate_relation_data(unit, relation, expected)
@@ -1063,3 +1062,50 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         assert u.wait_on_action(action_id), "Resume action failed."
         assert u.status_get(self.neutron_gateway_sentry)[0] == "active"
         u.log.debug('OK')
+
+    def test_920_change_aa_profile(self):
+        """Test changing the Apparmor profile mode"""
+
+        # Services which are expected to restart upon config change,
+        # and corresponding config files affected by the change
+        services = {
+            'neutron-lbaas-agent':
+            '/etc/apparmor.d/usr.bin.neutron-lbaas-agent',
+            'neutron-metering-agent':
+            '/etc/apparmor.d/usr.bin.neutron-metering-agent',
+            'neutron-dhcp-agent': '/etc/apparmor.d/usr.bin.neutron-dhcp-agent',
+            'neutron-metadata-agent':
+            '/etc/apparmor.d/usr.bin.neutron-metadata-agent',
+        }
+
+        if self._get_openstack_release() >= self.xenial_mitaka:
+            services['neutron-l3-agent'] = (
+                '/etc/apparmor.d/usr.bin.neutron-l3-agent')
+
+        sentry = self.neutron_gateway_sentry
+        juju_service = 'neutron-gateway'
+        mtime = u.get_sentry_time(sentry)
+        set_default = {'aa-profile-mode': 'enforce'}
+        set_alternate = {'aa-profile-mode': 'complain'}
+        sleep_time = 60
+
+        # Change to complain mode
+        self.d.configure(juju_service, set_alternate)
+        self._auto_wait_for_status(exclude_services=self.exclude_services)
+
+        for s, conf_file in services.iteritems():
+            u.log.debug("Checking that service restarted: {}".format(s))
+            if not u.validate_service_config_changed(sentry, mtime, s,
+                                                     conf_file,
+                                                     sleep_time=sleep_time):
+
+                self.d.configure(juju_service, set_default)
+                msg = "service {} didn't restart after config change".format(s)
+                amulet.raise_status(amulet.FAIL, msg=msg)
+            sleep_time = 0
+
+        output, code = sentry.run('aa-status '
+                                  '--complaining')
+        u.log.info("Assert output of aa-status --complaining >= 3. Result: {} "
+                   "Exit Code: {}".format(output, code))
+        assert int(output) >= 3

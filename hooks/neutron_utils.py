@@ -107,6 +107,39 @@ NEUTRON_PLUGIN_CONF = {
     NSX: NEUTRON_NSX_PLUGIN_CONF,
 }
 
+NEUTRON_DHCP_AA_PROFILE = 'usr.bin.neutron-dhcp-agent'
+NEUTRON_L3_AA_PROFILE = 'usr.bin.neutron-l3-agent'
+NEUTRON_LBAAS_AA_PROFILE = 'usr.bin.neutron-lbaas-agent'
+NEUTRON_METADATA_AA_PROFILE = 'usr.bin.neutron-metadata-agent'
+NEUTRON_METERING_AA_PROFILE = 'usr.bin.neutron-metering-agent'
+NOVA_API_METADATA_AA_PROFILE = 'usr.bin.nova-api-metadata'
+NEUTRON_OVS_AA_PROFILE = 'usr.bin.neutron-openvswitch-agent'
+
+APPARMOR_PROFILES = [
+    NEUTRON_DHCP_AA_PROFILE,
+    NEUTRON_L3_AA_PROFILE,
+    NEUTRON_LBAAS_AA_PROFILE,
+    NEUTRON_METADATA_AA_PROFILE,
+    NEUTRON_METERING_AA_PROFILE,
+    NOVA_API_METADATA_AA_PROFILE,
+    NEUTRON_OVS_AA_PROFILE
+]
+
+NEUTRON_OVS_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                               ''.format(NEUTRON_OVS_AA_PROFILE))
+NEUTRON_DHCP_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                                ''.format(NEUTRON_DHCP_AA_PROFILE))
+NEUTRON_L3_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                              ''.format(NEUTRON_L3_AA_PROFILE))
+NEUTRON_LBAAS_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                                 ''.format(NEUTRON_LBAAS_AA_PROFILE))
+NEUTRON_METADATA_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                                    ''.format(NEUTRON_METADATA_AA_PROFILE))
+NEUTRON_METERING_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                                    ''.format(NEUTRON_METERING_AA_PROFILE))
+NOVA_API_METADATA_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                                     ''.format(NOVA_API_METADATA_AA_PROFILE))
+
 GATEWAY_PKGS = {
     OVS: [
         "neutron-plugin-openvswitch-agent",
@@ -313,6 +346,12 @@ NOVA_CONFIG_FILES = {
                           context.NotificationDriverContext()],
         'services': ['nova-api-metadata']
     },
+    NOVA_API_METADATA_AA_PROFILE_PATH: {
+        'services': ['nova-api-metadata'],
+        'hook_contexts': [
+            context.AppArmorContext(NOVA_API_METADATA_AA_PROFILE)
+        ],
+    },
 }
 
 NEUTRON_SHARED_CONFIG_FILES = {
@@ -329,6 +368,30 @@ NEUTRON_SHARED_CONFIG_FILES = {
                           context.WorkerConfigContext(),
                           NeutronGatewayContext()],
         'services': ['neutron-metadata-agent']
+    },
+    NEUTRON_DHCP_AA_PROFILE_PATH: {
+        'services': ['neutron-dhcp-agent'],
+        'hook_contexts': [
+            context.AppArmorContext(NEUTRON_DHCP_AA_PROFILE)
+        ],
+    },
+    NEUTRON_LBAAS_AA_PROFILE_PATH: {
+        'services': ['neutron-lbaas-agent'],
+        'hook_contexts': [
+            context.AppArmorContext(NEUTRON_LBAAS_AA_PROFILE)
+        ],
+    },
+    NEUTRON_METADATA_AA_PROFILE_PATH: {
+        'services': ['neutron-metadata-agent'],
+        'hook_contexts': [
+            context.AppArmorContext(NEUTRON_METADATA_AA_PROFILE)
+        ],
+    },
+    NEUTRON_METERING_AA_PROFILE_PATH: {
+        'services': ['neutron-metering-agent'],
+        'hook_contexts': [
+            context.AppArmorContext(NEUTRON_METERING_AA_PROFILE)
+        ],
     },
 }
 NEUTRON_SHARED_CONFIG_FILES.update(NOVA_CONFIG_FILES)
@@ -377,13 +440,21 @@ NEUTRON_OVS_CONFIG_FILES = {
         'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-openvswitch-agent']
     },
-    NEUTRON_ML2_PLUGIN_CONF: {
+    NEUTRON_OVS_AGENT_CONF: {
         'hook_contexts': [NeutronGatewayContext()],
         'services': ['neutron-plugin-openvswitch-agent']
     },
-    NEUTRON_OVS_AGENT_CONF: {
-        'hook_contexts': [NeutronGatewayContext()],
-        'services': ['neutron-openvswitch-agent']
+    NEUTRON_OVS_AA_PROFILE_PATH: {
+        'services': ['neutron-plugin-openvswitch-agent'],
+        'hook_contexts': [
+            context.AppArmorContext(NEUTRON_OVS_AA_PROFILE)
+        ],
+    },
+    NEUTRON_L3_AA_PROFILE_PATH: {
+        'services': ['neutron-l3-agent', 'neutron-vpn-agent'],
+        'hook_contexts': [
+            context.AppArmorContext(NEUTRON_L3_AA_PROFILE)
+        ],
     },
     EXT_PORT_CONF: {
         'hook_contexts': [ExternalPortContext()],
@@ -940,10 +1011,10 @@ def git_pre_install():
     add_user_to_group('nova', 'nova')
 
     for d in dirs:
-        mkdir(d, owner='neutron', group='neutron', perms=0755, force=False)
+        mkdir(d, owner='neutron', group='neutron', perms=0o755, force=False)
 
     for l in logs:
-        write_file(l, '', owner='neutron', group='neutron', perms=0644)
+        write_file(l, '', owner='neutron', group='neutron', perms=0o644)
 
 
 def git_post_install(projects_yaml):
@@ -1440,3 +1511,9 @@ def _pause_resume_helper(f, configs):
     f(assess_status_func(configs),
       services=active_services,
       ports=None)
+
+
+def configure_apparmor():
+    '''Configure all apparmor profiles for the local unit'''
+    for profile in APPARMOR_PROFILES:
+        context.AppArmorContext(profile).setup_aa_profile()
