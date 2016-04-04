@@ -49,6 +49,9 @@ from charmhelpers.contrib.openstack.utils import (
     git_pip_venv_dir,
     get_hostname,
     set_os_workload_status,
+    make_assess_status_func,
+    pause_unit,
+    resume_unit,
 )
 
 from charmhelpers.contrib.openstack.neutron import (
@@ -187,7 +190,6 @@ GIT_PACKAGE_BLACKLIST = [
     'neutron-plugin-cisco',
     'neutron-plugin-metering-agent',
     'neutron-plugin-openvswitch-agent',
-    'neutron-plugin-vpn-agent',
     'neutron-vpn-agent',
     'python-neutron-fwaas',
     'python-oslo.config',
@@ -269,6 +271,8 @@ def use_l3ha():
 
 EXT_PORT_CONF = '/etc/init/ext-port.conf'
 PHY_NIC_MTU_CONF = '/etc/init/os-charm-phy-nic-mtu.conf'
+STOPPED_SERVICES = ['os-charm-phy-nic-mtu', 'ext-port']
+
 TEMPLATES = 'templates'
 
 QUANTUM_CONF = "/etc/quantum/quantum.conf"
@@ -331,7 +335,6 @@ NEUTRON_OVS_CONFIG_FILES = {
                      'neutron-plugin-metering-agent',
                      'neutron-metering-agent',
                      'neutron-lbaas-agent',
-                     'neutron-plugin-vpn-agent',
                      'neutron-vpn-agent']
     },
     NEUTRON_L3_AGENT_CONF: {
@@ -351,8 +354,7 @@ NEUTRON_OVS_CONFIG_FILES = {
     },
     NEUTRON_VPNAAS_AGENT_CONF: {
         'hook_contexts': [NeutronGatewayContext()],
-        'services': ['neutron-plugin-vpn-agent',
-                     'neutron-vpn-agent']
+        'services': ['neutron-vpn-agent']
     },
     NEUTRON_FWAAS_CONF: {
         'hook_contexts': [NeutronGatewayContext()],
@@ -394,7 +396,6 @@ NEUTRON_OVS_ODL_CONFIG_FILES = {
                      'neutron-plugin-metering-agent',
                      'neutron-metering-agent',
                      'neutron-lbaas-agent',
-                     'neutron-plugin-vpn-agent',
                      'neutron-vpn-agent']
     },
     NEUTRON_L3_AGENT_CONF: {
@@ -414,8 +415,7 @@ NEUTRON_OVS_ODL_CONFIG_FILES = {
     },
     NEUTRON_VPNAAS_AGENT_CONF: {
         'hook_contexts': [NeutronGatewayContext()],
-        'services': ['neutron-plugin-vpn-agent',
-                     'neutron-vpn-agent']
+        'services': ['neutron-vpn-agent']
     },
     NEUTRON_FWAAS_CONF: {
         'hook_contexts': [NeutronGatewayContext()],
@@ -468,10 +468,12 @@ CONFIG_FILES = {
 }
 
 SERVICE_RENAMES = {
+    'icehouse': {
+        'neutron-plugin-metering-agent': 'neutron-metering-agent',
+    },
     'mitaka': {
         'neutron-plugin-openvswitch-agent': 'neutron-openvswitch-agent',
-        'neutron-plugin-metering-agent': 'neutron-metering-agent',
-    }
+    },
 }
 
 
@@ -568,10 +570,15 @@ def restart_map():
     plugin = config('plugin')
     config_files = resolve_config_files(plugin, release)
     _map = {}
+    enable_vpn_agent = 'neutron-vpn-agent' in get_packages()
     for f, ctxt in config_files[plugin].iteritems():
         svcs = set()
         for svc in ctxt['services']:
             svcs.add(remap_service(svc))
+        if not enable_vpn_agent and 'neutron-vpn-agent' in svcs:
+            svcs.remove('neutron-vpn-agent')
+        if 'neutron-vpn-agent' in svcs and 'neutron-l3-agent' in svcs:
+            svcs.remove('neutron-l3-agent')
         if svcs:
             _map[f] = list(svcs)
     return _map
@@ -1214,3 +1221,72 @@ def check_optional_relations(configs):
         return status_get()
     else:
         return 'unknown', 'No optional relations'
+
+
+def assess_status(configs):
+    """Assess status of current unit
+    Decides what the state of the unit should be based on the current
+    configuration.
+    SIDE EFFECT: calls set_os_workload_status(...) which sets the workload
+    status of the unit.
+    Also calls status_set(...) directly if paused state isn't complete.
+    @param configs: a templating.OSConfigRenderer() object
+    @returns None - this function is executed for its side-effect
+    """
+    assess_status_func(configs)()
+
+
+def assess_status_func(configs):
+    """Helper function to create the function that will assess_status() for
+    the unit.
+    Uses charmhelpers.contrib.openstack.utils.make_assess_status_func() to
+    create the appropriate status function and then returns it.
+    Used directly by assess_status() and also for pausing and resuming
+    the unit.
+
+    NOTE(ajkavanagh) ports are not checked due to race hazards with services
+    that don't behave sychronously w.r.t their service scripts.  e.g.
+    apache2.
+    @param configs: a templating.OSConfigRenderer() object
+    @return f() -> None : a function that assesses the unit's workload status
+    """
+    active_services = [s for s in services() if s not in STOPPED_SERVICES]
+    return make_assess_status_func(
+        configs, REQUIRED_INTERFACES,
+        charm_func=check_optional_relations,
+        services=active_services, ports=None)
+
+
+def pause_unit_helper(configs):
+    """Helper function to pause a unit, and then call assess_status(...) in
+    effect, so that the status is correctly updated.
+    Uses charmhelpers.contrib.openstack.utils.pause_unit() to do the work.
+    @param configs: a templating.OSConfigRenderer() object
+    @returns None - this function is executed for its side-effect
+    """
+    _pause_resume_helper(pause_unit, configs)
+
+
+def resume_unit_helper(configs):
+    """Helper function to resume a unit, and then call assess_status(...) in
+    effect, so that the status is correctly updated.
+    Uses charmhelpers.contrib.openstack.utils.resume_unit() to do the work.
+    @param configs: a templating.OSConfigRenderer() object
+    @returns None - this function is executed for its side-effect
+    """
+    _pause_resume_helper(resume_unit, configs)
+
+
+def _pause_resume_helper(f, configs):
+    """Helper function that uses the make_assess_status_func(...) from
+    charmhelpers.contrib.openstack.utils to create an assess_status(...)
+    function that can be used with the pause/resume of the unit
+    @param f: the function to be used with the assess_status(...) function
+    @returns None - this function is executed for its side-effect
+    """
+    active_services = [s for s in services() if s not in STOPPED_SERVICES]
+    # TODO(ajkavanagh) - ports= has been left off because of the race hazard
+    # that exists due to service_start()
+    f(assess_status_func(configs),
+      services=active_services,
+      ports=None)

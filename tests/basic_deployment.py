@@ -1,6 +1,9 @@
 import amulet
 import os
 import yaml
+import time
+import subprocess
+import json
 
 from neutronclient.v2_0 import client as neutronclient
 
@@ -150,6 +153,31 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                    'keystone': keystone_config,
                    'nova-cloud-controller': nova_cc_config}
         super(NeutronGatewayBasicDeployment, self)._configure_services(configs)
+
+    def _run_action(self, unit_id, action, *args):
+        command = ["juju", "action", "do", "--format=json", unit_id, action]
+        command.extend(args)
+        output = subprocess.check_output(command)
+        output_json = output.decode(encoding="UTF-8")
+        data = json.loads(output_json)
+        action_id = data[u'Action queued with id']
+        return action_id
+
+    def _wait_on_action(self, action_id):
+        command = ["juju", "action", "fetch", "--format=json", action_id]
+        while True:
+            try:
+                output = subprocess.check_output(command)
+            except Exception as e:
+                print(e)
+                return False
+            output_json = output.decode(encoding="UTF-8")
+            data = json.loads(output_json)
+            if data[u"status"] == "completed":
+                return True
+            elif data[u"status"] == "failed":
+                return False
+            time.sleep(2)
 
     def _initialize_tests(self):
         """Perform final initialization before tests get run."""
@@ -1027,3 +1055,20 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             # sleep_time = 0
 
         self.d.configure(juju_service, set_default)
+
+    def test_910_pause_and_resume(self):
+        """The services can be paused and resumed. """
+        u.log.debug('Checking pause and resume actions...')
+        unit_name = "neutron-gateway/0"
+        unit = self.d.sentry.unit[unit_name]
+
+        assert u.status_get(unit)[0] == "active"
+
+        action_id = self._run_action(unit_name, "pause")
+        assert self._wait_on_action(action_id), "Pause action failed."
+        assert u.status_get(unit)[0] == "maintenance"
+
+        action_id = self._run_action(unit_name, "resume")
+        assert self._wait_on_action(action_id), "Resume action failed."
+        assert u.status_get(unit)[0] == "active"
+        u.log.debug('OK')

@@ -19,7 +19,6 @@ from charmhelpers.fetch import (
     apt_purge,
 )
 from charmhelpers.core.host import (
-    restart_on_change,
     lsb_release,
 )
 from charmhelpers.contrib.hahelpers.cluster import(
@@ -34,7 +33,7 @@ from charmhelpers.contrib.openstack.utils import (
     configure_installation_source,
     openstack_upgrade_available,
     os_requires_version,
-    set_os_workload_status,
+    pausable_restart_on_change as restart_on_change,
 )
 from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
@@ -65,9 +64,8 @@ from neutron_utils import (
     reassign_agent_resources,
     stop_neutron_ha_monitor_daemon,
     use_l3ha,
-    REQUIRED_INTERFACES,
-    check_optional_relations,
     NEUTRON_COMMON,
+    assess_status,
 )
 
 hooks = Hooks()
@@ -334,5 +332,4 @@ if __name__ == '__main__':
         hooks.execute(sys.argv)
     except UnregisteredHookError as e:
         log('Unknown hook {} - skipping.'.format(e))
-    set_os_workload_status(CONFIGS, REQUIRED_INTERFACES,
-                           charm_func=check_optional_relations)
+    assess_status(CONFIGS)

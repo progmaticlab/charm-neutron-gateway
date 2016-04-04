@@ -6,3 +6,7 @@ tags
 *.pyc
 *.sw[nop]
 *.pyc
+precise
+trusty
+wily
+xenial

@@ -312,18 +312,18 @@ class TestNeutronUtils(CharmTestCase):
         for conf in confs:
             configs.register.assert_any_call(conf, ANY)
 
-    def test_restart_map_ovs(self):
+    @patch.object(neutron_utils, 'get_packages')
+    def test_restart_map_ovs(self, mock_get_packages):
         self.config.return_value = 'ovs'
         self.get_os_codename_install_source.return_value = 'havana'
+        mock_get_packages.return_value = ['neutron-vpn-agent']
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-l3-agent',
-                                         'neutron-dhcp-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
                                          'neutron-metadata-agent',
                                          'neutron-plugin-openvswitch-agent',
                                          'neutron-plugin-metering-agent',
                                          'neutron-metering-agent',
                                          'neutron-lbaas-agent',
-                                         'neutron-plugin-vpn-agent',
                                          'neutron-vpn-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
@@ -333,13 +333,10 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.NEUTRON_METADATA_AGENT_CONF:
             ['neutron-metadata-agent'],
             neutron_utils.NEUTRON_VPNAAS_AGENT_CONF: [
-                'neutron-plugin-vpn-agent',
                 'neutron-vpn-agent'],
-            neutron_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent',
-                                                  'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_L3_AGENT_CONF: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_DHCP_AGENT_CONF: ['neutron-dhcp-agent'],
-            neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent',
-                                               'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_METERING_AGENT_CONF:
             ['neutron-metering-agent', 'neutron-plugin-metering-agent'],
             neutron_utils.NOVA_CONF: ['nova-api-metadata'],
@@ -349,17 +346,17 @@ class TestNeutronUtils(CharmTestCase):
 
         self.assertDictEqual(neutron_utils.restart_map(), ex_map)
 
-    def test_restart_map_ovs_mitaka(self):
+    @patch.object(neutron_utils, 'get_packages')
+    def test_restart_map_ovs_mitaka(self, mock_get_packages):
         self.config.return_value = 'ovs'
+        mock_get_packages.return_value = ['neutron-vpn-agent']
         self.get_os_codename_install_source.return_value = 'mitaka'
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-l3-agent',
-                                         'neutron-dhcp-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
                                          'neutron-metadata-agent',
                                          'neutron-openvswitch-agent',
                                          'neutron-metering-agent',
                                          'neutron-lbaas-agent',
-                                         'neutron-plugin-vpn-agent',
                                          'neutron-vpn-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
@@ -368,14 +365,10 @@ class TestNeutronUtils(CharmTestCase):
             ['neutron-openvswitch-agent'],
             neutron_utils.NEUTRON_METADATA_AGENT_CONF:
             ['neutron-metadata-agent'],
-            neutron_utils.NEUTRON_VPNAAS_AGENT_CONF: [
-                'neutron-plugin-vpn-agent',
-                'neutron-vpn-agent'],
-            neutron_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent',
-                                                  'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_VPNAAS_AGENT_CONF: ['neutron-vpn-agent'],
+            neutron_utils.NEUTRON_L3_AGENT_CONF: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_DHCP_AGENT_CONF: ['neutron-dhcp-agent'],
-            neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent',
-                                               'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_METERING_AGENT_CONF:
             ['neutron-metering-agent'],
             neutron_utils.NOVA_CONF: ['nova-api-metadata'],
@@ -384,33 +377,37 @@ class TestNeutronUtils(CharmTestCase):
         }
         self.assertEqual(ex_map, neutron_utils.restart_map())
 
-    def test_restart_map_ovs_odl(self):
+    @patch.object(neutron_utils, 'get_packages')
+    def test_restart_map_ovs_post_trusty(self, mock_get_packages):
+        self.config.return_value = 'ovs'
+        # No VPN agent after trusty
+        mock_get_packages.return_value = ['neutron-l3-agent']
+        rmap = neutron_utils.restart_map()
+        for services in rmap.itervalues():
+            self.assertFalse('neutron-vpn-agent' in services)
+
+    @patch.object(neutron_utils, 'get_packages')
+    def test_restart_map_ovs_odl(self, mock_get_packages):
         self.config.return_value = 'ovs-odl'
+        mock_get_packages.return_value = ['neutron-vpn-agent']
         self.get_os_codename_install_source.return_value = 'icehouse'
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-l3-agent',
-                                         'neutron-dhcp-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
                                          'neutron-metadata-agent',
-                                         'neutron-plugin-metering-agent',
                                          'neutron-metering-agent',
                                          'neutron-lbaas-agent',
-                                         'neutron-plugin-vpn-agent',
                                          'neutron-vpn-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
             ['neutron-lbaas-agent'],
             neutron_utils.NEUTRON_METADATA_AGENT_CONF:
             ['neutron-metadata-agent'],
-            neutron_utils.NEUTRON_VPNAAS_AGENT_CONF: [
-                'neutron-plugin-vpn-agent',
-                'neutron-vpn-agent'],
-            neutron_utils.NEUTRON_L3_AGENT_CONF: ['neutron-l3-agent',
-                                                  'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_VPNAAS_AGENT_CONF: ['neutron-vpn-agent'],
+            neutron_utils.NEUTRON_L3_AGENT_CONF: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_DHCP_AGENT_CONF: ['neutron-dhcp-agent'],
-            neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-l3-agent',
-                                               'neutron-vpn-agent'],
+            neutron_utils.NEUTRON_FWAAS_CONF: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_METERING_AGENT_CONF:
-            ['neutron-metering-agent', 'neutron-plugin-metering-agent'],
+            ['neutron-metering-agent'],
             neutron_utils.NOVA_CONF: ['nova-api-metadata'],
             neutron_utils.EXT_PORT_CONF: ['ext-port'],
             neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
@@ -1171,3 +1168,48 @@ class TestNeutronAgentReallocation(CharmTestCase):
                  neutron_vpn_agent_context, perms=0o644),
         ]
         self.assertEquals(render.call_args_list, expected)
+
+    def test_assess_status(self):
+        with patch.object(neutron_utils, 'assess_status_func') as asf:
+            callee = MagicMock()
+            asf.return_value = callee
+            neutron_utils.assess_status('test-config')
+            asf.assert_called_once_with('test-config')
+            callee.assert_called_once_with()
+
+    @patch.object(neutron_utils, 'check_optional_relations')
+    @patch.object(neutron_utils, 'REQUIRED_INTERFACES')
+    @patch.object(neutron_utils, 'services')
+    @patch.object(neutron_utils, 'make_assess_status_func')
+    def test_assess_status_func(self,
+                                make_assess_status_func,
+                                services,
+                                REQUIRED_INTERFACES,
+                                check_optional_relations):
+        services.return_value = ['s1']
+        neutron_utils.assess_status_func('test-config')
+        # ports=None whilst port checks are disabled.
+        make_assess_status_func.assert_called_once_with(
+            'test-config', REQUIRED_INTERFACES,
+            charm_func=check_optional_relations, services=['s1'], ports=None)
+
+    def test_pause_unit_helper(self):
+        with patch.object(neutron_utils, '_pause_resume_helper') as prh:
+            neutron_utils.pause_unit_helper('random-config')
+            prh.assert_called_once_with(neutron_utils.pause_unit,
+                                        'random-config')
+        with patch.object(neutron_utils, '_pause_resume_helper') as prh:
+            neutron_utils.resume_unit_helper('random-config')
+            prh.assert_called_once_with(neutron_utils.resume_unit,
+                                        'random-config')
+
+    @patch.object(neutron_utils, 'services')
+    def test_pause_resume_helper(self, services):
+        f = MagicMock()
+        services.return_value = ['s1']
+        with patch.object(neutron_utils, 'assess_status_func') as asf:
+            asf.return_value = 'assessor'
+            neutron_utils._pause_resume_helper(f, 'some-config')
+            asf.assert_called_once_with('some-config')
+            # ports=None whilst port checks are disabled.
+            f.assert_called_once_with('assessor', services=['s1'], ports=None)
