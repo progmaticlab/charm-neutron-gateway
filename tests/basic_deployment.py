@@ -52,6 +52,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                           {'name': 'glance'},  # satisfy workload status
                           {'name': 'nova-cloud-controller'},
                           {'name': 'nova-compute'},  # satisfy workload stat
+                          {'name': 'neutron-openvswitch'},
                           {'name': 'neutron-api'}]
 
         super(NeutronGatewayBasicDeployment, self)._add_services(
@@ -78,6 +79,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'nova-cloud-controller:cloud-compute': 'nova-compute:'
                                                    'cloud-compute',
             'nova-compute:amqp': 'rabbitmq-server:amqp',
+            'nova-compute:neutron-plugin': 'neutron-openvswitch:'
+                                           'neutron-plugin',
+            'rabbitmq-server:amqp': 'neutron-openvswitch:amqp',
             'nova-compute:image-service': 'glance:image-service',
             'nova-cloud-controller:image-service': 'glance:image-service',
         }
@@ -212,6 +216,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             self.nova_cc_sentry: nova_cc_services,
             self.neutron_gateway_sentry: neutron_services
         }
+
+        if self._get_openstack_release() >= self.trusty_liberty:
+            commands[self.keystone_sentry] = ['apache2']
 
         ret = u.validate_services_by_name(commands)
         if ret:

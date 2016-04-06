@@ -489,6 +489,54 @@ class TestNeutronUtils(CharmTestCase):
         self.assertFalse(_remove.called)
         self.assertTrue(self.log.called)
 
+    def test_resolve_config_files_ovs_liberty(self):
+        self._set_distrib_codename('trusty')
+        self.is_relation_made = False
+        actual_map = neutron_utils.resolve_config_files(neutron_utils.OVS,
+                                                        'liberty')
+        actual_configs = actual_map[neutron_utils.OVS].keys()
+        INC_CONFIG = [neutron_utils.NEUTRON_ML2_PLUGIN_CONF]
+        EXC_CONFIG = [neutron_utils.NEUTRON_OVS_AGENT_CONF]
+        for config in INC_CONFIG:
+            self.assertTrue(config in actual_configs)
+        for config in EXC_CONFIG:
+            self.assertTrue(config not in actual_configs)
+
+    def test_resolve_config_files_ovs_mitaka(self):
+        self._set_distrib_codename('trusty')
+        self.is_relation_made = False
+        actual_map = neutron_utils.resolve_config_files(neutron_utils.OVS,
+                                                        'mitaka')
+        actual_configs = actual_map[neutron_utils.OVS].keys()
+        INC_CONFIG = [neutron_utils.NEUTRON_OVS_AGENT_CONF]
+        EXC_CONFIG = [neutron_utils.NEUTRON_ML2_PLUGIN_CONF]
+        for config in INC_CONFIG:
+            self.assertTrue(config in actual_configs)
+        for config in EXC_CONFIG:
+            self.assertTrue(config not in actual_configs)
+
+    def test_resolve_config_files_ovs_trusty(self):
+        self._set_distrib_codename('trusty')
+        self.is_relation_made = False
+        actual_map = neutron_utils.resolve_config_files(neutron_utils.OVS,
+                                                        'mitaka')
+        actual_configs = actual_map[neutron_utils.OVS].keys()
+        INC_CONFIG = [neutron_utils.EXT_PORT_CONF,
+                      neutron_utils.PHY_NIC_MTU_CONF]
+        for config in INC_CONFIG:
+            self.assertTrue(config in actual_configs)
+
+    def test_resolve_config_files_ovs_xenial(self):
+        self._set_distrib_codename('xenial')
+        self.is_relation_made = False
+        actual_map = neutron_utils.resolve_config_files(neutron_utils.OVS,
+                                                        'mitaka')
+        actual_configs = actual_map[neutron_utils.OVS].keys()
+        EXC_CONFIG = [neutron_utils.EXT_PORT_CONF,
+                      neutron_utils.PHY_NIC_MTU_CONF]
+        for config in EXC_CONFIG:
+            self.assertTrue(config not in actual_configs)
+
 
 network_context = {
     'service_username': 'foo',

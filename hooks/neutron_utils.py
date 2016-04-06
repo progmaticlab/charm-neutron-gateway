@@ -501,6 +501,7 @@ def resolve_config_files(plugin, release):
               and associated services
     '''
     config_files = deepcopy(CONFIG_FILES)
+    drop_config = []
     if plugin == OVS:
         # NOTE: deal with switch to ML2 plugin for >= icehouse
         drop_config = [NEUTRON_OVS_AGENT_CONF]
@@ -508,9 +509,13 @@ def resolve_config_files(plugin, release):
             # ml2 -> ovs_agent
             drop_config = [NEUTRON_ML2_PLUGIN_CONF]
 
-        for _config in drop_config:
-            if _config in config_files[plugin]:
-                config_files[plugin].pop(_config)
+    # Use MAAS1.9 for MTU and external port config on xenial and above
+    if lsb_release()['DISTRIB_CODENAME'] >= 'xenial':
+        drop_config.extend([EXT_PORT_CONF, PHY_NIC_MTU_CONF])
+
+    for _config in drop_config:
+        if _config in config_files[plugin]:
+            config_files[plugin].pop(_config)
 
     if is_relation_made('amqp-nova'):
         amqp_nova_ctxt = context.AMQPContext(
