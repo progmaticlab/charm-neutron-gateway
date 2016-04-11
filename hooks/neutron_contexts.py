@@ -5,7 +5,8 @@ import socket
 from charmhelpers.core.hookenv import (
     config,
     unit_get,
-    cached
+    cached,
+    network_get_primary_address,
 )
 from charmhelpers.fetch import (
     apt_install,
@@ -78,9 +79,6 @@ class NeutronGatewayContext(NeutronAPIContext):
         api_settings = super(NeutronGatewayContext, self).__call__()
         ctxt = {
             'shared_secret': get_shared_secret(),
-            'local_ip':
-            get_address_in_network(config('os-data-network'),
-                                   get_host_ip(unit_get('private-address'))),
             'core_plugin': core_plugin(),
             'plugin': config('plugin'),
             'debug': config('debug'),
@@ -92,6 +90,21 @@ class NeutronGatewayContext(NeutronAPIContext):
             'overlay_network_type':
             api_settings['overlay_network_type'],
         }
+
+        fallback = get_host_ip(unit_get('private-address'))
+        if config('os-data-network'):
+            # NOTE: prefer any existing use of config based networking
+            ctxt['local_ip'] = \
+                get_address_in_network(config('os-data-network'),
+                                       fallback)
+        else:
+            # NOTE: test out network-spaces support, then fallback
+            try:
+                ctxt['local_ip'] = get_host_ip(
+                    network_get_primary_address('data')
+                )
+            except NotImplementedError:
+                ctxt['local_ip'] = fallback
 
         mappings = config('bridge-mappings')
         if mappings:

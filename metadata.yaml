@@ -15,6 +15,8 @@ description: |
   of a Neutron based OpenStack deployment
 tags:
   - openstack
+extra-bindings:
+  data:
 provides:
   nrpe-external-master:
     interface: nrpe-external-master

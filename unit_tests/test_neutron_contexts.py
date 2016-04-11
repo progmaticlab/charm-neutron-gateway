@@ -16,6 +16,7 @@ TO_PATCH = [
     'config',
     'eligible_leader',
     'unit_get',
+    'network_get_primary_address',
 ]
 
 
@@ -51,6 +52,7 @@ class TestL3AgentContext(CharmTestCase):
     def setUp(self):
         super(TestL3AgentContext, self).setUp(neutron_contexts,
                                               TO_PATCH)
+        self.network_get_primary_address.side_effect = NotImplementedError
         self.config.side_effect = self.test_config.get
 
     @patch('neutron_contexts.NeutronAPIContext')
@@ -111,8 +113,7 @@ class TestNeutronGatewayContext(CharmTestCase):
     @patch('charmhelpers.contrib.openstack.context.related_units')
     @patch('charmhelpers.contrib.openstack.context.relation_ids')
     @patch.object(neutron_contexts, 'get_shared_secret')
-    @patch.object(neutron_contexts, 'get_host_ip')
-    def test_all(self, _host_ip, _secret, _rids, _runits, _rget):
+    def test_all(self, _secret, _rids, _runits, _rget):
         rdata = {'l2-population': 'True',
                  'enable-dvr': 'True',
                  'overlay-network-type': 'gre',
@@ -127,11 +128,12 @@ class TestNeutronGatewayContext(CharmTestCase):
         self.test_config.set('vlan-ranges',
                              'physnet1:1000:2000 physnet2:2001:3000')
         self.test_config.set('flat-network-providers', 'physnet3 physnet4')
+        self.network_get_primary_address.side_effect = NotImplementedError
+        self.unit_get.return_value = '10.5.0.1'
         # Provided by neutron-api relation
         _rids.return_value = ['neutron-plugin-api:0']
         _runits.return_value = ['neutron-api/0']
         _rget.side_effect = lambda *args, **kwargs: rdata
-        _host_ip.return_value = '10.5.0.1'
         _secret.return_value = 'testsecret'
         ctxt = neutron_contexts.NeutronGatewayContext()()
         self.assertEquals(ctxt, {
@@ -157,6 +159,56 @@ class TestNeutronGatewayContext(CharmTestCase):
             }
         })
 
+    @patch('charmhelpers.contrib.openstack.context.relation_get')
+    @patch('charmhelpers.contrib.openstack.context.related_units')
+    @patch('charmhelpers.contrib.openstack.context.relation_ids')
+    @patch.object(neutron_contexts, 'get_shared_secret')
+    def test_all_network_spaces(self, _secret, _rids, _runits, _rget):
+        rdata = {'l2-population': 'True',
+                 'enable-dvr': 'True',
+                 'overlay-network-type': 'gre',
+                 'enable-l3ha': 'True',
+                 'network-device-mtu': 9000}
+        self.test_config.set('plugin', 'ovs')
+        self.test_config.set('debug', False)
+        self.test_config.set('verbose', True)
+        self.test_config.set('instance-mtu', 1420)
+        self.test_config.set('dnsmasq-flags', 'dhcp-userclass=set:ipxe,iPXE,'
+                                              'dhcp-match=set:ipxe,175')
+        self.test_config.set('vlan-ranges',
+                             'physnet1:1000:2000 physnet2:2001:3000')
+        self.test_config.set('flat-network-providers', 'physnet3 physnet4')
+        self.network_get_primary_address.return_value = '192.168.20.2'
+        self.unit_get.return_value = '10.5.0.1'
+        # Provided by neutron-api relation
+        _rids.return_value = ['neutron-plugin-api:0']
+        _runits.return_value = ['neutron-api/0']
+        _rget.side_effect = lambda *args, **kwargs: rdata
+        _secret.return_value = 'testsecret'
+        ctxt = neutron_contexts.NeutronGatewayContext()()
+        self.assertEquals(ctxt, {
+            'shared_secret': 'testsecret',
+            'enable_dvr': True,
+            'enable_l3ha': True,
+            'local_ip': '192.168.20.2',
+            'instance_mtu': 1420,
+            'core_plugin': "ml2",
+            'plugin': 'ovs',
+            'debug': False,
+            'verbose': True,
+            'l2_population': True,
+            'overlay_network_type': 'gre',
+            'bridge_mappings': 'physnet1:br-data',
+            'network_providers': 'physnet3,physnet4',
+            'vlan_ranges': 'physnet1:1000:2000,physnet2:2001:3000',
+            'network_device_mtu': 9000,
+            'veth_mtu': 9000,
+            'dnsmasq_flags': {
+                'dhcp-userclass': 'set:ipxe,iPXE',
+                'dhcp-match': 'set:ipxe,175'
+            }
+        })
+
 
 class TestSharedSecret(CharmTestCase):
 
@@ -164,6 +216,7 @@ class TestSharedSecret(CharmTestCase):
         super(TestSharedSecret, self).setUp(neutron_contexts,
                                             TO_PATCH)
         self.config.side_effect = self.test_config.get
+        self.network_get_primary_address.side_effect = NotImplementedError
 
     @patch('os.path')
     @patch('uuid.uuid4')
@@ -194,6 +247,7 @@ class TestHostIP(CharmTestCase):
         super(TestHostIP, self).setUp(neutron_contexts,
                                       TO_PATCH)
         self.config.side_effect = self.test_config.get
+        self.network_get_primary_address.side_effect = NotImplementedError
         # Save and inject
         self.mods = {'dns': None, 'dns.resolver': None}
         for mod in self.mods:
