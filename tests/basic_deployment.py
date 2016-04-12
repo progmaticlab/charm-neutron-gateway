@@ -147,8 +147,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         keystone_config = {'admin-password': 'openstack',
                            'admin-token': 'ubuntutesting'}
-        nova_cc_config = {'network-manager': 'Quantum',
-                          'quantum-security-groups': 'yes'}
+        nova_cc_config = {'network-manager': 'Neutron'}
         configs = {'neutron-gateway': neutron_gateway_config,
                    'keystone': keystone_config,
                    'nova-cloud-controller': nova_cc_config}
