@@ -112,7 +112,7 @@ GATEWAY_PKGS = {
         'python-psycopg2',
         'python-oslo.config',  # Force upgrade
         "nova-api-metadata",
-        "neutron-plugin-metering-agent",
+        "neutron-metering-agent",
         "neutron-lbaas-agent",
     ],
     NSX: [
@@ -136,7 +136,7 @@ GATEWAY_PKGS = {
         "neutron-l3-agent",
         "neutron-dhcp-agent",
         "nova-api-metadata",
-        "neutron-plugin-metering-agent",
+        "neutron-metering-agent",
         "neutron-lbaas-agent",
     ],
 }
@@ -240,9 +240,6 @@ def get_packages():
             # Switch out mysql driver
             packages.remove('python-mysqldb')
             packages.append('python-pymysql')
-            # Switch out to actual metering agent package
-            packages.remove('neutron-plugin-metering-agent')
-            packages.append('neutron-metering-agent')
         if source >= 'mitaka':
             # Switch out to actual ovs agent package
             packages.remove('neutron-plugin-openvswitch-agent')
