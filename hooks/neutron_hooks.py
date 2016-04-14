@@ -12,6 +12,8 @@ from charmhelpers.core.hookenv import (
     UnregisteredHookError,
     status_set,
 )
+from charmhelpers.core.host import service_restart
+from charmhelpers.core.unitdata import kv
 from charmhelpers.fetch import (
     apt_update,
     apt_install,
@@ -34,6 +36,7 @@ from charmhelpers.contrib.openstack.utils import (
     openstack_upgrade_available,
     os_requires_version,
     pausable_restart_on_change as restart_on_change,
+    is_unit_paused_set,
 )
 from charmhelpers.payload.execd import execd_preinstall
 from charmhelpers.core.sysctl import create as create_sysctl
@@ -219,6 +222,20 @@ def nm_changed():
 
     if config('ha-legacy-mode'):
         cache_env_data()
+
+    # NOTE: nova-api-metadata needs to be restarted
+    #       once the nova-conductor is up and running
+    #       on the nova-cc units.
+    restart_nonce = relation_get('restart_nonce')
+    if restart_nonce is not None:
+        db = kv()
+        previous_nonce = db.get('restart_nonce',
+                                restart_nonce)
+        if previous_nonce != restart_nonce:
+            if not is_unit_paused_set():
+                service_restart('nova-api-metadata')
+            db.set('restart_nonce', restart_nonce)
+            db.flush()
 
 
 @hooks.hook("cluster-relation-departed")

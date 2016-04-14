@@ -54,6 +54,9 @@ TO_PATCH = [
     'cleanup_ovs_netns',
     'stop_neutron_ha_monitor_daemon',
     'use_l3ha',
+    'kv',
+    'service_restart',
+    'is_unit_paused_set',
 ]
 
 
@@ -277,10 +280,59 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.CONFIGS.write_all.called)
 
     def test_nm_changed(self):
-        self.relation_get.return_value = "cert"
+        def _relation_get(key):
+            data = {
+                'ca_cert': 'cert',
+                'restart_nonce': None,
+            }
+            return data.get(key)
+        self.relation_get.side_effect = _relation_get
         self._call_hook('quantum-network-service-relation-changed')
         self.assertTrue(self.CONFIGS.write_all.called)
         self.install_ca_cert.assert_called_with('cert')
+
+    def test_nm_changed_restart_nonce_changed(self):
+        def _relation_get(key):
+            data = {
+                'ca_cert': 'cert',
+                'restart_nonce': '1111111222222333333',
+            }
+            return data.get(key)
+        self.relation_get.side_effect = _relation_get
+        self.is_unit_paused_set.return_value = False
+        kv_mock = MagicMock()
+        self.kv.return_value = kv_mock
+        kv_mock.get.return_value = ('22222233333344444')
+        self._call_hook('quantum-network-service-relation-changed')
+        self.assertTrue(self.CONFIGS.write_all.called)
+        self.install_ca_cert.assert_called_with('cert')
+        self.service_restart.assert_called_with('nova-api-metadata')
+        kv_mock.get.assert_called_with('restart_nonce',
+                                       '1111111222222333333')
+        kv_mock.set.assert_called_with('restart_nonce',
+                                       '1111111222222333333')
+        self.assertTrue(kv_mock.flush.called)
+
+    def test_nm_changed_restart_nonce_nochange(self):
+        def _relation_get(key):
+            data = {
+                'ca_cert': 'cert',
+                'restart_nonce': '1111111222222333333',
+            }
+            return data.get(key)
+        self.relation_get.side_effect = _relation_get
+        self.is_unit_paused_set.return_value = False
+        kv_mock = MagicMock()
+        self.kv.return_value = kv_mock
+        kv_mock.get.return_value = ('1111111222222333333')
+        self._call_hook('quantum-network-service-relation-changed')
+        self.assertTrue(self.CONFIGS.write_all.called)
+        self.install_ca_cert.assert_called_with('cert')
+        self.assertFalse(self.service_restart.called)
+        kv_mock.get.assert_called_with('restart_nonce',
+                                       '1111111222222333333')
+        self.assertFalse(kv_mock.set.called)
+        self.assertFalse(kv_mock.flush.called)
 
     def test_neutron_plugin_changed(self):
         self.use_l3ha.return_value = True
