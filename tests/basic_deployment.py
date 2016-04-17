@@ -904,7 +904,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             if self._get_openstack_release() >= self.trusty_mitaka:
                 expected['neutron'] = {
                     'url': nova_cc_relation['quantum_url'],
-                    'auth_plugin': 'password',
+                    'auth_type': 'password',
+                    'project_domain_name': 'default',
+                    'user_domain_name': 'default',
                     'project_name': 'services',
                     'username': 'nova',
                     'password': nova_cc_relation['service_password'],
