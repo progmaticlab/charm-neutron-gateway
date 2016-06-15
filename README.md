@@ -50,45 +50,65 @@ See upstream [Neutron multi extnet](http://docs.openstack.org/trunk/config-refer
 Configuration Options
 ---------------------
 
-External Port Configuration
-===========================
+Port Configuration
+==================
 
-If the port to be used for external traffic is consistent across all physical
-servers then is can be specified by simply setting ext-port to the nic id:
+All network types (internal, external) are configured with bridge-mappings and
+data-port and the flat-network-providers configuration option of the
+neutron-api charm.  Once deployed, you can configure the network specifics
+using neutron net-create.
+
+If the device name is not consistent between hosts, you can specify the same
+bridge multiple times with MAC addresses instead of interface names.  The charm
+will loop through the list and configure the first matching interface.
+
+Basic configuration of a single external network, typically used as floating IP
+addresses combined with a GRE private network:
 
     neutron-gateway:
-        ext-port: eth2
+        bridge-mappings:         physnet1:br-ex
+        data-port:               br-ex:eth1
+    neutron-api:
+        flat-network-providers:  physnet1
 
-However, if it varies between hosts then the mac addresses of the external
-nics for each host can be passed as a space separated list:
+    neutron net-create --provider:network_type flat \
+        --provider:physical_network physnet1 --router:external=true \
+        external
+    neutron router-gateway-set provider external
+
+Alternative configuration with two networks, where the internal private
+network is directly connected to the gateway with public IP addresses but a
+floating IP address range is also offered.
 
     neutron-gateway:
-        ext-port: <MAC ext port host 1> <MAC ext port host 2> <MAC ext port host 3>
+        bridge-mappings:         physnet1:br-data external:br-ex
+        data-port:               br-data:eth1 br-ex:eth2
+    neutron-api:
+        flat-network-providers:  physnet1 external
 
+Alternative configuration with two external networks, one for public instance
+addresses and one for floating IP addresses.  Both networks are on the same
+physical network connection (but they might be on different VLANs, that is
+configured later using neutron net-create).
 
-Multiple Floating Pools
-=======================
+    neutron-gateway:
+        bridge-mappings:         physnet1:br-data
+        data-port:               br-data:eth1
+    neutron-api:
+        flat-network-providers:  physnet1
 
-If multiple floating pools are needed then an L3 agent (which corresponds to
-a neutron-gateway for the sake of this charm) is needed for each one. Each
-gateway needs to be deployed as a separate service so that the external
-network id can be set differently for each gateway e.g.
+    neutron net-create --provider:network_type vlan \
+        --provider:segmentation_id 400 \
+        --provider:physical_network physnet1 --shared external
+    neutron net-create --provider:network_type vlan \
+        --provider:segmentation_id 401 \
+        --provider:physical_network physnet1 --shared --router:external=true \
+        floating
+    neutron router-gateway-set provider floating
 
-    juju deploy neutron-gateway neutron-gateway-extnet1
-    juju add-relation neutron-gateway-extnet1 mysql
-    juju add-relation neutron-gateway-extnet1 rabbitmq-server
-    juju add-relation neutron-gateway-extnet1 nova-cloud-controller
-    juju deploy neutron-gateway neutron-gateway-extnet2
-    juju add-relation neutron-gateway-extnet2 mysql
-    juju add-relation neutron-gateway-extnet2 rabbitmq-server
-    juju add-relation neutron-gateway-extnet2 nova-cloud-controller
-
-    Create extnet1 and extnet2 via neutron client and take a note of their ids
-
-    juju set neutron-gateway-extnet1 "run-internal-router=leader"
-    juju set neutron-gateway-extnet2 "run-internal-router=none"
-    juju set neutron-gateway-extnet1 "external-network-id=<extnet1 id>"
-    juju set neutron-gateway-extnet2 "external-network-id=<extnet2 id>"
+This replaces the previous system of using ext-port, which always created a bridge
+called br-ex for external networks which was used implicitly by external router
+interfaces.
 
 Instance MTU
 ============
