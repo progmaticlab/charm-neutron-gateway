@@ -295,7 +295,7 @@ class TestQuantumHooks(CharmTestCase):
         def _relation_get(key):
             data = {
                 'ca_cert': 'cert',
-                'restart_nonce': '1111111222222333333',
+                'restart_trigger': '1111111222222333333',
             }
             return data.get(key)
         self.relation_get.side_effect = _relation_get
@@ -317,7 +317,7 @@ class TestQuantumHooks(CharmTestCase):
         def _relation_get(key):
             data = {
                 'ca_cert': 'cert',
-                'restart_nonce': '1111111222222333333',
+                'restart_trigger': '1111111222222333333',
             }
             return data.get(key)
         self.relation_get.side_effect = _relation_get

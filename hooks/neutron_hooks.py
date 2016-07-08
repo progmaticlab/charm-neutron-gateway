@@ -226,7 +226,7 @@ def nm_changed():
     # NOTE: nova-api-metadata needs to be restarted
     #       once the nova-conductor is up and running
     #       on the nova-cc units.
-    restart_nonce = relation_get('restart_nonce')
+    restart_nonce = relation_get('restart_trigger')
     if restart_nonce is not None:
         db = kv()
         previous_nonce = db.get('restart_nonce',
