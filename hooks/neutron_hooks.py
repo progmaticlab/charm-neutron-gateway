@@ -69,6 +69,7 @@ from neutron_utils import (
     use_l3ha,
     NEUTRON_COMMON,
     assess_status,
+    install_systemd_override,
 )
 
 hooks = Hooks()
@@ -103,6 +104,10 @@ def install():
 
     # Legacy HA for Icehouse
     update_legacy_ha_files()
+
+    # Install systemd overrides to remove service startup race between
+    # n-gateway and n-cloud-controller services.
+    install_systemd_override()
 
 
 @hooks.hook('config-changed')
@@ -160,6 +165,10 @@ def upgrade_charm():
     install()
     config_changed()
     update_legacy_ha_files(force=True)
+
+    # Install systemd overrides to remove service startup race between
+    # n-gateway and n-cloud-controller services.
+    install_systemd_override()
 
 
 @hooks.hook('amqp-nova-relation-joined')
@@ -229,8 +238,7 @@ def nm_changed():
     restart_nonce = relation_get('restart_trigger')
     if restart_nonce is not None:
         db = kv()
-        previous_nonce = db.get('restart_nonce',
-                                restart_nonce)
+        previous_nonce = db.get('restart_nonce')
         if previous_nonce != restart_nonce:
             if not is_unit_paused_set():
                 service_restart('nova-api-metadata')

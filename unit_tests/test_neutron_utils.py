@@ -42,6 +42,7 @@ TO_PATCH = [
     'mkdir',
     'copy2',
     'NeutronAPIContext',
+    'init_is_systemd',
 ]
 
 openstack_origin_git = \
@@ -1335,3 +1336,28 @@ class TestNeutronAgentReallocation(CharmTestCase):
             asf.assert_called_once_with('some-config')
             # ports=None whilst port checks are disabled.
             f.assert_called_once_with('assessor', services=['s1'], ports=None)
+
+    @patch.object(neutron_utils, 'subprocess')
+    @patch.object(neutron_utils, 'shutil')
+    @patch('os.path.exists')
+    def test_install_systemd_override_systemd(self, _os_exists, _shutil,
+                                              _subprocess):
+        '''
+        Ensure systemd override is only installed on systemd based systems
+        '''
+        self.init_is_systemd.return_value = True
+        _os_exists.return_value = False
+        neutron_utils.install_systemd_override()
+        _os_exists.assert_called_with(
+            '/etc/systemd/system/nova-api-metadata.service.d/override.conf'
+        )
+        self.mkdir.assert_called_with(
+            '/etc/systemd/system/nova-api-metadata.service.d'
+        )
+        _shutil.copy.assert_called_with(
+            'files/override.conf',
+            '/etc/systemd/system/nova-api-metadata.service.d/override.conf'
+        )
+        _subprocess.check_call.assert_called_with(
+            ['systemctl', 'daemon-reload']
+        )

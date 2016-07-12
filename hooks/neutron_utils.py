@@ -13,6 +13,7 @@ from charmhelpers.core.host import (
     service_stop,
     service_restart,
     write_file,
+    init_is_systemd,
 )
 from charmhelpers.core.hookenv import (
     charm_dir,
@@ -476,6 +477,25 @@ SERVICE_RENAMES = {
         'neutron-plugin-openvswitch-agent': 'neutron-openvswitch-agent',
     },
 }
+
+
+# Override file for systemd
+SYSTEMD_NOVA_OVERRIDE = (
+    '/etc/systemd/system/nova-api-metadata.service.d/override.conf'
+)
+
+
+def install_systemd_override():
+    '''
+    Install systemd override files for nova-api-metadata
+    and reload systemd daemon if required.
+    '''
+    if init_is_systemd() and not os.path.exists(SYSTEMD_NOVA_OVERRIDE):
+        mkdir(os.path.dirname(SYSTEMD_NOVA_OVERRIDE))
+        shutil.copy(os.path.join('files',
+                                 os.path.basename(SYSTEMD_NOVA_OVERRIDE)),
+                    SYSTEMD_NOVA_OVERRIDE)
+        subprocess.check_call(['systemctl', 'daemon-reload'])
 
 
 def remap_service(service_name):

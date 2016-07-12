@@ -57,6 +57,7 @@ TO_PATCH = [
     'kv',
     'service_restart',
     'is_unit_paused_set',
+    'install_systemd_override',
 ]
 
 
@@ -93,6 +94,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.get_early_packages.called)
         self.assertTrue(self.get_packages.called)
         self.assertTrue(self.execd_preinstall.called)
+        self.assertTrue(self.install_systemd_override.called)
 
     def test_install_hook_precise_nocloudarchive(self):
         self.test_config.set('openstack-origin', 'distro')
@@ -238,6 +240,7 @@ class TestQuantumHooks(CharmTestCase):
         self._call_hook('upgrade-charm')
         self.assertTrue(_install.called)
         self.assertTrue(_config_changed.called)
+        self.assertTrue(self.install_systemd_override.called)
 
     def test_amqp_joined(self):
         self._call_hook('amqp-relation-joined')
@@ -283,7 +286,7 @@ class TestQuantumHooks(CharmTestCase):
         def _relation_get(key):
             data = {
                 'ca_cert': 'cert',
-                'restart_nonce': None,
+                'restart_trigger': None,
             }
             return data.get(key)
         self.relation_get.side_effect = _relation_get
@@ -291,7 +294,30 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.CONFIGS.write_all.called)
         self.install_ca_cert.assert_called_with('cert')
 
+    def test_nm_changed_restart_nonce(self):
+        '''Ensure first set of restart_trigger restarts nova-api-metadata'''
+        def _relation_get(key):
+            data = {
+                'ca_cert': 'cert',
+                'restart_trigger': '1111111222222333333',
+            }
+            return data.get(key)
+        self.relation_get.side_effect = _relation_get
+        self.is_unit_paused_set.return_value = False
+        kv_mock = MagicMock()
+        self.kv.return_value = kv_mock
+        kv_mock.get.return_value = None
+        self._call_hook('quantum-network-service-relation-changed')
+        self.assertTrue(self.CONFIGS.write_all.called)
+        self.install_ca_cert.assert_called_with('cert')
+        self.service_restart.assert_called_with('nova-api-metadata')
+        kv_mock.get.assert_called_with('restart_nonce')
+        kv_mock.set.assert_called_with('restart_nonce',
+                                       '1111111222222333333')
+        self.assertTrue(kv_mock.flush.called)
+
     def test_nm_changed_restart_nonce_changed(self):
+        '''Ensure change of restart_trigger restarts nova-api-metadata'''
         def _relation_get(key):
             data = {
                 'ca_cert': 'cert',
@@ -307,13 +333,13 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.CONFIGS.write_all.called)
         self.install_ca_cert.assert_called_with('cert')
         self.service_restart.assert_called_with('nova-api-metadata')
-        kv_mock.get.assert_called_with('restart_nonce',
-                                       '1111111222222333333')
+        kv_mock.get.assert_called_with('restart_nonce')
         kv_mock.set.assert_called_with('restart_nonce',
                                        '1111111222222333333')
         self.assertTrue(kv_mock.flush.called)
 
     def test_nm_changed_restart_nonce_nochange(self):
+        '''Ensure no change in restart_trigger skips restarts'''
         def _relation_get(key):
             data = {
                 'ca_cert': 'cert',
@@ -329,8 +355,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.CONFIGS.write_all.called)
         self.install_ca_cert.assert_called_with('cert')
         self.assertFalse(self.service_restart.called)
-        kv_mock.get.assert_called_with('restart_nonce',
-                                       '1111111222222333333')
+        kv_mock.get.assert_called_with('restart_nonce')
         self.assertFalse(kv_mock.set.called)
         self.assertFalse(kv_mock.flush.called)
 
