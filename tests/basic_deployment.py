@@ -181,12 +181,12 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def _initialize_tests(self):
         """Perform final initialization before tests get run."""
         # Access the sentries for inspecting service units
-        self.mysql_sentry = self.d.sentry.unit['mysql/0']
-        self.keystone_sentry = self.d.sentry.unit['keystone/0']
-        self.rmq_sentry = self.d.sentry.unit['rabbitmq-server/0']
-        self.nova_cc_sentry = self.d.sentry.unit['nova-cloud-controller/0']
-        self.neutron_gateway_sentry = self.d.sentry.unit['neutron-gateway/0']
-        self.neutron_api_sentry = self.d.sentry.unit['neutron-api/0']
+        self.mysql_sentry = self.d.sentry['mysql'][0]
+        self.keystone_sentry = self.d.sentry['keystone'][0]
+        self.rmq_sentry = self.d.sentry['rabbitmq-server'][0]
+        self.nova_cc_sentry = self.d.sentry['nova-cloud-controller'][0]
+        self.neutron_gateway_sentry = self.d.sentry['neutron-gateway'][0]
+        self.neutron_api_sentry = self.d.sentry['neutron-api'][0]
 
         # Authenticate admin with keystone
         self.keystone = u.authenticate_keystone_admin(self.keystone_sentry,
@@ -1060,16 +1060,13 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_910_pause_and_resume(self):
         """The services can be paused and resumed. """
         u.log.debug('Checking pause and resume actions...')
-        unit_name = "neutron-gateway/0"
-        unit = self.d.sentry.unit[unit_name]
+        assert u.status_get(self.neutron_gateway_sentry)[0] == "active"
 
-        assert u.status_get(unit)[0] == "active"
+        action_id = u.run_action(self.neutron_gateway_sentry, "pause")
+        assert u.wait_on_action(action_id), "Pause action failed."
+        assert u.status_get(self.neutron_gateway_sentry)[0] == "maintenance"
 
-        action_id = self._run_action(unit_name, "pause")
-        assert self._wait_on_action(action_id), "Pause action failed."
-        assert u.status_get(unit)[0] == "maintenance"
-
-        action_id = self._run_action(unit_name, "resume")
-        assert self._wait_on_action(action_id), "Resume action failed."
-        assert u.status_get(unit)[0] == "active"
+        action_id = u.run_action(self.neutron_gateway_sentry, "resume")
+        assert u.wait_on_action(action_id), "Resume action failed."
+        assert u.status_get(self.neutron_gateway_sentry)[0] == "active"
         u.log.debug('OK')
