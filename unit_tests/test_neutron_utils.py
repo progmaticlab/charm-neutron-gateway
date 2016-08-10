@@ -112,7 +112,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_get_packages_ovs_icehouse(self, git_requested):
         git_requested.return_value = False
         self.config.return_value = 'ovs'
-        self.get_os_codename_install_source.return_value = 'icehouse'
+        self.os_release.return_value = 'icehouse'
         self.assertTrue('neutron-vpn-agent' in neutron_utils.get_packages())
         self.assertFalse('neutron-l3-agent' in neutron_utils.get_packages())
 
@@ -120,7 +120,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_get_packages_ovs_juno_utopic(self, git_requested):
         git_requested.return_value = False
         self.config.return_value = 'ovs'
-        self.get_os_codename_install_source.return_value = 'juno'
+        self.os_release.return_value = 'juno'
         self._set_distrib_codename('utopic')
         self.assertFalse('neutron-vpn-agent' in neutron_utils.get_packages())
         self.assertTrue('neutron-l3-agent' in neutron_utils.get_packages())
@@ -129,7 +129,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_get_packages_ovs_juno_trusty(self, git_requested):
         git_requested.return_value = False
         self.config.return_value = 'ovs'
-        self.get_os_codename_install_source.return_value = 'juno'
+        self.os_release.return_value = 'juno'
         self.assertTrue('neutron-vpn-agent' in neutron_utils.get_packages())
         self.assertFalse('neutron-l3-agent' in neutron_utils.get_packages())
 
@@ -137,14 +137,14 @@ class TestNeutronUtils(CharmTestCase):
     def test_get_packages_ovs_kilo(self, git_requested):
         git_requested.return_value = False
         self.config.return_value = 'ovs'
-        self.get_os_codename_install_source.return_value = 'kilo'
+        self.os_release.return_value = 'kilo'
         self.assertTrue('python-neutron-fwaas' in neutron_utils.get_packages())
 
     @patch.object(neutron_utils, 'git_install_requested')
     def test_get_packages_ovs_liberty(self, git_requested):
         git_requested.return_value = False
         self.config.return_value = 'ovs'
-        self.get_os_codename_install_source.return_value = 'liberty'
+        self.os_release.return_value = 'liberty'
         packages = neutron_utils.get_packages()
         self.assertTrue('neutron-metering-agent' in packages)
         self.assertFalse('neutron-plugin-metering-agent' in packages)
@@ -155,7 +155,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_get_packages_ovs_mitaka(self, git_requested):
         git_requested.return_value = False
         self.config.return_value = 'ovs'
-        self.get_os_codename_install_source.return_value = 'mitaka'
+        self.os_release.return_value = 'mitaka'
         packages = neutron_utils.get_packages()
         self.assertTrue('neutron-metering-agent' in packages)
         self.assertFalse('neutron-plugin-metering-agent' in packages)
@@ -355,7 +355,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_restart_map_ovs_mitaka(self, mock_get_packages):
         self.config.return_value = 'ovs'
         mock_get_packages.return_value = ['neutron-vpn-agent']
-        self.get_os_codename_install_source.return_value = 'mitaka'
+        self.os_release.return_value = 'mitaka'
         ex_map = {
             neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
                                          'neutron-metadata-agent',
@@ -395,7 +395,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_restart_map_ovs_odl(self, mock_get_packages):
         self.config.return_value = 'ovs-odl'
         mock_get_packages.return_value = ['neutron-vpn-agent']
-        self.get_os_codename_install_source.return_value = 'icehouse'
+        self.os_release.return_value = 'icehouse'
         ex_map = {
             neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
                                          'neutron-metadata-agent',

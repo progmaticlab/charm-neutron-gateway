@@ -198,6 +198,7 @@ GIT_PACKAGE_BLACKLIST = [
     'neutron-vpn-agent',
     'python-neutron-fwaas',
     'python-oslo.config',
+    'python-pymysql',
     'quantum-common',
     'quantum-dhcp-agent',
     'quantum-l3-agent',
@@ -230,7 +231,7 @@ def get_packages():
     '''Return a list of packages for install based on the configured plugin'''
     plugin = config('plugin')
     packages = deepcopy(GATEWAY_PKGS[plugin])
-    source = get_os_codename_install_source(config('openstack-origin'))
+    source = os_release('neutron-common')
     if plugin == 'ovs':
         if (source >= 'icehouse' and
                 lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
@@ -506,7 +507,7 @@ def remap_service(service_name):
     :param service_name: name of service to remap
     :returns: remapped service name or original value
     '''
-    source = get_os_codename_install_source(config('openstack-origin'))
+    source = os_release('neutron-common')
     for rename_source in SERVICE_RENAMES:
         if (source >= rename_source and
                 service_name in SERVICE_RENAMES[rename_source]):
@@ -556,7 +557,7 @@ def resolve_config_files(plugin, release):
 
 def register_configs():
     ''' Register config files with their respective contexts. '''
-    release = get_os_codename_install_source(config('openstack-origin'))
+    release = os_release('neutron-common')
     plugin = config('plugin')
     config_files = resolve_config_files(plugin, release)
     configs = templating.OSConfigRenderer(templates_dir=TEMPLATES,
@@ -568,7 +569,7 @@ def register_configs():
 
 
 def stop_services():
-    release = get_os_codename_install_source(config('openstack-origin'))
+    release = os_release('neutron-common')
     plugin = config('plugin')
     config_files = resolve_config_files(plugin, release)
     svcs = set()
@@ -587,7 +588,7 @@ def restart_map():
     :returns: dict: A dictionary mapping config file to lists of services
                     that should be restarted when file changes.
     '''
-    release = get_os_codename_install_source(config('openstack-origin'))
+    release = os_release('neutron-common')
     plugin = config('plugin')
     config_files = resolve_config_files(plugin, release)
     _map = {}
