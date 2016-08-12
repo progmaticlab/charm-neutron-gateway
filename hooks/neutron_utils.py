@@ -301,6 +301,7 @@ NOVA_CONFIG_FILES = {
         'hook_contexts': [NetworkServiceContext(),
                           NeutronGatewayContext(),
                           SyslogContext(),
+                          context.WorkerConfigContext(),
                           context.ZeroMQContext(),
                           context.NotificationDriverContext()],
         'services': ['nova-api-metadata']
@@ -318,6 +319,7 @@ NEUTRON_SHARED_CONFIG_FILES = {
     },
     NEUTRON_METADATA_AGENT_CONF: {
         'hook_contexts': [NetworkServiceContext(),
+                          context.WorkerConfigContext(),
                           NeutronGatewayContext()],
         'services': ['neutron-metadata-agent']
     },
@@ -330,6 +332,7 @@ NEUTRON_OVS_CONFIG_FILES = {
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
+                          context.WorkerConfigContext(),
                           context.NotificationDriverContext()],
         'services': ['neutron-l3-agent',
                      'neutron-dhcp-agent',
@@ -392,6 +395,7 @@ NEUTRON_OVS_ODL_CONFIG_FILES = {
                           NeutronGatewayContext(),
                           SyslogContext(),
                           context.ZeroMQContext(),
+                          context.WorkerConfigContext(),
                           context.NotificationDriverContext()],
         'services': ['neutron-l3-agent',
                      'neutron-dhcp-agent',
@@ -439,6 +443,7 @@ NEUTRON_NSX_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
                           NeutronGatewayContext(),
+                          context.WorkerConfigContext(),
                           SyslogContext()],
         'services': ['neutron-dhcp-agent', 'neutron-metadata-agent']
     },
@@ -449,6 +454,7 @@ NEUTRON_N1KV_CONFIG_FILES = {
     NEUTRON_CONF: {
         'hook_contexts': [context.AMQPContext(ssl_dir=NEUTRON_CONF_DIR),
                           NeutronGatewayContext(),
+                          context.WorkerConfigContext(),
                           SyslogContext()],
         'services': ['neutron-l3-agent',
                      'neutron-dhcp-agent',

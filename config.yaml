@@ -253,3 +253,10 @@ options:
     description: |
       Apply system hardening. Supports a space-delimited list of modules
       to run. Supported modules currently include os, ssh, apache and mysql.
+  worker-multiplier:
+    type: float
+    default: 2.0
+    description: |
+      The CPU core multiplier to use when configuring worker processes for
+      neutron and nova-metadata-api. By default, the number of workers for
+      each daemon is set to twice the number of CPU cores a service unit has.
