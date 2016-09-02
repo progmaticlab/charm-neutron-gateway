@@ -250,6 +250,10 @@ def get_packages():
             # Switch out to actual ovs agent package
             packages.remove('neutron-plugin-openvswitch-agent')
             packages.append('neutron-openvswitch-agent')
+        if source >= 'newton':
+            # LBaaS v1 dropped in newton
+            packages.remove('neutron-lbaas-agent')
+            packages.append('neutron-lbaasv2-agent')
     packages.extend(determine_l3ha_packages())
 
     if git_install_requested():
@@ -607,6 +611,9 @@ def restart_map():
             svcs.remove('neutron-vpn-agent')
         if 'neutron-vpn-agent' in svcs and 'neutron-l3-agent' in svcs:
             svcs.remove('neutron-l3-agent')
+        if release >= 'newton' and 'neutron-lbaas-agent' in svcs:
+            svcs.remove('neutron-lbaas-agent')
+            svcs.add('neutron-lbaasv2-agent')
         if svcs:
             _map[f] = list(svcs)
     return _map
