@@ -169,6 +169,7 @@ LEGACY_RES_MAP = ['res_monitor']
 L3HA_PACKAGES = ['keepalived', 'conntrack']
 
 BASE_GIT_PACKAGES = [
+    'arping',
     'dnsmasq',
     'libffi-dev',
     'libssl-dev',
@@ -945,14 +946,19 @@ def git_pre_install():
 
 def git_post_install(projects_yaml):
     """Perform post-install setup."""
-    src_etc = os.path.join(git_src_dir(projects_yaml, 'neutron'), 'etc')
+    etc_neutron = os.path.join(git_src_dir(projects_yaml, 'neutron'), 'etc')
+    etc_nova = os.path.join(git_src_dir(projects_yaml, 'nova'), 'etc/nova')
     configs = [
-        {'src': src_etc,
+        {'src': etc_neutron,
          'dest': '/etc/neutron'},
-        {'src': os.path.join(src_etc, 'neutron/plugins'),
+        {'src': os.path.join(etc_neutron, 'neutron/plugins'),
          'dest': '/etc/neutron/plugins'},
-        {'src': os.path.join(src_etc, 'neutron/rootwrap.d'),
+        {'src': os.path.join(etc_neutron, 'neutron/rootwrap.d'),
          'dest': '/etc/neutron/rootwrap.d'},
+        {'src': etc_nova,
+         'dest': '/etc/nova'},
+        {'src': os.path.join(etc_nova, 'rootwrap.d'),
+         'dest': '/etc/nova/rootwrap.d'},
     ]
 
     for c in configs:
@@ -963,10 +969,19 @@ def git_post_install(projects_yaml):
     # NOTE(coreycb): Need to find better solution than bin symlinks.
     symlinks = [
         {'src': os.path.join(git_pip_venv_dir(projects_yaml),
+                             'bin/neutron-ns-metadata-proxy'),
+         'link': '/usr/local/bin/neutron-ns-metadata-proxy'},
+        {'src': os.path.join(git_pip_venv_dir(projects_yaml),
                              'bin/neutron-rootwrap'),
          'link': '/usr/local/bin/neutron-rootwrap'},
         {'src': '/usr/local/bin/neutron-rootwrap',
          'link': '/usr/bin/neutron-rootwrap'},
+        {'src': os.path.join(git_pip_venv_dir(projects_yaml),
+                             'bin/nova-rootwrap'),
+         'link': '/usr/local/bin/nova-rootwrap'},
+        {'src': os.path.join(git_pip_venv_dir(projects_yaml),
+                             'bin/nova-rootwrap-daemon'),
+         'link': '/usr/local/bin/nova-rootwrap-daemon'},
     ]
 
     for s in symlinks:
@@ -990,13 +1005,15 @@ def git_post_install(projects_yaml):
     if lsb_release()['DISTRIB_RELEASE'] >= '15.10':
         templates_dir = os.path.join(charm_dir(), 'templates/git')
         daemons = ['neutron-dhcp-agent', 'neutron-l3-agent',
-                   'neutron-lbaas-agent', 'neutron-lbaasv2-agent',
+                   'neutron-lbaasv2-agent',
                    'neutron-linuxbridge-agent', 'neutron-linuxbridge-cleanup',
                    'neutron-macvtap-agent', 'neutron-metadata-agent',
                    'neutron-metering-agent', 'neutron-openvswitch-agent',
                    'neutron-ovs-cleanup', 'neutron-server',
                    'neutron-sriov-nic-agent', 'neutron-vpn-agent',
                    'nova-api-metadata']
+        if os_release('neutron-common') <= 'mitaka':
+            daemons.append('neutron-lbaas-agent')
         for daemon in daemons:
             neutron_context = {
                 'daemon_path': os.path.join(bin_dir, daemon),

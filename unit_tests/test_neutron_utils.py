@@ -1265,7 +1265,7 @@ class TestNeutronAgentReallocation(CharmTestCase):
         projects_yaml = openstack_origin_git
         join.return_value = 'joined-string'
         self.lsb_release.return_value = {'DISTRIB_RELEASE': '15.10'}
-        self.os_release.return_value = 'xenial'
+        self.os_release.return_value = 'newton'
         neutron_utils.git_post_install(projects_yaml)
 
         expected = [
@@ -1288,9 +1288,6 @@ class TestNeutronAgentReallocation(CharmTestCase):
                  'joined-string', {'daemon_path': 'joined-string'},
                  perms=420),
             call('git/neutron-l3-agent.init.in.template',
-                 'joined-string', {'daemon_path': 'joined-string'},
-                 perms=420),
-            call('git/neutron-lbaas-agent.init.in.template',
                  'joined-string', {'daemon_path': 'joined-string'},
                  perms=420),
             call('git/neutron-lbaasv2-agent.init.in.template',
