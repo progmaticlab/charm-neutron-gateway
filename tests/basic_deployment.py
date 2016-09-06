@@ -452,11 +452,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         if ret:
             message = u.relation_error('mysql shared-db', ret)
             amulet.raise_status(amulet.FAIL, msg=message)
-        relation_data = unit.relation(relation[0], relation[1])
-        allowed_units = relation_data['allowed_units'].split()
-        if 'neutron-api/0' not in allowed_units:
-            message = 'neutron-api/0 not found in allowed_units'
-            amulet.raise_status(amulet.FAIL, msg=message)
 
     def test_208_neutron_api_amqp_relation(self):
         """Verify the neutron-api to rabbitmq-server amqp relation data"""
@@ -584,9 +579,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'core_plugin': 'ml2',
                 'control_exchange': 'neutron',
                 'notification_driver': 'neutron.openstack.common.notifier.'
-                                       'list_notifier',
-                'list_notifier_drivers': 'neutron.openstack.common.'
-                                         'notifier.rabbit_notifier',
+                                       'rpc_notifier',
             },
             'agent': {
                 'root_helper': 'sudo /usr/bin/neutron-rootwrap '
