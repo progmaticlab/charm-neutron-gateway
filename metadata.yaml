@@ -15,6 +15,11 @@ description: |
   of a Neutron based OpenStack deployment
 tags:
   - openstack
+series:
+  - xenial
+  - trusty
+  - precise
+  - yakkety
 extra-bindings:
   data:
 provides:
