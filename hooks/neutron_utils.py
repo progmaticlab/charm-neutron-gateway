@@ -55,6 +55,7 @@ from charmhelpers.contrib.openstack.utils import (
     os_release,
     pause_unit,
     resume_unit,
+    os_application_version_set,
 )
 
 from charmhelpers.contrib.openstack.neutron import (
@@ -88,6 +89,7 @@ def valid_plugin():
     return config('plugin') in CORE_PLUGIN
 
 NEUTRON_COMMON = 'neutron-common'
+VERSION_PACKAGE = NEUTRON_COMMON
 
 NEUTRON_CONF_DIR = '/etc/neutron'
 
@@ -1375,6 +1377,7 @@ def assess_status(configs):
     @returns None - this function is executed for its side-effect
     """
     assess_status_func(configs)()
+    os_application_version_set(VERSION_PACKAGE)
 
 
 def assess_status_func(configs):

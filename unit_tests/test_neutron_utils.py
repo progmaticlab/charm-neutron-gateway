@@ -43,6 +43,7 @@ TO_PATCH = [
     'copy2',
     'NeutronAPIContext',
     'init_is_systemd',
+    'os_application_version_set',
 ]
 
 openstack_origin_git = \
@@ -1336,6 +1337,9 @@ class TestNeutronAgentReallocation(CharmTestCase):
             neutron_utils.assess_status('test-config')
             asf.assert_called_once_with('test-config')
             callee.assert_called_once_with()
+            self.os_application_version_set.assert_called_with(
+                neutron_utils.VERSION_PACKAGE
+            )
 
     @patch.object(neutron_utils, 'get_optional_interfaces')
     @patch.object(neutron_utils, 'check_optional_relations')
