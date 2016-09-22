@@ -35,6 +35,7 @@ options:
          * kilo
          * liberty
          * mitaka
+        * newton
 
       NOTE: updating this setting to a source that is known to provide
       a later version of OpenStack will trigger a software upgrade.
@@ -49,6 +50,7 @@ options:
       the corresponding OpenStack github branch will be used:
         * liberty
         * mitaka
+        * newton
         * master
 
       The YAML must minimally include requirements, neutron-fwaas,
