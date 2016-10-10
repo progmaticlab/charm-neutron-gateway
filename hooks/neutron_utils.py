@@ -54,6 +54,7 @@ from charmhelpers.contrib.openstack.utils import (
     make_assess_status_func,
     os_release,
     pause_unit,
+    reset_os_release,
     resume_unit,
     os_application_version_set,
 )
@@ -807,6 +808,9 @@ def do_openstack_upgrade(configs):
     apt_update(fatal=True)
     apt_upgrade(options=dpkg_opts,
                 fatal=True, dist=True)
+    # The cached version of os_release will now be invalid as the pkg version
+    # should have changed during the upgrade.
+    reset_os_release()
     apt_install(get_early_packages(), fatal=True)
     apt_install(get_packages(), fatal=True)
     configs.set_release(openstack_release=new_os_rel)
