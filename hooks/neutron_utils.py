@@ -269,7 +269,16 @@ def get_packages():
     plugin = config('plugin')
     packages = deepcopy(GATEWAY_PKGS[plugin])
     source = os_release('neutron-common')
-    if plugin == 'ovs':
+    if plugin == OVS:
+        if source >= 'liberty':
+            # Switch out mysql driver
+            packages.remove('python-mysqldb')
+            packages.append('python-pymysql')
+        if source >= 'mitaka':
+            # Switch out to actual ovs agent package
+            packages.remove('neutron-plugin-openvswitch-agent')
+            packages.append('neutron-openvswitch-agent')
+    if plugin in (OVS, OVS_ODL):
         if (source >= 'icehouse' and
                 lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
             # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for
@@ -279,14 +288,6 @@ def get_packages():
             packages.append('openswan')
         if source >= 'kilo':
             packages.append('python-neutron-fwaas')
-        if source >= 'liberty':
-            # Switch out mysql driver
-            packages.remove('python-mysqldb')
-            packages.append('python-pymysql')
-        if source >= 'mitaka':
-            # Switch out to actual ovs agent package
-            packages.remove('neutron-plugin-openvswitch-agent')
-            packages.append('neutron-openvswitch-agent')
         if source >= 'newton':
             # LBaaS v1 dropped in newton
             packages.remove('neutron-lbaas-agent')
