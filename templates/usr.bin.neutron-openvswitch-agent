@@ -15,12 +15,14 @@
   /{,usr/}bin/** rix,
 
   /etc/neutron/** r,
+  /etc/mime.types r,
   /etc/udev/udev.conf r,
   /var/lib/neutron/** rwk,
   /var/log/neutron/** rwk,
   /{,var/}run/neutron/** rwk,
   /{,var/}run/lock/neutron/** rwk,
   /run/udev/* r,
+  /run/uuidd/request rw,
   /sys/kernel/uevent_seqnum r,
 
   # Allow unconfined sudo to support oslo.rootwrap
@@ -40,6 +42,8 @@
 
   # Required for assessment of current state of networking
   /proc/sys/net/** r,
+
+  /proc/version r,
 
 {% if ubuntu_release <= '12.04' %}
   /proc/*/mounts r,

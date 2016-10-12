@@ -15,6 +15,7 @@
   /{,usr/}bin/** rix,
 
   /etc/neutron/** r,
+  /etc/mime.types r,
   /var/lib/neutron/** rwk,
   /var/log/neutron/** rwk,
   /{,var/}run/neutron/** rwk,
@@ -36,6 +37,8 @@
 
   # Required for assessment of current state of networking
   /proc/sys/net/** r,
+
+  /proc/version r,
 
 {% if ubuntu_release <= '12.04' %}
   /proc/*/mounts r,

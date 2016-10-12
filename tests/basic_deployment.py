@@ -797,6 +797,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             expected['DEFAULT']['device_driver'] = \
                 ('neutron_lbaas.drivers.haproxy.namespace_driver.'
                  'HaproxyNSDriver')
+            expected['DEFAULT'].pop('periodic_interval')
+            expected['DEFAULT'].pop('ovs_use_veth')
         elif self._get_openstack_release() >= self.trusty_kilo:
             expected['DEFAULT']['device_driver'] = \
                 ('neutron_lbaas.services.loadbalancer.drivers.haproxy.'
@@ -1041,7 +1043,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         conf_file = '/etc/neutron/neutron.conf'
         services = {
             'neutron-dhcp-agent': conf_file,
-            'neutron-lbaas-agent': conf_file,
             'neutron-metadata-agent': conf_file,
             'neutron-metering-agent': conf_file,
             'neutron-openvswitch-agent': conf_file,
@@ -1049,6 +1050,10 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         if self._get_openstack_release() <= self.trusty_juno:
             services.update({'neutron-vpn-agent': conf_file})
+        if self._get_openstack_release() < self.xenial_newton:
+            services.update({'neutron-lbaas-agent': conf_file})
+        if self._get_openstack_release() >= self.xenial_newton:
+            services.update({'neutron-lbaasv2-agent': conf_file})
 
         # Make config change, check for svc restart, conf file mod time change
         u.log.debug('Making config change on {}...'.format(juju_service))
@@ -1101,6 +1106,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() >= self.xenial_mitaka:
             services['neutron-l3-agent'] = (
                 '/etc/apparmor.d/usr.bin.neutron-l3-agent')
+        if self._get_openstack_release() >= self.xenial_newton:
+            services.pop('neutron-lbaas-agent')
+            services['neutron-lbaasv2-agent'] = ('/etc/apparmor.d/'
+                                                 'usr.bin.neutron-lbaasv2-'
+                                                 'agent')
 
         sentry = self.neutron_gateway_sentry
         juju_service = 'neutron-gateway'

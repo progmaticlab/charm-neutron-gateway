@@ -111,6 +111,7 @@ NEUTRON_PLUGIN_CONF = {
 NEUTRON_DHCP_AA_PROFILE = 'usr.bin.neutron-dhcp-agent'
 NEUTRON_L3_AA_PROFILE = 'usr.bin.neutron-l3-agent'
 NEUTRON_LBAAS_AA_PROFILE = 'usr.bin.neutron-lbaas-agent'
+NEUTRON_LBAASV2_AA_PROFILE = 'usr.bin.neutron-lbaasv2-agent'
 NEUTRON_METADATA_AA_PROFILE = 'usr.bin.neutron-metadata-agent'
 NEUTRON_METERING_AA_PROFILE = 'usr.bin.neutron-metering-agent'
 NOVA_API_METADATA_AA_PROFILE = 'usr.bin.nova-api-metadata'
@@ -134,6 +135,8 @@ NEUTRON_L3_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
                               ''.format(NEUTRON_L3_AA_PROFILE))
 NEUTRON_LBAAS_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
                                  ''.format(NEUTRON_LBAAS_AA_PROFILE))
+NEUTRON_LBAASV2_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
+                                   ''.format(NEUTRON_LBAASV2_AA_PROFILE))
 NEUTRON_METADATA_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
                                     ''.format(NEUTRON_METADATA_AA_PROFILE))
 NEUTRON_METERING_AA_PROFILE_PATH = ('/etc/apparmor.d/{}'
@@ -383,6 +386,12 @@ NEUTRON_SHARED_CONFIG_FILES = {
             context.AppArmorContext(NEUTRON_LBAAS_AA_PROFILE)
         ],
     },
+    NEUTRON_LBAASV2_AA_PROFILE_PATH: {
+        'services': ['neutron-lbaasv2-agent'],
+        'hook_contexts': [
+            context.AppArmorContext(NEUTRON_LBAASV2_AA_PROFILE)
+        ],
+    },
     NEUTRON_METADATA_AA_PROFILE_PATH: {
         'services': ['neutron-metadata-agent'],
         'hook_contexts': [
@@ -622,6 +631,12 @@ def resolve_config_files(plugin, release):
     # Use MAAS1.9 for MTU and external port config on xenial and above
     if lsb_release()['DISTRIB_CODENAME'] >= 'xenial':
         drop_config.extend([EXT_PORT_CONF, PHY_NIC_MTU_CONF])
+
+    # Rename to lbaasv2 in newton
+    if os_release('neutron-common') < 'newton':
+        drop_config.extend([NEUTRON_LBAASV2_AA_PROFILE_PATH])
+    else:
+        drop_config.extend([NEUTRON_LBAAS_AA_PROFILE_PATH])
 
     for _config in drop_config:
         if _config in config_files[plugin]:

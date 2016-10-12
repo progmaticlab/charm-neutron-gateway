@@ -2,17 +2,19 @@
 # Mode: {{aa_profile_mode}}
 #include <tunables/global>
 
-/usr/bin/neutron-l3-agent {
+/usr/bin/neutron-lbaasv2-agent {
   #include <abstractions/base>
   #include <abstractions/python>
   #include <abstractions/nameservice>
 
-  /usr/bin/neutron-l3-agent r,
+  /usr/bin/neutron-lbaas-agent r,
 
   /sbin/ldconfig* rix,
 
-  /{,usr/}bin/ r,
-  /{,usr/}bin/** rix,
+  /bin/ r,
+  /bin/** rix,
+  /usr/bin/ r,
+  /usr/bin/** rix,
 
   /etc/neutron/** r,
   /etc/mime.types r,
@@ -40,13 +42,7 @@
 
   /proc/version r,
 
-{% if ubuntu_release <= '12.04' %}
-  /proc/*/mounts r,
-  /proc/*/status r,
-  /proc/*/ns/net r,
-{% else %}
   owner @{PROC}/@{pid}/mounts r,
   owner @{PROC}/@{pid}/status r,
   owner @{PROC}/@{pid}/ns/net r,
-{% endif %}
 }
