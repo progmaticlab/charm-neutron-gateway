@@ -234,7 +234,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                             'neutron-metering-agent',
                             'neutron-plugin-openvswitch-agent']
 
-        if self._get_openstack_release() <= self.trusty_juno:
+        if self._get_openstack_release() <= self.trusty_icehouse:
             neutron_services.append('neutron-vpn-agent')
         if self._get_openstack_release() >= self.trusty_mitaka:
             # neutron-plugin-openvswitch-agent -> neutron-openvswitch-agent
@@ -633,9 +633,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_301_neutron_ml2_config(self):
         """Verify the data in the ml2 config file. This is only available
            since icehouse."""
-        u.log.debug('Checking neutron gateway ml2 config file data...')
-        if self._get_openstack_release() < self.precise_icehouse:
-            return
 
         unit = self.neutron_gateway_sentry
         if self._get_openstack_release() < self.trusty_mitaka:
@@ -774,9 +771,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def test_305_neutron_lbaas_agent_config(self):
         """Verify the data in the lbaas agent config file. This is only
            available since havana."""
-        u.log.debug('Checking neutron gateway lbaas config file data...')
-        if self._get_openstack_release() < self.precise_havana:
-            return
 
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/lbaas_agent.ini'
@@ -1048,7 +1042,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'neutron-openvswitch-agent': conf_file,
         }
 
-        if self._get_openstack_release() <= self.trusty_juno:
+        if self._get_openstack_release() <= self.trusty_icehouse:
             services.update({'neutron-vpn-agent': conf_file})
         if self._get_openstack_release() < self.xenial_newton:
             services.update({'neutron-lbaas-agent': conf_file})
