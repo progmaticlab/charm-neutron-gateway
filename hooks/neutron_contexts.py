@@ -93,6 +93,8 @@ class NeutronGatewayContext(NeutronAPIContext):
             'enable_l3ha': api_settings['enable_l3ha'],
             'overlay_network_type':
             api_settings['overlay_network_type'],
+            'enable_metadata_network': config('enable-metadata-network'),
+            'enable_isolated_metadata': config('enable-isolated-metadata'),
         }
 
         fallback = get_host_ip(unit_get('private-address'))
@@ -130,6 +132,12 @@ class NeutronGatewayContext(NeutronAPIContext):
         if net_dev_mtu:
             ctxt['network_device_mtu'] = net_dev_mtu
             ctxt['veth_mtu'] = net_dev_mtu
+
+        # Override user supplied config for these plugins as these settings are
+        # mandatory
+        if ctxt['plugin'] in ['nvp', 'nsx', 'n1kv']:
+            ctxt['enable_metadata_network'] = True
+            ctxt['enable_isolated_metadata'] = True
 
         return ctxt
 

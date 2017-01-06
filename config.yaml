@@ -268,3 +268,14 @@ options:
     description: |
       Experimental enable apparmor profile. Valid settings: 'complain', 'enforce' or 'disable'.
       AA disabled by default.
+  enable-metadata-network:
+    type: boolean
+    default: False
+    description: |
+      The metadata network is used by solutions which do not leverage the l3
+      agent for providing access to the metadata service.
+  enable-isolated-metadata:
+    type: boolean
+    default: False
+    description: |
+      Enable metadata on an isolated network (no router ports).
