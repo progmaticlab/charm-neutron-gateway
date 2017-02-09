@@ -251,6 +251,7 @@ GIT_PACKAGE_BLACKLIST = [
 REQUIRED_INTERFACES = {
     'messaging': ['amqp', 'zeromq-configuration'],
     'neutron-plugin-api': ['neutron-plugin-api'],
+    'network-service': ['quantum-network-service'],
 }
 
 
