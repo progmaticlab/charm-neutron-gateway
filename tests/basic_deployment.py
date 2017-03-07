@@ -325,7 +325,16 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
              'email': 'juju@localhost'}
         ]
 
-        if self._get_openstack_release() >= self.trusty_kilo:
+        if self._get_openstack_release() >= self.xenial_ocata:
+            # Ocata or later
+            expected.append({
+                'name': 'placement_nova',
+                'enabled': True,
+                'tenantId': u.not_null,
+                'id': u.not_null,
+                'email': 'juju@localhost'
+            })
+        elif self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
             expected.append({
                 'name': 'nova',
@@ -424,7 +433,10 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'service_tenant_name': 'services'
         }
 
-        if self._get_openstack_release() >= self.trusty_kilo:
+        if self._get_openstack_release() >= self.xenial_ocata:
+            # Ocata or later
+            expected['service_username'] = 'placement_nova'
+        elif self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
             expected['service_username'] = 'nova'
         else:
@@ -749,19 +761,13 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'auth_region': 'RegionOne',
             'admin_tenant_name': 'services',
             'admin_password': ncc_ng_rel['service_password'],
+            'admin_user': ncc_ng_rel['service_username'],
             'root_helper': 'sudo /usr/bin/neutron-rootwrap '
                            '/etc/neutron/rootwrap.conf',
             'ovs_use_veth': 'True',
             'handle_internal_only_routers': 'True'
         }
         section = 'DEFAULT'
-
-        if self._get_openstack_release() >= self.trusty_kilo:
-            # Kilo or later
-            expected['admin_user'] = 'nova'
-        else:
-            # Juno or earlier
-            expected['admin_user'] = 's3_ec2_nova'
 
         ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
@@ -826,6 +832,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'auth_region': 'RegionOne',
             'admin_tenant_name': 'services',
             'admin_password': nova_cc_relation['service_password'],
+            'admin_user': nova_cc_relation['service_username'],
             'root_helper': 'sudo neutron-rootwrap '
                            '/etc/neutron/rootwrap.conf',
             'state_path': '/var/lib/neutron',
@@ -834,13 +841,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'cache_url': 'memory://?default_ttl=5'
         }
         section = 'DEFAULT'
-
-        if self._get_openstack_release() >= self.trusty_kilo:
-            # Kilo or later
-            expected['admin_user'] = 'nova'
-        else:
-            # Juno or earlier
-            expected['admin_user'] = 's3_ec2_nova'
 
         ret = u.validate_config_data(unit, conf, section, expected)
         if ret:
@@ -916,7 +916,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'project_domain_name': 'default',
                     'user_domain_name': 'default',
                     'project_name': 'services',
-                    'username': 'nova',
+                    'username': nova_cc_relation['service_username'],
                     'password': nova_cc_relation['service_password'],
                     'auth_url': ep.split('/v')[0],
                     'region': 'RegionOne',
@@ -928,7 +928,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'auth_strategy': 'keystone',
                     'url': nova_cc_relation['quantum_url'],
                     'admin_tenant_name': 'services',
-                    'admin_username': 'nova',
+                    'admin_username': nova_cc_relation['service_username'],
                     'admin_password': nova_cc_relation['service_password'],
                     'admin_auth_url': ep,
                     'service_metadata_proxy': 'True',
@@ -945,7 +945,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'neutron_auth_strategy': 'keystone',
                 'neutron_url': nova_cc_relation['quantum_url'],
                 'neutron_admin_tenant_name': 'services',
-                'neutron_admin_username': 's3_ec2_nova',
+                'neutron_admin_username': nova_cc_relation['service_username'],
                 'neutron_admin_password': nova_cc_relation['service_password'],
                 'neutron_admin_auth_url': ep,
                 'service_neutron_metadata_proxy': 'True',
