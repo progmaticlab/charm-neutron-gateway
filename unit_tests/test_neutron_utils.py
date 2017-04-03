@@ -209,6 +209,7 @@ class TestNeutronUtils(CharmTestCase):
         git_requested.return_value = False
         self.config.return_value = 'ovs'
         self.get_os_codename_install_source.return_value = 'juno'
+        self.os_release.return_value = 'juno'
         self.assertTrue('keepalived' in neutron_utils.get_packages())
 
     @patch('charmhelpers.contrib.openstack.context.config')
@@ -296,6 +297,7 @@ class TestNeutronUtils(CharmTestCase):
         self.test_config.set('openstack-origin', 'cloud:precise-havana')
         self.test_config.set('plugin', 'ovs')
         self.get_os_codename_install_source.return_value = 'havana'
+        self.os_release.return_value = 'havana'
         configs = neutron_utils.register_configs()
         neutron_utils.do_openstack_upgrade(configs)
         self.assertTrue(self.log.called)
@@ -314,6 +316,7 @@ class TestNeutronUtils(CharmTestCase):
     @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
     def test_register_configs_ovs(self, mock_renderer):
         self.config.return_value = 'ovs'
+        self.os_release.return_value = 'diablo'
         self.is_relation_made.return_value = False
         configs = neutron_utils.register_configs()
         confs = [neutron_utils.NEUTRON_DHCP_AGENT_CONF,
@@ -332,6 +335,7 @@ class TestNeutronUtils(CharmTestCase):
         self.test_config.set('plugin', 'ovs-odl')
         self.is_relation_made.return_value = False
         self.get_os_codename_install_source.return_value = 'icehouse'
+        self.os_release.return_value = 'icehouse'
         configs = neutron_utils.register_configs()
         confs = [neutron_utils.NEUTRON_DHCP_AGENT_CONF,
                  neutron_utils.NEUTRON_METADATA_AGENT_CONF,
@@ -346,6 +350,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_register_configs_amqp_nova(self, mock_renderer):
         self.config.return_value = 'ovs'
         self.is_relation_made.return_value = True
+        self.os_release.return_value = 'diablo'
         configs = neutron_utils.register_configs()
         confs = [neutron_utils.NEUTRON_DHCP_AGENT_CONF,
                  neutron_utils.NEUTRON_METADATA_AGENT_CONF,
@@ -482,6 +487,7 @@ class TestNeutronUtils(CharmTestCase):
         self.config.return_value = 'ovs'
         # No VPN agent after trusty
         mock_get_packages.return_value = ['neutron-l3-agent']
+        self.os_release.return_value = 'diablo'
         rmap = neutron_utils.restart_map()
         for services in rmap.itervalues():
             self.assertFalse('neutron-vpn-agent' in services)
@@ -567,6 +573,7 @@ class TestNeutronUtils(CharmTestCase):
     @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
     def test_register_configs_nsx(self, mock_renderer):
         self.config.return_value = 'nsx'
+        self.os_release.return_value = 'diablo'
         configs = neutron_utils.register_configs()
         confs = [neutron_utils.NEUTRON_DHCP_AGENT_CONF,
                  neutron_utils.NEUTRON_METADATA_AGENT_CONF,
@@ -577,6 +584,7 @@ class TestNeutronUtils(CharmTestCase):
 
     def test_stop_services_ovs(self):
         self.config.return_value = 'ovs'
+        self.os_release.return_value = 'diablo'
         neutron_utils.stop_services()
         calls = [call('neutron-dhcp-agent'),
                  call('neutron-plugin-openvswitch-agent'),
@@ -592,6 +600,7 @@ class TestNeutronUtils(CharmTestCase):
     def test_register_configs_pre_install(self, mock_renderer):
         self.config.return_value = 'ovs'
         self.is_relation_made.return_value = False
+        self.os_release.return_value = 'diablo'
         configs = neutron_utils.register_configs()
         confs = [neutron_utils.NOVA_CONF,
                  neutron_utils.NEUTRON_CONF,
@@ -1059,7 +1068,8 @@ class TestNeutronAgentReallocation(CharmTestCase):
                                       symlink, exists, join, remove):
         projects_yaml = openstack_origin_git
         join.return_value = 'joined-string'
-        self.lsb_release.return_value = {'DISTRIB_RELEASE': '15.04'}
+        self.lsb_release.return_value = {'DISTRIB_RELEASE': '15.04',
+                                         'DISTRIB_CODENAME': 'vivid'}
         self.os_release.return_value = 'liberty'
         neutron_utils.git_post_install(projects_yaml)
         expected = [
@@ -1384,7 +1394,8 @@ class TestNeutronAgentReallocation(CharmTestCase):
                                       symlink, exists, join, remove, listdir):
         projects_yaml = openstack_origin_git
         join.return_value = 'joined-string'
-        self.lsb_release.return_value = {'DISTRIB_RELEASE': '15.10'}
+        self.lsb_release.return_value = {'DISTRIB_RELEASE': '15.10',
+                                         'DISTRIB_CODENAME': 'wily'}
         self.os_release.return_value = 'newton'
         neutron_utils.git_post_install(projects_yaml)
 

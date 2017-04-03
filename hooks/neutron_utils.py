@@ -14,6 +14,7 @@ from charmhelpers.core.host import (
     service_restart,
     write_file,
     init_is_systemd,
+    CompareHostReleases,
 )
 from charmhelpers.core.hookenv import (
     charm_dir,
@@ -57,6 +58,7 @@ from charmhelpers.contrib.openstack.utils import (
     reset_os_release,
     resume_unit,
     os_application_version_set,
+    CompareOpenStackReleases,
 )
 
 from charmhelpers.contrib.openstack.neutron import (
@@ -272,27 +274,27 @@ def get_packages():
     '''Return a list of packages for install based on the configured plugin'''
     plugin = config('plugin')
     packages = deepcopy(GATEWAY_PKGS[plugin])
-    source = os_release('neutron-common')
+    cmp_os_source = CompareOpenStackReleases(os_release('neutron-common'))
+    cmp_host_release = CompareHostReleases(lsb_release()['DISTRIB_CODENAME'])
     if plugin == OVS:
-        if (source >= 'icehouse' and
-                lsb_release()['DISTRIB_CODENAME'] < 'utopic'):
+        if cmp_os_source >= 'icehouse' and cmp_host_release < 'utopic':
             # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for
             # icehouse but openswan was removed in utopic.
             packages.remove('neutron-l3-agent')
             packages.append('neutron-vpn-agent')
             packages.append('openswan')
-        if source >= 'liberty':
+        if cmp_os_source >= 'liberty':
             # Switch out mysql driver
             packages.remove('python-mysqldb')
             packages.append('python-pymysql')
-        if source >= 'mitaka':
+        if cmp_os_source >= 'mitaka':
             # Switch out to actual ovs agent package
             packages.remove('neutron-plugin-openvswitch-agent')
             packages.append('neutron-openvswitch-agent')
-        if source >= 'kilo':
+        if cmp_os_source >= 'kilo':
             packages.append('python-neutron-fwaas')
     if plugin in (OVS, OVS_ODL):
-        if source >= 'newton':
+        if cmp_os_source >= 'newton':
             # LBaaS v1 dropped in newton
             packages.remove('neutron-lbaas-agent')
             packages.append('neutron-lbaasv2-agent')
@@ -622,19 +624,20 @@ def resolve_config_files(plugin, release):
     '''
     config_files = deepcopy(CONFIG_FILES)
     drop_config = []
+    cmp_os_release = CompareOpenStackReleases(release)
     if plugin == OVS:
         # NOTE: deal with switch to ML2 plugin for >= icehouse
         drop_config = [NEUTRON_OVS_AGENT_CONF]
-        if release >= 'mitaka':
+        if cmp_os_release >= 'mitaka':
             # ml2 -> ovs_agent
             drop_config = [NEUTRON_ML2_PLUGIN_CONF]
 
     # Use MAAS1.9 for MTU and external port config on xenial and above
-    if lsb_release()['DISTRIB_CODENAME'] >= 'xenial':
+    if CompareHostReleases(lsb_release()['DISTRIB_CODENAME']) >= 'xenial':
         drop_config.extend([EXT_PORT_CONF, PHY_NIC_MTU_CONF])
 
     # Rename to lbaasv2 in newton
-    if os_release('neutron-common') < 'newton':
+    if cmp_os_release < 'newton':
         drop_config.extend([NEUTRON_LBAASV2_AA_PROFILE_PATH])
     else:
         drop_config.extend([NEUTRON_LBAAS_AA_PROFILE_PATH])
@@ -703,7 +706,8 @@ def restart_map():
             svcs.remove('neutron-vpn-agent')
         if 'neutron-vpn-agent' in svcs and 'neutron-l3-agent' in svcs:
             svcs.remove('neutron-l3-agent')
-        if release >= 'newton' and 'neutron-lbaas-agent' in svcs:
+        if (CompareOpenStackReleases(release) >= 'newton' and
+                'neutron-lbaas-agent' in svcs):
             svcs.remove('neutron-lbaas-agent')
             svcs.add('neutron-lbaasv2-agent')
         if svcs:
@@ -1095,8 +1099,10 @@ def git_post_install(projects_yaml):
            '/etc/cron.d/neutron-lbaas-agent-netns-cleanup', {}, perms=0o755)
 
     bin_dir = os.path.join(git_pip_venv_dir(projects_yaml), 'bin')
+    cmp_host_release = CompareHostReleases(lsb_release()['DISTRIB_CODENAME'])
+    cmp_os_release = CompareOpenStackReleases(os_release('neutron-common'))
     # Use systemd init units/scripts from ubuntu wily onward
-    if lsb_release()['DISTRIB_RELEASE'] >= '15.10':
+    if cmp_host_release >= 'wily':
         templates_dir = os.path.join(charm_dir(), 'templates/git')
         daemons = ['neutron-dhcp-agent', 'neutron-l3-agent',
                    'neutron-lbaasv2-agent',
@@ -1106,7 +1112,7 @@ def git_post_install(projects_yaml):
                    'neutron-ovs-cleanup', 'neutron-server',
                    'neutron-sriov-nic-agent', 'neutron-vpn-agent',
                    'nova-api-metadata']
-        if os_release('neutron-common') <= 'mitaka':
+        if cmp_os_release <= 'mitaka':
             daemons.append('neutron-lbaas-agent')
         for daemon in daemons:
             neutron_context = {
@@ -1116,7 +1122,7 @@ def git_post_install(projects_yaml):
             if daemon == 'neutron-sriov-nic-agent':
                 filename = 'neutron-sriov-agent'
             elif daemon == 'neutron-openvswitch-agent':
-                if os_release('neutron-common') < 'mitaka':
+                if cmp_os_release < 'mitaka':
                     filename = 'neutron-plugin-openvswitch-agent'
             template_file = 'git/{}.init.in.template'.format(filename)
             init_in_file = '{}.init.in'.format(filename)
@@ -1127,7 +1133,7 @@ def git_post_install(projects_yaml):
         for daemon in daemons:
             filename = daemon
             if daemon == 'neutron-openvswitch-agent':
-                if os_release('neutron-common') < 'mitaka':
+                if cmp_os_release < 'mitaka':
                     filename = 'neutron-plugin-openvswitch-agent'
                 service('enable', filename)
     else:
@@ -1393,7 +1399,7 @@ def git_post_install(projects_yaml):
                '/etc/init/neutron-plugin-openflow-agent.conf',
                neutron_plugin_openflow_context, perms=0o644,
                templates_dir=templates_dir)
-        if os_release('neutron-common') < 'mitaka':
+        if cmp_os_release < 'mitaka':
             render('git.upstart',
                    '/etc/init/neutron-plugin-openvswitch-agent.conf',
                    neutron_plugin_openvswitch_context, perms=0o644,

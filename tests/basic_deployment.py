@@ -17,6 +17,8 @@ from charmhelpers.contrib.openstack.amulet.utils import (
     # ERROR
 )
 
+from charmhelpers.contrib.openstack.utils import CompareOpenStackReleases
+
 # Use DEBUG to turn on debug logging
 u = OpenStackAmuletUtils(DEBUG)
 
@@ -251,7 +253,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                             'nova-scheduler',
                             'nova-conductor']
 
-        if self._get_openstack_release_string() >= 'liberty':
+        _os_release = self._get_openstack_release_string()
+        if CompareOpenStackReleases(_os_release) >= 'liberty':
             nova_cc_services.remove('nova-api-ec2')
             nova_cc_services.remove('nova-objectstore')
 
