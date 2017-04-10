@@ -609,8 +609,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 'debug': 'False',
                 'core_plugin': 'ml2',
                 'control_exchange': 'neutron',
-                'notification_driver': 'neutron.openstack.common.notifier.'
-                                       'rpc_notifier',
+                'notification_driver': 'messaging',
             },
             'agent': {
                 'root_helper': 'sudo /usr/bin/neutron-rootwrap '
