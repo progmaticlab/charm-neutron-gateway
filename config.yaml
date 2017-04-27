@@ -257,11 +257,13 @@ options:
       to run. Supported modules currently include os, ssh, apache and mysql.
   worker-multiplier:
     type: float
-    default: 2.0
+    default:
     description: |
       The CPU core multiplier to use when configuring worker processes for
-      neutron and nova-metadata-api. By default, the number of workers for
-      each daemon is set to twice the number of CPU cores a service unit has.
+      this service.  By default, the number of workers for each daemon is
+      set to twice the number of CPU cores a service unit has.  When deployed
+      in a LXD container, this default value will be capped to 4 workers
+      unless this configuration option is set.
   aa-profile-mode:
     type: string
     default: 'disable'
