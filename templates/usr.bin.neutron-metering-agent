@@ -15,11 +15,15 @@
   /{,usr/}bin/** rix,
 
   /etc/neutron/** r,
+  /etc/magic r,
   /etc/mime.types r,
   /var/lib/neutron/** rwk,
   /var/log/neutron/** rwk,
   /{,var/}run/neutron/** rwk,
   /{,var/}run/lock/neutron/** rwk,
+
+  /usr/share/file/magic.mgc r,
+  /usr/share/file/magic/ r,
 
   # Allow unconfined sudo to support oslo.rootwrap
   # profile makes no attempt to restrict this as this
