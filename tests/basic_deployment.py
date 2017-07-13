@@ -550,6 +550,19 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             }
         }
 
+        if self._get_openstack_release() >= self.trusty_mitaka:
+            del expected['DEFAULT']['control_exchange']
+            del expected['DEFAULT']['notification_driver']
+            connection_uri = (
+                "rabbit://neutron:{}@{}:5672/"
+                "openstack".format(rmq_ng_rel['password'],
+                                   rmq_ng_rel['hostname'])
+            )
+            expected['oslo_messaging_notifications'] = {
+                'driver': 'messagingv2',
+                'transport_url': connection_uri
+            }
+
         if self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
             expected['oslo_messaging_rabbit'] = {
