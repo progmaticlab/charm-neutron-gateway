@@ -17,8 +17,6 @@ from charmhelpers.contrib.openstack.amulet.utils import (
     # ERROR
 )
 
-from charmhelpers.contrib.openstack.utils import CompareOpenStackReleases
-
 # Use DEBUG to turn on debug logging
 u = OpenStackAmuletUtils(DEBUG)
 
@@ -246,21 +244,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             neutron_services.remove('neutron-lbaas-agent')
             neutron_services.append('neutron-lbaasv2-agent')
 
-        nova_cc_services = ['nova-api-ec2',
-                            'nova-api-os-compute',
-                            'nova-objectstore',
-                            'nova-cert',
-                            'nova-scheduler',
-                            'nova-conductor']
-
-        _os_release = self._get_openstack_release_string()
-        if CompareOpenStackReleases(_os_release) >= 'liberty':
-            nova_cc_services.remove('nova-api-ec2')
-            nova_cc_services.remove('nova-objectstore')
-
         commands = {
-            self.keystone_sentry: ['keystone'],
-            self.nova_cc_sentry: nova_cc_services,
             self.neutron_gateway_sentry: neutron_services
         }
 
@@ -283,8 +267,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         }
         expected = {
             'network': [endpoint_check],
-            'compute': [endpoint_check],
-            'identity': [endpoint_check]
         }
         actual = self.keystone.service_catalog.get_endpoints()
 
@@ -311,55 +293,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         if ret:
             amulet.raise_status(amulet.FAIL,
                                 msg='glance endpoint: {}'.format(ret))
-
-    def test_110_users(self):
-        """Verify expected users."""
-        u.log.debug('Checking keystone users...')
-        expected = [
-            {'name': 'admin',
-             'enabled': True,
-             'tenantId': u.not_null,
-             'id': u.not_null,
-             'email': 'juju@localhost'},
-            {'name': 'neutron',
-             'enabled': True,
-             'tenantId': u.not_null,
-             'id': u.not_null,
-             'email': 'juju@localhost'}
-        ]
-
-        if self._get_openstack_release() >= self.xenial_ocata:
-            # Ocata or later
-            expected.append({
-                'name': 'placement_nova',
-                'enabled': True,
-                'tenantId': u.not_null,
-                'id': u.not_null,
-                'email': 'juju@localhost'
-            })
-        elif self._get_openstack_release() >= self.trusty_kilo:
-            # Kilo or later
-            expected.append({
-                'name': 'nova',
-                'enabled': True,
-                'tenantId': u.not_null,
-                'id': u.not_null,
-                'email': 'juju@localhost'
-            })
-        else:
-            # Juno and earlier
-            expected.append({
-                'name': 's3_ec2_nova',
-                'enabled': True,
-                'tenantId': u.not_null,
-                'id': u.not_null,
-                'email': 'juju@localhost'
-            })
-
-        actual = self.keystone.users.list()
-        ret = u.validate_user_data(expected, actual)
-        if ret:
-            amulet.raise_status(amulet.FAIL, msg=ret)
 
     def test_202_neutron_gateway_rabbitmq_amqp_relation(self):
         """Verify the neutron-gateway to rabbitmq-server amqp relation data"""
