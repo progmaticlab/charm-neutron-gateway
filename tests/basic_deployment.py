@@ -212,7 +212,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         # Authenticate admin with neutron
         ep = self.keystone.service_catalog.url_for(service_type='identity',
-                                                   endpoint_type='publicURL')
+                                                   interface='publicURL')
         self.neutron = neutronclient.Client(auth_url=ep,
                                             username='admin',
                                             password='openstack',
@@ -686,7 +686,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'quantum-network-service',
             'neutron-gateway:quantum-network-service')
         ep = self.keystone.service_catalog.url_for(service_type='identity',
-                                                   endpoint_type='publicURL')
+                                                   interface='publicURL')
 
         conf = '/etc/neutron/l3_agent.ini'
         expected = {
@@ -756,7 +756,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'config file data...')
         unit = self.neutron_gateway_sentry
         ep = self.keystone.service_catalog.url_for(service_type='identity',
-                                                   endpoint_type='publicURL')
+                                                   interface='publicURL')
         nova_cc_relation = self.nova_cc_sentry.relation(
             'quantum-network-service',
             'neutron-gateway:quantum-network-service')
@@ -817,7 +817,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'quantum-network-service',
             'neutron-gateway:quantum-network-service')
         ep = self.keystone.service_catalog.url_for(service_type='identity',
-                                                   endpoint_type='publicURL')
+                                                   interface='publicURL')
 
         expected = {
             'DEFAULT': {
