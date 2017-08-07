@@ -58,12 +58,17 @@ class TestL3AgentContext(CharmTestCase):
     @patch('neutron_contexts.NeutronAPIContext')
     def test_new_ext_network(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
-            DummyNeutronAPIContext(return_value={'enable_dvr': False})
+            DummyNeutronAPIContext(return_value={'enable_dvr': False,
+                                                 'report_interval': 30,
+                                                 'rpc_response_timeout': 60,
+                                                 })
         self.test_config.set('run-internal-router', 'none')
         self.test_config.set('external-network-id', '')
         self.eligible_leader.return_value = False
         self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',
+                           'report_interval': 30,
+                           'rpc_response_timeout': 60,
                            'external_configuration_new': True,
                            'handle_internal_only_router': False,
                            'plugin': 'ovs'})
@@ -71,24 +76,34 @@ class TestL3AgentContext(CharmTestCase):
     @patch('neutron_contexts.NeutronAPIContext')
     def test_old_ext_network(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
-            DummyNeutronAPIContext(return_value={'enable_dvr': False})
+            DummyNeutronAPIContext(return_value={'enable_dvr': False,
+                                                 'report_interval': 30,
+                                                 'rpc_response_timeout': 60,
+                                                 })
         self.test_config.set('run-internal-router', 'none')
         self.test_config.set('ext-port', 'eth1')
         self.eligible_leader.return_value = False
         self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',
+                           'report_interval': 30,
+                           'rpc_response_timeout': 60,
                            'handle_internal_only_router': False,
                            'plugin': 'ovs'})
 
     @patch('neutron_contexts.NeutronAPIContext')
     def test_hior_leader(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
-            DummyNeutronAPIContext(return_value={'enable_dvr': False})
+            DummyNeutronAPIContext(return_value={'enable_dvr': False,
+                                                 'report_interval': 30,
+                                                 'rpc_response_timeout': 60,
+                                                 })
         self.test_config.set('run-internal-router', 'leader')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
         self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',
+                           'report_interval': 30,
+                           'rpc_response_timeout': 60,
                            'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
@@ -96,12 +111,17 @@ class TestL3AgentContext(CharmTestCase):
     @patch('neutron_contexts.NeutronAPIContext')
     def test_hior_all(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
-            DummyNeutronAPIContext(return_value={'enable_dvr': False})
+            DummyNeutronAPIContext(return_value={'enable_dvr': False,
+                                                 'report_interval': 30,
+                                                 'rpc_response_timeout': 60,
+                                                 })
         self.test_config.set('run-internal-router', 'all')
         self.test_config.set('external-network-id', 'netid')
         self.eligible_leader.return_value = True
         self.assertEquals(neutron_contexts.L3AgentContext()(),
                           {'agent_mode': 'legacy',
+                           'report_interval': 30,
+                           'rpc_response_timeout': 60,
                            'handle_internal_only_router': True,
                            'ext_net_id': 'netid',
                            'plugin': 'ovs'})
@@ -109,7 +129,10 @@ class TestL3AgentContext(CharmTestCase):
     @patch('neutron_contexts.NeutronAPIContext')
     def test_dvr(self, _NeutronAPIContext):
         _NeutronAPIContext.return_value = \
-            DummyNeutronAPIContext(return_value={'enable_dvr': True})
+            DummyNeutronAPIContext(return_value={'enable_dvr': True,
+                                                 'report_interval': 30,
+                                                 'rpc_response_timeout': 60,
+                                                 })
         self.assertEquals(neutron_contexts.L3AgentContext()()['agent_mode'],
                           'dvr_snat')
 
@@ -163,6 +186,8 @@ class TestNeutronGatewayContext(CharmTestCase):
             'verbose': True,
             'l2_population': True,
             'overlay_network_type': 'gre',
+            'report_interval': 30,
+            'rpc_response_timeout': 60,
             'bridge_mappings': 'physnet1:br-data',
             'network_providers': 'physnet3,physnet4',
             'vlan_ranges': 'physnet1:1000:2000,physnet2:2001:3000',
@@ -217,6 +242,8 @@ class TestNeutronGatewayContext(CharmTestCase):
             'verbose': True,
             'l2_population': True,
             'overlay_network_type': 'gre',
+            'report_interval': 30,
+            'rpc_response_timeout': 60,
             'bridge_mappings': 'physnet1:br-data',
             'network_providers': 'physnet3,physnet4',
             'vlan_ranges': 'physnet1:1000:2000,physnet2:2001:3000',

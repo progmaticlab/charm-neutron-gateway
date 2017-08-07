@@ -74,6 +74,8 @@ class L3AgentContext(OSContextGenerator):
             ctxt['agent_mode'] = 'dvr_snat'
         else:
             ctxt['agent_mode'] = 'legacy'
+        ctxt['rpc_response_timeout'] = api_settings['rpc_response_timeout']
+        ctxt['report_interval'] = api_settings['report_interval']
         return ctxt
 
 
@@ -94,6 +96,8 @@ class NeutronGatewayContext(NeutronAPIContext):
             'dns_domain': api_settings['dns_domain'],
             'overlay_network_type':
             api_settings['overlay_network_type'],
+            'rpc_response_timeout': api_settings['rpc_response_timeout'],
+            'report_interval': api_settings['report_interval'],
             'enable_metadata_network': config('enable-metadata-network'),
             'enable_isolated_metadata': config('enable-isolated-metadata'),
         }
