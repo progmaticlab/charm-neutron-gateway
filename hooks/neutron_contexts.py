@@ -94,6 +94,7 @@ class NeutronGatewayContext(NeutronAPIContext):
             'l2_population': api_settings['l2_population'],
             'enable_dvr': api_settings['enable_dvr'],
             'enable_l3ha': api_settings['enable_l3ha'],
+            'extension_drivers': api_settings['extension_drivers'],
             'dns_domain': api_settings['dns_domain'],
             'overlay_network_type':
             api_settings['overlay_network_type'],
