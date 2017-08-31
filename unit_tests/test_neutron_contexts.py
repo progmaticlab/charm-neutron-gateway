@@ -162,6 +162,7 @@ class TestNeutronGatewayContext(CharmTestCase):
         self.test_config.set('instance-mtu', 1420)
         self.test_config.set('dnsmasq-flags', 'dhcp-userclass=set:ipxe,iPXE,'
                                               'dhcp-match=set:ipxe,175')
+        self.test_config.set('dns-servers', '8.8.8.8,4.4.4.4')
         self.test_config.set('vlan-ranges',
                              'physnet1:1000:2000 physnet2:2001:3000')
         self.test_config.set('flat-network-providers', 'physnet3 physnet4')
@@ -177,6 +178,7 @@ class TestNeutronGatewayContext(CharmTestCase):
             'shared_secret': 'testsecret',
             'enable_dvr': True,
             'enable_l3ha': True,
+            'dns_servers': '8.8.8.8,4.4.4.4',
             'dns_domain': 'openstack.example.',
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
@@ -233,6 +235,7 @@ class TestNeutronGatewayContext(CharmTestCase):
             'shared_secret': 'testsecret',
             'enable_dvr': True,
             'enable_l3ha': True,
+            'dns_servers': None,
             'dns_domain': 'openstack.example.',
             'local_ip': '192.168.20.2',
             'instance_mtu': 1420,

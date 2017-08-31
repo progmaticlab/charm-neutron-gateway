@@ -90,6 +90,7 @@ class NeutronGatewayContext(NeutronAPIContext):
             'debug': config('debug'),
             'verbose': config('verbose'),
             'instance_mtu': config('instance-mtu'),
+            'dns_servers': config('dns-servers'),
             'l2_population': api_settings['l2_population'],
             'enable_dvr': api_settings['enable_dvr'],
             'enable_l3ha': api_settings['enable_l3ha'],
