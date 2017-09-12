@@ -94,20 +94,20 @@ class TestNeutronUtils(CharmTestCase):
         self.config.return_value = 'ovs'
         self.determine_dkms_package.return_value = [
             'openvswitch-datapath-dkms']
-        self.assertEquals(
+        self.assertEqual(
             neutron_utils.get_early_packages(),
             ['openvswitch-datapath-dkms', 'linux-headers-2.6.18'])
 
     def test_get_early_packages_nsx(self):
         self.config.return_value = 'nsx'
-        self.assertEquals(
+        self.assertEqual(
             neutron_utils.get_early_packages(),
             [])
 
     def test_get_early_packages_empty(self):
         self.config.return_value = 'noop'
-        self.assertEquals(neutron_utils.get_early_packages(),
-                          [])
+        self.assertEqual(neutron_utils.get_early_packages(),
+                         [])
 
     @patch.object(neutron_utils, 'git_install_requested')
     def test_get_packages_ovs_icehouse(self, git_requested):
@@ -985,17 +985,17 @@ class TestNeutronAgentReallocation(CharmTestCase):
             call('neutron', shell='/bin/bash', system_user=True),
             call('nova', shell='/bin/bash', system_user=True),
         ]
-        self.assertEquals(adduser.call_args_list, expected)
+        self.assertEqual(adduser.call_args_list, expected)
         expected = [
             call('neutron', system_group=True),
             call('nova', system_group=True),
         ]
-        self.assertEquals(add_group.call_args_list, expected)
+        self.assertEqual(add_group.call_args_list, expected)
         expected = [
             call('neutron', 'neutron'),
             call('nova', 'nova'),
         ]
-        self.assertEquals(add_user_to_group.call_args_list, expected)
+        self.assertEqual(add_user_to_group.call_args_list, expected)
         expected = [
             call('/etc/neutron', owner='neutron',
                  group='neutron', perms=0755, force=False),
@@ -1016,7 +1016,7 @@ class TestNeutronAgentReallocation(CharmTestCase):
             call('/var/log/nova', owner='neutron',
                  group='neutron', perms=0755, force=False),
         ]
-        self.assertEquals(mkdir.call_args_list, expected)
+        self.assertEqual(mkdir.call_args_list, expected)
         expected = [
             call('/var/log/neutron/bigswitch-agent.log', '', owner='neutron',
                  group='neutron', perms=0644),
@@ -1055,7 +1055,7 @@ class TestNeutronAgentReallocation(CharmTestCase):
             call('/var/log/neutron/vpn_agent.log', '', owner='neutron',
                  group='neutron', perms=0644),
         ]
-        self.assertEquals(write_file.call_args_list, expected)
+        self.assertEqual(write_file.call_args_list, expected)
 
     @patch('os.remove')
     @patch('os.path.join')
@@ -1380,7 +1380,7 @@ class TestNeutronAgentReallocation(CharmTestCase):
                  nova_api_metadata_context, perms=0o644,
                  templates_dir='joined-string'),
         ]
-        self.assertEquals(self.render.call_args_list, expected)
+        self.assertEqual(self.render.call_args_list, expected)
 
     @patch('os.listdir')
     @patch('os.remove')
@@ -1458,7 +1458,7 @@ class TestNeutronAgentReallocation(CharmTestCase):
                  'joined-string', {'daemon_path': 'joined-string'},
                  perms=420),
         ]
-        self.assertEquals(self.render.call_args_list, expected)
+        self.assertEqual(self.render.call_args_list, expected)
 
     def test_assess_status(self):
         with patch.object(neutron_utils, 'assess_status_func') as asf:
