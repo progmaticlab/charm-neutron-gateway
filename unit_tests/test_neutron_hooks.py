@@ -58,6 +58,7 @@ TO_PATCH = [
     'service_restart',
     'is_unit_paused_set',
     'install_systemd_override',
+    'configure_apparmor',
 ]
 
 
@@ -164,6 +165,7 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(_amqp_nova_joined.called)
         self.assertTrue(_zmq_joined.called)
         self.assertTrue(self.create_sysctl.called)
+        self.configure_apparmor.assert_called_with()
 
     @patch.object(hooks, 'git_install_requested')
     def test_config_changed_upgrade(self, git_requested):
