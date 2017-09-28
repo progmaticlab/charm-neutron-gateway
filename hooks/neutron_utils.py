@@ -660,9 +660,14 @@ def resolve_config_files(plugin, release):
     return config_files
 
 
-def register_configs():
-    ''' Register config files with their respective contexts. '''
-    release = os_release('neutron-common')
+def register_configs(release=None):
+    '''
+    Register config files with their respective contexts.
+
+    :param release: string containing the openstack release to use
+                    over automatic detection based on installed pkgs.
+    '''
+    release = release or os_release('neutron-common')
     plugin = config('plugin')
     config_files = resolve_config_files(plugin, release)
     configs = templating.OSConfigRenderer(templates_dir=TEMPLATES,
@@ -685,15 +690,17 @@ def stop_services():
         service_stop(svc)
 
 
-def restart_map():
+def restart_map(release=None):
     '''
     Determine the correct resource map to be passed to
     charmhelpers.core.restart_on_change() based on the services configured.
 
+    :param release: string containing the openstack release to use
+                    over automatic detection based on installed pkgs.
     :returns: dict: A dictionary mapping config file to lists of services
                     that should be restarted when file changes.
     '''
-    release = os_release('neutron-common')
+    release = release or os_release('neutron-common')
     plugin = config('plugin')
     config_files = resolve_config_files(plugin, release)
     _map = {}
@@ -822,6 +829,13 @@ def do_openstack_upgrade(configs):
     log('Performing OpenStack upgrade to %s.' % (new_os_rel))
 
     configure_installation_source(new_src)
+
+    # NOTE(jamespage):
+    # Write-out new openstack release configuration files prior to upgrading
+    # to avoid having to restart services immediately after upgrade.
+    configs = register_configs(new_os_rel)
+    configs.write_all()
+
     dpkg_opts = [
         '--option', 'Dpkg::Options::=--force-confnew',
         '--option', 'Dpkg::Options::=--force-confdef',
@@ -834,8 +848,6 @@ def do_openstack_upgrade(configs):
     reset_os_release()
     apt_install(get_early_packages(), fatal=True)
     apt_install(get_packages(), fatal=True)
-    configs.set_release(openstack_release=new_os_rel)
-    configs.write_all()
 
 
 def configure_ovs():

@@ -288,9 +288,13 @@ class TestNeutronUtils(CharmTestCase):
                  call('br1', 'eth0.200', promisc=True)]
         self.add_bridge_port.assert_has_calls(calls)
 
+    @patch.object(neutron_utils, 'register_configs')
     @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
     @patch.object(neutron_utils, 'git_install_requested')
-    def test_do_openstack_upgrade(self, git_requested, mock_renderer):
+    def test_do_openstack_upgrade(self, git_requested, mock_renderer,
+                                  mock_register_configs):
+        mock_configs = MagicMock()
+        mock_register_configs.return_value = mock_configs
         git_requested.return_value = False
         self.config.side_effect = self.test_config.get
         self.is_relation_made.return_value = False
@@ -298,8 +302,8 @@ class TestNeutronUtils(CharmTestCase):
         self.test_config.set('plugin', 'ovs')
         self.get_os_codename_install_source.return_value = 'havana'
         self.os_release.return_value = 'havana'
-        configs = neutron_utils.register_configs()
-        neutron_utils.do_openstack_upgrade(configs)
+        neutron_utils.do_openstack_upgrade(mock_configs)
+        mock_register_configs.assert_called_with('havana')
         self.assertTrue(self.log.called)
         self.apt_update.assert_called_with(fatal=True)
         dpkg_opts = [
