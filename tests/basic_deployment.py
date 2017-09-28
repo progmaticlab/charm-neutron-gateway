@@ -677,7 +677,11 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         }
         section = 'fwaas'
 
-        if self._get_openstack_release() >= self.trusty_kilo:
+        if self._get_openstack_release() >= self.xenial_newton:
+            # Newton or later
+            expected['driver'] = 'iptables'
+            expected['agent_version'] = 'v1'
+        elif self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
             expected['driver'] = ('neutron_fwaas.services.firewall.drivers.'
                                   'linux.iptables_fwaas.IptablesFwaasDriver')
