@@ -1537,3 +1537,21 @@ class TestNeutronAgentReallocation(CharmTestCase):
         _subprocess.check_call.assert_called_with(
             ['systemctl', 'daemon-reload']
         )
+
+    @patch.object(neutron_utils, 'context')
+    def test_configure_apparmor_mitaka(self, context):
+        self.os_release.return_value = 'mitaka'
+        context.AppArmorContext = MagicMock()
+        neutron_utils.configure_apparmor()
+        context.AppArmorContext.assert_any_call(
+            neutron_utils.NEUTRON_LBAAS_AA_PROFILE
+        )
+
+    @patch.object(neutron_utils, 'context')
+    def test_configure_apparmor_newton(self, context):
+        self.os_release.return_value = 'newton'
+        context.AppArmorContext = MagicMock()
+        neutron_utils.configure_apparmor()
+        context.AppArmorContext.assert_any_call(
+            neutron_utils.NEUTRON_LBAASV2_AA_PROFILE
+        )

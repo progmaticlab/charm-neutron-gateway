@@ -1542,5 +1542,10 @@ def _pause_resume_helper(f, configs):
 
 def configure_apparmor():
     '''Configure all apparmor profiles for the local unit'''
-    for profile in APPARMOR_PROFILES:
+    profiles = deepcopy(APPARMOR_PROFILES)
+    cmp_os_source = CompareOpenStackReleases(os_release('neutron-common'))
+    if cmp_os_source >= 'newton':
+        profiles.remove(NEUTRON_LBAAS_AA_PROFILE)
+        profiles.append(NEUTRON_LBAASV2_AA_PROFILE)
+    for profile in profiles:
         context.AppArmorContext(profile).setup_aa_profile()
