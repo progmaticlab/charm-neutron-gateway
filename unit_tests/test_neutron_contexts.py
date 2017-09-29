@@ -154,6 +154,7 @@ class TestNeutronGatewayContext(CharmTestCase):
                  'enable-dvr': 'True',
                  'overlay-network-type': 'gre',
                  'enable-l3ha': 'True',
+                 'enable-qos': 'True',
                  'network-device-mtu': 9000,
                  'dns-domain': 'openstack.example.'}
         self.test_config.set('plugin', 'ovs')
@@ -179,6 +180,7 @@ class TestNeutronGatewayContext(CharmTestCase):
             'enable_dvr': True,
             'enable_l3ha': True,
             'dns_servers': '8.8.8.8,4.4.4.4',
+            'extension_drivers': 'qos',
             'dns_domain': 'openstack.example.',
             'local_ip': '10.5.0.1',
             'instance_mtu': 1420,
@@ -212,6 +214,7 @@ class TestNeutronGatewayContext(CharmTestCase):
                  'enable-dvr': 'True',
                  'overlay-network-type': 'gre',
                  'enable-l3ha': 'True',
+                 'enable-qos': 'True',
                  'network-device-mtu': 9000,
                  'dns-domain': 'openstack.example.'}
         self.test_config.set('plugin', 'ovs')
@@ -236,6 +239,7 @@ class TestNeutronGatewayContext(CharmTestCase):
             'enable_dvr': True,
             'enable_l3ha': True,
             'dns_servers': None,
+            'extension_drivers': 'qos',
             'dns_domain': 'openstack.example.',
             'local_ip': '192.168.20.2',
             'instance_mtu': 1420,

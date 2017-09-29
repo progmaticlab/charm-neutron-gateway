@@ -90,6 +90,8 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'rabbitmq-server:amqp': 'neutron-openvswitch:amqp',
             'nova-compute:image-service': 'glance:image-service',
             'nova-cloud-controller:image-service': 'glance:image-service',
+            'neutron-api:neutron-plugin-api': 'neutron-gateway:'
+                                              'neutron-plugin-api',
         }
         super(NeutronGatewayBasicDeployment, self)._add_relations(relations)
 
@@ -615,7 +617,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 },
                 'agent': {
                     'tunnel_types': 'gre',
-                    'l2_population': 'False'
+                    'l2_population': 'True'
                 },
                 'securitygroup': {
                     'firewall_driver': 'neutron.agent.linux.iptables_firewall.'
@@ -631,7 +633,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                 },
                 'agent': {
                     'tunnel_types': 'gre',
-                    'l2_population': 'False'
+                    'l2_population': 'True'
                 },
                 'securitygroup': {
                     'firewall_driver': 'neutron.agent.linux.iptables_firewall.'
@@ -968,6 +970,28 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         # Cleanup
         u.log.debug('Deleting neutron network...')
         self.neutron.delete_network(network['id'])
+
+    def test_401_enable_qos(self):
+        """Check qos settings set via neutron-api charm"""
+        if self._get_openstack_release() >= self.trusty_mitaka:
+            unit = self.neutron_gateway_sentry
+            set_default = {'enable-qos': 'False'}
+            set_alternate = {'enable-qos': 'True'}
+            self.d.configure('neutron-api', set_alternate)
+            time.sleep(60)
+            self._auto_wait_for_status(exclude_services=self.exclude_services)
+            config = u._get_config(
+                unit,
+                '/etc/neutron/plugins/ml2/openvswitch_agent.ini')
+            extensions = config.get('agent', 'extensions').split(',')
+            if 'qos' not in extensions:
+                message = "qos not in extensions"
+                amulet.raise_status(amulet.FAIL, msg=message)
+
+            u.log.debug('Setting QoS back to {}'.format(
+                set_default['enable-qos']))
+            self.d.configure('neutron-api', set_default)
+            u.log.debug('OK')
 
     def test_900_restart_on_config_change(self):
         """Verify that the specified services are restarted when the
