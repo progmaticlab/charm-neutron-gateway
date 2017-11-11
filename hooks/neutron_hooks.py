@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 from base64 import b64decode
 
@@ -25,7 +25,6 @@ from charmhelpers.core.host import (
 )
 from charmhelpers.contrib.hahelpers.cluster import(
     get_hacluster_config,
-    eligible_leader
 )
 from charmhelpers.contrib.hahelpers.apache import(
     install_ca_cert
@@ -64,7 +63,6 @@ from neutron_utils import (
     remove_legacy_ha_files,
     install_legacy_ha_files,
     cleanup_ovs_netns,
-    reassign_agent_resources,
     stop_neutron_ha_monitor_daemon,
     use_l3ha,
     NEUTRON_COMMON,
@@ -77,7 +75,7 @@ hooks = Hooks()
 CONFIGS = register_configs()
 
 
-@hooks.hook('install.real')
+@hooks.hook('install')
 @harden()
 def install():
     status_set('maintenance', 'Executing pre-install')
@@ -260,9 +258,6 @@ def cluster_departed():
         log('Unable to re-assign agent resources for failed nodes with n1kv',
             level=WARNING)
         return
-    if not config('ha-legacy-mode') and eligible_leader(None):
-        reassign_agent_resources()
-        CONFIGS.write_all()
 
 
 @hooks.hook('cluster-relation-broken')

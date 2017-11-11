@@ -1,5 +1,3 @@
-import collections
-
 from mock import MagicMock, call, patch, ANY
 
 import charmhelpers.core.hookenv as hookenv
@@ -31,8 +29,6 @@ TO_PATCH = [
     'service_running',
     'NetworkServiceContext',
     'ExternalPortContext',
-    'unit_private_ip',
-    'relations_of_type',
     'render',
     'service_stop',
     'determine_dkms_package',
@@ -58,20 +54,11 @@ openstack_origin_git = \
 
 class TestNeutronUtils(CharmTestCase):
 
-    def assertDictEqual(self, d1, d2, msg=None):  # assertEqual uses for dicts
-        for k, v1 in d1.iteritems():
-            self.assertIn(k, d2, msg)
-            v2 = d2[k]
-            if(isinstance(v1, collections.Iterable) and
-               not isinstance(v1, basestring)):
-                self.assertItemsEqual(v1, v2, msg)
-            else:
-                self.assertEqual(v1, v2, msg)
-
     def setUp(self):
         super(TestNeutronUtils, self).setUp(neutron_utils, TO_PATCH)
         self.headers_package.return_value = 'linux-headers-2.6.18'
         self._set_distrib_codename('trusty')
+        self.maxDiff = None
 
     def tearDown(self):
         # Reset cached cache
@@ -286,7 +273,7 @@ class TestNeutronUtils(CharmTestCase):
         ])
         calls = [call('br1', 'eth0.100', promisc=True),
                  call('br1', 'eth0.200', promisc=True)]
-        self.add_bridge_port.assert_has_calls(calls)
+        self.add_bridge_port.assert_has_calls(calls, any_order=True)
 
     @patch.object(neutron_utils, 'register_configs')
     @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
@@ -373,12 +360,12 @@ class TestNeutronUtils(CharmTestCase):
         mock_get_packages.return_value = ['neutron-vpn-agent']
         self.os_release.return_value = 'icehouse'
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
-                                         'neutron-metadata-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-lbaas-agent',
                                          'neutron-plugin-openvswitch-agent',
+                                         'neutron-vpn-agent',
+                                         'neutron-dhcp-agent',
                                          'neutron-metering-agent',
-                                         'neutron-lbaas-agent',
-                                         'neutron-vpn-agent'],
+                                         'neutron-metadata-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
             ['neutron-lbaas-agent'],
@@ -409,8 +396,7 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.NOVA_API_METADATA_AA_PROFILE_PATH:
             ['nova-api-metadata'],
         }
-
-        self.assertDictEqual(neutron_utils.restart_map(), ex_map)
+        self.assertEqual(neutron_utils.restart_map(), ex_map)
 
     @patch.object(neutron_utils, 'get_packages')
     def test_restart_map_ovs_mitaka(self, mock_get_packages):
@@ -418,12 +404,12 @@ class TestNeutronUtils(CharmTestCase):
         mock_get_packages.return_value = ['neutron-vpn-agent']
         self.os_release.return_value = 'mitaka'
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
-                                         'neutron-metadata-agent',
-                                         'neutron-openvswitch-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-lbaas-agent',
+                                         'neutron-vpn-agent',
+                                         'neutron-dhcp-agent',
                                          'neutron-metering-agent',
-                                         'neutron-lbaas-agent',
-                                         'neutron-vpn-agent'],
+                                         'neutron-metadata-agent',
+                                         'neutron-openvswitch-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
             ['neutron-lbaas-agent'],
@@ -453,7 +439,7 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.NOVA_API_METADATA_AA_PROFILE_PATH:
             ['nova-api-metadata'],
         }
-        self.assertEqual(ex_map, neutron_utils.restart_map())
+        self.assertEqual(neutron_utils.restart_map(), ex_map)
 
     @patch.object(neutron_utils, 'get_packages')
     def test_restart_map_ovs_newton(self, mock_get_packages):
@@ -461,12 +447,12 @@ class TestNeutronUtils(CharmTestCase):
         mock_get_packages.return_value = ['neutron-vpn-agent']
         self.os_release.return_value = 'newton'
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
-                                         'neutron-metadata-agent',
-                                         'neutron-openvswitch-agent',
-                                         'neutron-metering-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-vpn-agent',
                                          'neutron-lbaasv2-agent',
-                                         'neutron-vpn-agent'],
+                                         'neutron-dhcp-agent',
+                                         'neutron-metering-agent',
+                                         'neutron-metadata-agent',
+                                         'neutron-openvswitch-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
             ['neutron-lbaasv2-agent'],
@@ -483,8 +469,20 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.NOVA_CONF: ['nova-api-metadata'],
             neutron_utils.EXT_PORT_CONF: ['ext-port'],
             neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
+            neutron_utils.NEUTRON_DHCP_AA_PROFILE_PATH: ['neutron-dhcp-agent'],
+            neutron_utils.NEUTRON_OVS_AA_PROFILE_PATH:
+                ['neutron-openvswitch-agent'],
+            neutron_utils.NEUTRON_L3_AA_PROFILE_PATH: ['neutron-vpn-agent'],
+            neutron_utils.NEUTRON_LBAASV2_AA_PROFILE_PATH:
+            ['neutron-lbaasv2-agent'],
+            neutron_utils.NEUTRON_METADATA_AA_PROFILE_PATH:
+            ['neutron-metadata-agent'],
+            neutron_utils.NEUTRON_METERING_AA_PROFILE_PATH:
+            ['neutron-metering-agent'],
+            neutron_utils.NOVA_API_METADATA_AA_PROFILE_PATH:
+            ['nova-api-metadata'],
         }
-        self.assertEqual(ex_map, neutron_utils.restart_map())
+        self.assertEqual(neutron_utils.restart_map(), ex_map)
 
     @patch.object(neutron_utils, 'get_packages')
     def test_restart_map_ovs_post_trusty(self, mock_get_packages):
@@ -493,7 +491,7 @@ class TestNeutronUtils(CharmTestCase):
         mock_get_packages.return_value = ['neutron-l3-agent']
         self.os_release.return_value = 'diablo'
         rmap = neutron_utils.restart_map()
-        for services in rmap.itervalues():
+        for services in rmap.values():
             self.assertFalse('neutron-vpn-agent' in services)
 
     @patch.object(neutron_utils, 'get_packages')
@@ -502,11 +500,11 @@ class TestNeutronUtils(CharmTestCase):
         mock_get_packages.return_value = ['neutron-vpn-agent']
         self.os_release.return_value = 'icehouse'
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
-                                         'neutron-metadata-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-lbaas-agent',
+                                         'neutron-vpn-agent',
+                                         'neutron-dhcp-agent',
                                          'neutron-metering-agent',
-                                         'neutron-lbaas-agent',
-                                         'neutron-vpn-agent'],
+                                         'neutron-metadata-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
             ['neutron-lbaas-agent'],
@@ -522,7 +520,6 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.EXT_PORT_CONF: ['ext-port'],
             neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
             neutron_utils.NEUTRON_DHCP_AA_PROFILE_PATH: ['neutron-dhcp-agent'],
-            neutron_utils.NEUTRON_L3_AA_PROFILE_PATH: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_LBAAS_AA_PROFILE_PATH:
             ['neutron-lbaas-agent'],
             neutron_utils.NEUTRON_METADATA_AA_PROFILE_PATH:
@@ -533,7 +530,7 @@ class TestNeutronUtils(CharmTestCase):
             ['nova-api-metadata'],
         }
 
-        self.assertDictEqual(neutron_utils.restart_map(), ex_map)
+        self.assertEqual(neutron_utils.restart_map(), ex_map)
 
     @patch.object(neutron_utils, 'get_packages')
     def test_restart_map_ovs_odl_newton(self, mock_get_packages):
@@ -541,11 +538,11 @@ class TestNeutronUtils(CharmTestCase):
         mock_get_packages.return_value = ['neutron-vpn-agent']
         self.os_release.return_value = 'newton'
         ex_map = {
-            neutron_utils.NEUTRON_CONF: ['neutron-dhcp-agent',
-                                         'neutron-metadata-agent',
-                                         'neutron-metering-agent',
+            neutron_utils.NEUTRON_CONF: ['neutron-vpn-agent',
                                          'neutron-lbaasv2-agent',
-                                         'neutron-vpn-agent'],
+                                         'neutron-dhcp-agent',
+                                         'neutron-metering-agent',
+                                         'neutron-metadata-agent'],
             neutron_utils.NEUTRON_DNSMASQ_CONF: ['neutron-dhcp-agent'],
             neutron_utils.NEUTRON_LBAAS_AGENT_CONF:
             ['neutron-lbaasv2-agent'],
@@ -561,7 +558,6 @@ class TestNeutronUtils(CharmTestCase):
             neutron_utils.EXT_PORT_CONF: ['ext-port'],
             neutron_utils.PHY_NIC_MTU_CONF: ['os-charm-phy-nic-mtu'],
             neutron_utils.NEUTRON_DHCP_AA_PROFILE_PATH: ['neutron-dhcp-agent'],
-            neutron_utils.NEUTRON_L3_AA_PROFILE_PATH: ['neutron-vpn-agent'],
             neutron_utils.NEUTRON_LBAASV2_AA_PROFILE_PATH:
             ['neutron-lbaasv2-agent'],
             neutron_utils.NEUTRON_METADATA_AA_PROFILE_PATH:
@@ -746,125 +742,6 @@ class DummyExternalPortContext():
     def __call__(self):
         return self.return_value
 
-agents_all_alive = {
-    'DHCP Agent': {
-        'agents': [
-            {'alive': True,
-             'host': 'cluster1-machine1.internal',
-             'id': '3e3550f2-38cc-11e3-9617-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster1-machine2.internal',
-             'id': '53d6eefc-38cc-11e3-b3c8-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine1.internal',
-             'id': '92b8b6bc-38ce-11e3-8537-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine3.internal',
-             'id': 'ebdcc950-51c8-11e3-a804-1c6f65b044df'},
-        ]
-    },
-    'L3 Agent': {
-        'agents': [
-            {'alive': True,
-             'host': 'cluster1-machine1.internal',
-             'id': '7128198e-38ce-11e3-ba78-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster1-machine2.internal',
-             'id': '72453824-38ce-11e3-938e-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine1.internal',
-             'id': '84a04126-38ce-11e3-9449-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine3.internal',
-             'id': '00f4268a-51c9-11e3-9177-1c6f65b044df'},
-        ]
-    }
-}
-
-agents_some_dead_cl1 = {
-    'DHCP Agent': {
-        'agents': [
-            {'alive': False,
-             'host': 'cluster1-machine1.internal',
-             'id': '3e3550f2-38cc-11e3-9617-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine1.internal',
-             'id': '53d6eefc-38cc-11e3-b3c8-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine2.internal',
-             'id': '92b8b6bc-38ce-11e3-8537-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine3.internal',
-             'id': 'ebdcc950-51c8-11e3-a804-1c6f65b044df'},
-        ]
-    },
-    'L3 Agent': {
-        'agents': [
-            {'alive': False,
-             'host': 'cluster1-machine1.internal',
-             'id': '7128198e-38ce-11e3-ba78-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine1.internal',
-             'id': '72453824-38ce-11e3-938e-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine2.internal',
-             'id': '84a04126-38ce-11e3-9449-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine3.internal',
-             'id': '00f4268a-51c9-11e3-9177-1c6f65b044df'},
-        ]
-    }
-}
-
-agents_some_dead_cl2 = {
-    'DHCP Agent': {
-        'agents': [
-            {'alive': True,
-             'host': 'cluster1-machine1.internal',
-             'id': '3e3550f2-38cc-11e3-9617-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine1.internal',
-             'id': '53d6eefc-38cc-11e3-b3c8-3c970e8b1cf7'},
-            {'alive': False,
-             'host': 'cluster2-machine2.internal',
-             'id': '92b8b6bc-38ce-11e3-8537-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine3.internal',
-             'id': 'ebdcc950-51c8-11e3-a804-1c6f65b044df'},
-        ]
-    },
-    'L3 Agent': {
-        'agents': [
-            {'alive': True,
-             'host': 'cluster1-machine1.internal',
-             'id': '7128198e-38ce-11e3-ba78-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine1.internal',
-             'id': '72453824-38ce-11e3-938e-3c970e8b1cf7'},
-            {'alive': False,
-             'host': 'cluster2-machine2.internal',
-             'id': '84a04126-38ce-11e3-9449-3c970e8b1cf7'},
-            {'alive': True,
-             'host': 'cluster2-machine3.internal',
-             'id': '00f4268a-51c9-11e3-9177-1c6f65b044df'},
-        ]
-    }
-}
-
-dhcp_agent_networks = {
-    'networks': [
-        {'id': 'foo'},
-        {'id': 'bar'}
-    ]
-}
-
-l3_agent_routers = {
-    'routers': [
-        {'id': 'baz'},
-        {'id': 'bong'}
-    ]
-}
-
 cluster1 = ['cluster1-machine1.internal']
 cluster2 = ['cluster2-machine1.internal', 'cluster2-machine2.internal'
             'cluster2-machine3.internal']
@@ -881,86 +758,6 @@ class TestNeutronAgentReallocation(CharmTestCase):
     def tearDown(self):
         # Reset cached cache
         hookenv.cache = {}
-
-    def test_no_network_context(self):
-        self.NetworkServiceContext.return_value = \
-            DummyNetworkServiceContext(return_value=None)
-        neutron_utils.reassign_agent_resources()
-        self.assertTrue(self.log.called)
-
-    @patch('neutronclient.v2_0.client.Client')
-    def test_no_down_agents(self, _client):
-        self.NetworkServiceContext.return_value = \
-            DummyNetworkServiceContext(return_value=network_context)
-        dummy_client = MagicMock()
-        dummy_client.list_agents.side_effect = agents_all_alive.itervalues()
-        _client.return_value = dummy_client
-        neutron_utils.reassign_agent_resources()
-        dummy_client.add_router_to_l3_agent.assert_not_called()
-        dummy_client.remove_router_from_l3_agent.assert_not_called()
-        dummy_client.add_network_to_dhcp_agent.assert_not_called()
-        dummy_client.remove_network_from_dhcp_agent.assert_not_called()
-
-    @patch('neutronclient.v2_0.client.Client')
-    def test_agents_down_relocation_required(self, _client):
-        self.NetworkServiceContext.return_value = \
-            DummyNetworkServiceContext(return_value=network_context)
-        dummy_client = MagicMock()
-        dummy_client.list_agents.side_effect = \
-            agents_some_dead_cl2.itervalues()
-        dummy_client.list_networks_on_dhcp_agent.return_value = \
-            dhcp_agent_networks
-        dummy_client.list_routers_on_l3_agent.return_value = \
-            l3_agent_routers
-        _client.return_value = dummy_client
-        self.unit_private_ip.return_value = 'cluster2-machine1.internal'
-        self.relations_of_type.return_value = \
-            [{'private-address': 'cluster2-machine3.internal'}]
-        neutron_utils.reassign_agent_resources()
-
-        # Ensure routers removed from dead l3 agent
-        dummy_client.remove_router_from_l3_agent.assert_has_calls(
-            [call(l3_agent='84a04126-38ce-11e3-9449-3c970e8b1cf7',
-                  router_id='bong'),
-             call(l3_agent='84a04126-38ce-11e3-9449-3c970e8b1cf7',
-                  router_id='baz')], any_order=True)
-        # and re-assigned across the remaining two live agents
-        dummy_client.add_router_to_l3_agent.assert_has_calls(
-            [call(l3_agent='00f4268a-51c9-11e3-9177-1c6f65b044df',
-                  body={'router_id': 'baz'}),
-             call(l3_agent='72453824-38ce-11e3-938e-3c970e8b1cf7',
-                  body={'router_id': 'bong'})], any_order=True)
-        # Ensure networks removed from dead dhcp agent
-        dummy_client.remove_network_from_dhcp_agent.assert_has_calls(
-            [call(dhcp_agent='92b8b6bc-38ce-11e3-8537-3c970e8b1cf7',
-                  network_id='foo'),
-             call(dhcp_agent='92b8b6bc-38ce-11e3-8537-3c970e8b1cf7',
-                  network_id='bar')], any_order=True)
-        # and re-assigned across the remaining two live agents
-        dummy_client.add_network_to_dhcp_agent.assert_has_calls(
-            [call(dhcp_agent='53d6eefc-38cc-11e3-b3c8-3c970e8b1cf7',
-                  body={'network_id': 'foo'}),
-             call(dhcp_agent='ebdcc950-51c8-11e3-a804-1c6f65b044df',
-                  body={'network_id': 'bar'})], any_order=True)
-
-    @patch('neutronclient.v2_0.client.Client')
-    def test_agents_down_relocation_impossible(self, _client):
-        self.NetworkServiceContext.return_value = \
-            DummyNetworkServiceContext(return_value=network_context)
-        dummy_client = MagicMock()
-        dummy_client.list_agents.side_effect = \
-            agents_some_dead_cl1.itervalues()
-        dummy_client.list_networks_on_dhcp_agent.return_value = \
-            dhcp_agent_networks
-        dummy_client.list_routers_on_l3_agent.return_value = \
-            l3_agent_routers
-        _client.return_value = dummy_client
-        self.unit_private_ip.return_value = 'cluster1-machine1.internal'
-        self.relations_of_type.return_value = []
-        neutron_utils.reassign_agent_resources()
-        self.assertTrue(self.log.called)
-        assert not dummy_client.remove_router_from_l3_agent.called
-        assert not dummy_client.remove_network_from_dhcp_agent.called
 
     @patch.object(neutron_utils, 'git_install_requested')
     @patch.object(neutron_utils, 'git_clone_and_install')
@@ -1002,62 +799,62 @@ class TestNeutronAgentReallocation(CharmTestCase):
         self.assertEqual(add_user_to_group.call_args_list, expected)
         expected = [
             call('/etc/neutron', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/etc/neutron/rootwrap.d', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/etc/neutron/plugins', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/etc/nova', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/var/lib/neutron', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/var/lib/neutron/lock', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/var/log/neutron', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/var/lib/nova', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
             call('/var/log/nova', owner='neutron',
-                 group='neutron', perms=0755, force=False),
+                 group='neutron', perms=0o755, force=False),
         ]
         self.assertEqual(mkdir.call_args_list, expected)
         expected = [
             call('/var/log/neutron/bigswitch-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/dhcp-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/l3-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/lbaas-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/ibm-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/linuxbridge-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/metadata-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/metering_agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/mlnx-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/nec-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/nvsd-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/openflow-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/openvswitch-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/ovs-cleanup.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/ryu-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/server.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/sriov-agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
             call('/var/log/neutron/vpn_agent.log', '', owner='neutron',
-                 group='neutron', perms=0644),
+                 group='neutron', perms=0o644),
         ]
         self.assertEqual(write_file.call_args_list, expected)
 

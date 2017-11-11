@@ -1,18 +1,19 @@
+
+import io
+
+from contextlib import contextmanager
+
 from mock import (
-    Mock,
     MagicMock,
     patch
 )
 import neutron_contexts
-import sys
-from contextlib import contextmanager
 
 from test_utils import (
     CharmTestCase
 )
 
 TO_PATCH = [
-    'apt_install',
     'config',
     'eligible_leader',
     'unit_get',
@@ -27,14 +28,14 @@ def patch_open():
 
     Yields the mock for "open" and "file", respectively.'''
     mock_open = MagicMock(spec=open)
-    mock_file = MagicMock(spec=file)
+    mock_file = MagicMock(spec=io.FileIO)
 
     @contextmanager
     def stub_open(*args, **kwargs):
         mock_open(*args, **kwargs)
         yield mock_file
 
-    with patch('__builtin__.open', stub_open):
+    with patch('builtins.open', stub_open):
         yield mock_open, mock_file
 
 
@@ -321,54 +322,6 @@ class TestSharedSecret(CharmTestCase):
                              'secret_thing')
             _open.assert_called_with(
                 neutron_contexts.SHARED_SECRET.format('neutron'), 'r')
-
-
-class TestHostIP(CharmTestCase):
-
-    def setUp(self):
-        super(TestHostIP, self).setUp(neutron_contexts,
-                                      TO_PATCH)
-        self.config.side_effect = self.test_config.get
-        self.network_get_primary_address.side_effect = NotImplementedError
-        # Save and inject
-        self.mods = {'dns': None, 'dns.resolver': None}
-        for mod in self.mods:
-            if mod not in sys.modules:
-                sys.modules[mod] = Mock()
-            else:
-                del self.mods[mod]
-
-    def tearDown(self):
-        super(TestHostIP, self).tearDown()
-        # Cleanup
-        for mod in self.mods.keys():
-            del sys.modules[mod]
-
-    def test_get_host_ip_already_ip(self):
-        self.assertEqual(neutron_contexts.get_host_ip('10.5.0.1'),
-                         '10.5.0.1')
-
-    def test_get_host_ip_noarg(self):
-        self.unit_get.return_value = "10.5.0.1"
-        self.assertEqual(neutron_contexts.get_host_ip(),
-                         '10.5.0.1')
-
-    @patch('dns.resolver.query')
-    def test_get_host_ip_hostname_unresolvable(self, _query):
-        class NXDOMAIN(Exception):
-            pass
-        _query.side_effect = NXDOMAIN()
-        self.assertRaises(NXDOMAIN, neutron_contexts.get_host_ip,
-                          'missing.example.com')
-
-    @patch('dns.resolver.query')
-    def test_get_host_ip_hostname_resolvable(self, _query):
-        data = MagicMock()
-        data.address = '10.5.0.1'
-        _query.return_value = [data]
-        self.assertEqual(neutron_contexts.get_host_ip('myhost.example.com'),
-                         '10.5.0.1')
-        _query.assert_called_with('myhost.example.com', 'A')
 
 
 class TestMisc(CharmTestCase):

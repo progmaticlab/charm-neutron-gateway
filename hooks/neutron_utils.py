@@ -23,8 +23,6 @@ from charmhelpers.core.hookenv import (
     INFO,
     ERROR,
     config,
-    relations_of_type,
-    unit_private_ip,
     is_relation_made,
     relation_ids,
 )
@@ -51,7 +49,6 @@ from charmhelpers.contrib.openstack.utils import (
     git_install_requested,
     git_pip_venv_dir,
     git_src_dir,
-    get_hostname,
     make_assess_status_func,
     os_release,
     pause_unit,
@@ -683,7 +680,7 @@ def stop_services():
     plugin = config('plugin')
     config_files = resolve_config_files(plugin, release)
     svcs = set()
-    for ctxt in config_files[config('plugin')].itervalues():
+    for ctxt in config_files[config('plugin')].values():
         for svc in ctxt['services']:
             svcs.add(remap_service(svc))
     for svc in svcs:
@@ -705,7 +702,7 @@ def restart_map(release=None):
     config_files = resolve_config_files(plugin, release)
     _map = {}
     enable_vpn_agent = 'neutron-vpn-agent' in get_packages()
-    for f, ctxt in config_files[plugin].iteritems():
+    for f, ctxt in config_files[plugin].items():
         svcs = set()
         for svc in ctxt['services']:
             svcs.add(remap_service(svc))
@@ -724,90 +721,6 @@ def restart_map(release=None):
 
 INT_BRIDGE = "br-int"
 EXT_BRIDGE = "br-ex"
-
-DHCP_AGENT = "DHCP Agent"
-L3_AGENT = "L3 Agent"
-
-
-# TODO: make work with neutron
-def reassign_agent_resources():
-    ''' Use agent scheduler API to detect down agents and re-schedule '''
-    env = NetworkServiceContext()()
-    if not env:
-        log('Unable to re-assign resources at this time')
-        return
-    try:
-        from quantumclient.v2_0 import client
-    except ImportError:
-        ''' Try to import neutronclient instead for havana+ '''
-        from neutronclient.v2_0 import client
-
-    auth_url = '%(auth_protocol)s://%(keystone_host)s:%(auth_port)s/v2.0' % env
-    quantum = client.Client(username=env['service_username'],
-                            password=env['service_password'],
-                            tenant_name=env['service_tenant'],
-                            auth_url=auth_url,
-                            region_name=env['region'])
-
-    partner_gateways = [unit_private_ip().split('.')[0]]
-    for partner_gateway in relations_of_type(reltype='cluster'):
-        gateway_hostname = get_hostname(partner_gateway['private-address'])
-        partner_gateways.append(gateway_hostname.partition('.')[0])
-
-    agents = quantum.list_agents(agent_type=DHCP_AGENT)
-    dhcp_agents = []
-    l3_agents = []
-    networks = {}
-    for agent in agents['agents']:
-        if not agent['alive']:
-            log('DHCP Agent %s down' % agent['id'])
-            for network in \
-                    quantum.list_networks_on_dhcp_agent(
-                        agent['id'])['networks']:
-                networks[network['id']] = agent['id']
-        else:
-            if agent['host'].partition('.')[0] in partner_gateways:
-                dhcp_agents.append(agent['id'])
-
-    agents = quantum.list_agents(agent_type=L3_AGENT)
-    routers = {}
-    for agent in agents['agents']:
-        if not agent['alive']:
-            log('L3 Agent %s down' % agent['id'])
-            for router in \
-                    quantum.list_routers_on_l3_agent(
-                        agent['id'])['routers']:
-                routers[router['id']] = agent['id']
-        else:
-            if agent['host'].split('.')[0] in partner_gateways:
-                l3_agents.append(agent['id'])
-
-    if len(dhcp_agents) == 0 or len(l3_agents) == 0:
-        log('Unable to relocate resources, there are %s dhcp_agents and %s \
-             l3_agents in this cluster' % (len(dhcp_agents), len(l3_agents)))
-        return
-
-    index = 0
-    for router_id in routers:
-        agent = index % len(l3_agents)
-        log('Moving router %s from %s to %s' %
-            (router_id, routers[router_id], l3_agents[agent]))
-        quantum.remove_router_from_l3_agent(l3_agent=routers[router_id],
-                                            router_id=router_id)
-        quantum.add_router_to_l3_agent(l3_agent=l3_agents[agent],
-                                       body={'router_id': router_id})
-        index += 1
-
-    index = 0
-    for network_id in networks:
-        agent = index % len(dhcp_agents)
-        log('Moving network %s from %s to %s' %
-            (network_id, networks[network_id], dhcp_agents[agent]))
-        quantum.remove_network_from_dhcp_agent(dhcp_agent=networks[network_id],
-                                               network_id=network_id)
-        quantum.add_network_to_dhcp_agent(dhcp_agent=dhcp_agents[agent],
-                                          body={'network_id': network_id})
-        index += 1
 
 
 def services():
@@ -862,12 +775,12 @@ def configure_ovs():
 
         portmaps = DataPortContext()()
         bridgemaps = parse_bridge_mappings(config('bridge-mappings'))
-        for provider, br in bridgemaps.iteritems():
+        for br in bridgemaps.values():
             add_bridge(br)
             if not portmaps:
                 continue
 
-            for port, _br in portmaps.iteritems():
+            for port, _br in portmaps.items():
                 if _br == br:
                     add_bridge_port(br, port, promisc=True)
 
@@ -908,13 +821,13 @@ def remove_file(path):
 
 
 def install_legacy_ha_files(force=False):
-    for f, p in LEGACY_FILES_MAP.iteritems():
+    for f, p in LEGACY_FILES_MAP.items():
         srcfile = os.path.join(LEGACY_HA_TEMPLATE_FILES, f)
         copy_file(srcfile, p['path'], p.get('permissions', None), force=force)
 
 
 def remove_legacy_ha_files():
-    for f, p in LEGACY_FILES_MAP.iteritems():
+    for f, p in LEGACY_FILES_MAP.items():
         remove_file(os.path.join(p['path'], f))
 
 

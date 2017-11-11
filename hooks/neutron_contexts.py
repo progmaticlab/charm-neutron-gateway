@@ -1,15 +1,10 @@
 # vim: set ts=4:et
 import os
 import uuid
-import socket
 from charmhelpers.core.hookenv import (
     config,
     unit_get,
-    cached,
     network_get_primary_address,
-)
-from charmhelpers.fetch import (
-    apt_install,
 )
 from charmhelpers.contrib.openstack.context import (
     OSContextGenerator,
@@ -21,6 +16,7 @@ from charmhelpers.contrib.hahelpers.cluster import(
 )
 from charmhelpers.contrib.network.ip import (
     get_address_in_network,
+    get_host_ip,
 )
 
 NEUTRON_ML2_PLUGIN = "ml2"
@@ -147,24 +143,6 @@ class NeutronGatewayContext(NeutronAPIContext):
             ctxt['enable_isolated_metadata'] = True
 
         return ctxt
-
-
-@cached
-def get_host_ip(hostname=None):
-    try:
-        import dns.resolver
-    except ImportError:
-        apt_install('python-dnspython', fatal=True)
-        import dns.resolver
-    hostname = hostname or unit_get('private-address')
-    try:
-        # Test to see if already an IPv4 address
-        socket.inet_aton(hostname)
-        return hostname
-    except socket.error:
-        answers = dns.resolver.query(hostname, 'A')
-        if answers:
-            return answers[0].address
 
 
 SHARED_SECRET = "/etc/{}/secret.txt"

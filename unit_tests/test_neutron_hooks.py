@@ -83,7 +83,7 @@ class TestQuantumHooks(CharmTestCase):
         self.valid_plugin.return_value = True
         _pkgs = ['foo', 'bar']
         self.filter_installed_packages.return_value = _pkgs
-        self._call_hook('install.real')
+        self._call_hook('install')
         self.configure_installation_source.assert_called_with(
             'cloud:precise-havana'
         )
@@ -99,7 +99,7 @@ class TestQuantumHooks(CharmTestCase):
 
     def test_install_hook_precise_nocloudarchive(self):
         self.test_config.set('openstack-origin', 'distro')
-        self._call_hook('install.real')
+        self._call_hook('install')
         self.configure_installation_source.assert_called_with(
             'cloud:precise-icehouse'
         )
@@ -107,7 +107,7 @@ class TestQuantumHooks(CharmTestCase):
     @patch('sys.exit')
     def test_install_hook_invalid_plugin(self, _exit):
         self.valid_plugin.return_value = False
-        self._call_hook('install.real')
+        self._call_hook('install')
         self.assertTrue(self.log.called)
         _exit.assert_called_with(1)
 
@@ -132,7 +132,7 @@ class TestQuantumHooks(CharmTestCase):
         projects_yaml = yaml.dump(openstack_origin_git)
         self.test_config.set('openstack-origin', repo)
         self.test_config.set('openstack-origin-git', projects_yaml)
-        self._call_hook('install.real')
+        self._call_hook('install')
         self.configure_installation_source.assert_called_with(
             'cloud:trusty-juno'
         )
