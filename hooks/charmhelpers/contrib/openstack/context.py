@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import glob
 import json
 import math
@@ -41,9 +42,9 @@ from charmhelpers.core.hookenv import (
     charm_name,
     DEBUG,
     INFO,
-    WARNING,
     ERROR,
     status_set,
+    network_get_primary_address
 )
 
 from charmhelpers.core.sysctl import create as sysctl_create
@@ -80,6 +81,9 @@ from charmhelpers.contrib.openstack.neutron import (
 from charmhelpers.contrib.openstack.ip import (
     resolve_address,
     INTERNAL,
+    ADMIN,
+    PUBLIC,
+    ADDRESS_MAP,
 )
 from charmhelpers.contrib.network.ip import (
     get_address_in_network,
@@ -87,7 +91,6 @@ from charmhelpers.contrib.network.ip import (
     get_ipv6_addr,
     get_netmask_for_address,
     format_ipv6_addr,
-    is_address_in_network,
     is_bridge_member,
     is_ipv6_disabled,
 )
@@ -576,11 +579,14 @@ class HAProxyContext(OSContextGenerator):
             laddr = get_address_in_network(config(cfg_opt))
             if laddr:
                 netmask = get_netmask_for_address(laddr)
-                cluster_hosts[laddr] = {'network': "{}/{}".format(laddr,
-                                                                  netmask),
-                                        'backends': {l_unit: laddr}}
+                cluster_hosts[laddr] = {
+                    'network': "{}/{}".format(laddr,
+                                              netmask),
+                    'backends': collections.OrderedDict([(l_unit,
+                                                          laddr)])
+                }
                 for rid in relation_ids('cluster'):
-                    for unit in related_units(rid):
+                    for unit in sorted(related_units(rid)):
                         _laddr = relation_get('{}-address'.format(addr_type),
                                               rid=rid, unit=unit)
                         if _laddr:
@@ -592,10 +598,13 @@ class HAProxyContext(OSContextGenerator):
         # match in the frontend
         cluster_hosts[addr] = {}
         netmask = get_netmask_for_address(addr)
-        cluster_hosts[addr] = {'network': "{}/{}".format(addr, netmask),
-                               'backends': {l_unit: addr}}
+        cluster_hosts[addr] = {
+            'network': "{}/{}".format(addr, netmask),
+            'backends': collections.OrderedDict([(l_unit,
+                                                  addr)])
+        }
         for rid in relation_ids('cluster'):
-            for unit in related_units(rid):
+            for unit in sorted(related_units(rid)):
                 _laddr = relation_get('private-address',
                                       rid=rid, unit=unit)
                 if _laddr:
@@ -620,12 +629,13 @@ class HAProxyContext(OSContextGenerator):
             ctxt['haproxy_connect_timeout'] = config('haproxy-connect-timeout')
 
         if config('prefer-ipv6'):
-            ctxt['ipv6'] = True
             ctxt['local_host'] = 'ip6-localhost'
             ctxt['haproxy_host'] = '::'
         else:
             ctxt['local_host'] = '127.0.0.1'
             ctxt['haproxy_host'] = '0.0.0.0'
+
+        ctxt['ipv6_enabled'] = not is_ipv6_disabled()
 
         ctxt['stat_port'] = '8888'
 
@@ -758,36 +768,27 @@ class ApacheSSLContext(OSContextGenerator):
              ...]
         """
         addresses = []
-        if config('vip'):
-            vips = config('vip').split()
-        else:
-            vips = []
-
-        for net_type in ['internal', 'admin', 'public']:
-            net_config = config('os-{}-network'.format(net_type))
-            addr = get_address_in_network(net_config,
-                                          unit_get('private-address'))
-
-            hostname_config = config('os-{}-hostname'.format(net_type))
-            if hostname_config:
-                addresses.append((addr, hostname_config))
-            elif len(vips) > 1 and is_clustered():
-                if not net_config:
-                    log("Multiple networks configured but net_type "
-                        "is None (%s)." % net_type, level=WARNING)
-                    continue
-
-                for vip in vips:
-                    if is_address_in_network(net_config, vip):
-                        addresses.append((addr, vip))
-                        break
-
-            elif is_clustered() and config('vip'):
-                addresses.append((addr, config('vip')))
+        for net_type in [INTERNAL, ADMIN, PUBLIC]:
+            net_config = config(ADDRESS_MAP[net_type]['config'])
+            # NOTE(jamespage): Fallback must always be private address
+            #                  as this is used to bind services on the
+            #                  local unit.
+            fallback = unit_get("private-address")
+            if net_config:
+                addr = get_address_in_network(net_config,
+                                              fallback)
             else:
-                addresses.append((addr, addr))
+                try:
+                    addr = network_get_primary_address(
+                        ADDRESS_MAP[net_type]['binding']
+                    )
+                except NotImplementedError:
+                    addr = fallback
 
-        return sorted(addresses)
+            endpoint = resolve_address(net_type)
+            addresses.append((addr, endpoint))
+
+        return sorted(set(addresses))
 
     def __call__(self):
         if isinstance(self.external_ports, six.string_types):
@@ -810,11 +811,12 @@ class ApacheSSLContext(OSContextGenerator):
         else:
             # Expect cert/key provided in config (currently assumed that ca
             # uses ip for cn)
-            cn = resolve_address(endpoint_type=INTERNAL)
-            self.configure_cert(cn)
+            for net_type in (INTERNAL, ADMIN, PUBLIC):
+                cn = resolve_address(endpoint_type=net_type)
+                self.configure_cert(cn)
 
         addresses = self.get_network_addresses()
-        for address, endpoint in sorted(set(addresses)):
+        for address, endpoint in addresses:
             for api_port in self.external_ports:
                 ext_port = determine_apache_port(api_port,
                                                  singlenode_mode=True)
@@ -850,15 +852,6 @@ class NeutronContext(OSContextGenerator):
     def _ensure_packages(self):
         for pkgs in self.packages:
             ensure_packages(pkgs)
-
-    def _save_flag_file(self):
-        if self.network_manager == 'quantum':
-            _file = '/etc/nova/quantum_plugin.conf'
-        else:
-            _file = '/etc/nova/neutron_plugin.conf'
-
-        with open(_file, 'wb') as out:
-            out.write(self.plugin + '\n')
 
     def ovs_ctxt(self):
         driver = neutron_plugin_attribute(self.plugin, 'driver',
@@ -1004,7 +997,6 @@ class NeutronContext(OSContextGenerator):
             flags = config_flags_parser(alchemy_flags)
             ctxt['neutron_alchemy_flags'] = flags
 
-        self._save_flag_file()
         return ctxt
 
 
@@ -1184,7 +1176,7 @@ class SubordinateConfigContext(OSContextGenerator):
                 if sub_config and sub_config != '':
                     try:
                         sub_config = json.loads(sub_config)
-                    except:
+                    except Exception:
                         log('Could not parse JSON from '
                             'subordinate_configuration setting from %s'
                             % rid, level=ERROR)

@@ -12,3 +12,4 @@ trusty
 wily
 xenial
 .unit-state.db
+func-results.json
