@@ -248,7 +248,7 @@ GIT_PACKAGE_BLACKLIST = [
 # The interface is said to be satisfied if anyone of the interfaces in the
 # list has a complete context.
 REQUIRED_INTERFACES = {
-    'messaging': ['amqp', 'zeromq-configuration'],
+    'messaging': ['amqp'],
     'neutron-plugin-api': ['neutron-plugin-api'],
     'network-service': ['quantum-network-service'],
 }
@@ -884,27 +884,6 @@ def cleanup_ovs_netns():
         subprocess.call('neutron-netns-cleanup')
     except subprocess.CalledProcessError as e:
         log('Faild to cleanup ovs and netns, %s' % e, level=ERROR)
-
-
-def get_topics():
-    # metering_agent
-    topics = []
-    if 'neutron-l3-agent' in services():
-        topics.append('l3_agent')
-    if 'neutron-dhcp-agent' in services():
-        topics.append('dhcp_agent')
-    if 'neutron-metering-agent' in services():
-        topics.append('metering_agent')
-    if 'neutron-lbaas-agent' in services():
-        topics.append('n-lbaas_agent')
-    if 'neutron-plugin-openvswitch-agent' in services():
-        topics.append('q-agent-notifier-port-update')
-        topics.append('q-agent-notifier-network-delete')
-        topics.append('q-agent-notifier-tunnel-update')
-        topics.append('q-agent-notifier-security_group-update')
-        topics.append('q-agent-notifier-dvr-update')
-    topics.append('q-agent-notifier-l2population-update')
-    return topics
 
 
 def git_install(projects_yaml):

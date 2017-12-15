@@ -157,13 +157,11 @@ class TestQuantumHooks(CharmTestCase):
         self.relation_ids.side_effect = mock_relids
         _amqp_joined = self.patch('amqp_joined')
         _amqp_nova_joined = self.patch('amqp_nova_joined')
-        _zmq_joined = self.patch('zeromq_configuration_relation_joined')
         self._call_hook('config-changed')
         self.assertTrue(self.do_openstack_upgrade.called)
         self.assertTrue(self.configure_ovs.called)
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
-        self.assertTrue(_zmq_joined.called)
         self.assertTrue(self.create_sysctl.called)
         self.configure_apparmor.assert_called_with()
 
@@ -210,7 +208,6 @@ class TestQuantumHooks(CharmTestCase):
         self.relation_ids.side_effect = mock_relids
         _amqp_joined = self.patch('amqp_joined')
         _amqp_nova_joined = self.patch('amqp_nova_joined')
-        _zmq_joined = self.patch('zeromq_configuration_relation_joined')
         repo = 'cloud:trusty-juno'
         openstack_origin_git = {
             'repositories': [
@@ -233,7 +230,6 @@ class TestQuantumHooks(CharmTestCase):
         self.assertTrue(self.configure_ovs.called)
         self.assertTrue(_amqp_joined.called)
         self.assertTrue(_amqp_nova_joined.called)
-        self.assertTrue(_zmq_joined.called)
         self.assertTrue(self.create_sysctl.called)
 
     def test_upgrade_charm(self):
