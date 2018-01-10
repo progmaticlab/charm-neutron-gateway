@@ -30,7 +30,6 @@ from charmhelpers.contrib.hahelpers.apache import(
     install_ca_cert
 )
 from charmhelpers.contrib.openstack.utils import (
-    config_value_changed,
     configure_installation_source,
     openstack_upgrade_available,
     pausable_restart_on_change as restart_on_change,
@@ -51,8 +50,6 @@ from neutron_utils import (
     do_openstack_upgrade,
     get_packages,
     get_early_packages,
-    git_install,
-    git_install_requested,
     valid_plugin,
     configure_ovs,
     stop_services,
@@ -91,8 +88,6 @@ def install():
                     fatal=True)
         apt_install(filter_installed_packages(get_packages()),
                     fatal=True)
-        status_set('maintenance', 'Git install')
-        git_install(config('openstack-origin-git'))
     else:
         message = 'Please provide a valid plugin config'
         log(message, level=ERROR)
@@ -112,13 +107,7 @@ def install():
 @harden()
 def config_changed():
     global CONFIGS
-    if git_install_requested():
-        if config_value_changed('openstack-origin-git'):
-            status_set('maintenance', 'Running Git install')
-            git_install(config('openstack-origin-git'))
-            CONFIGS.write_all()
-
-    elif not config('action-managed-upgrade'):
+    if not config('action-managed-upgrade'):
         if openstack_upgrade_available(NEUTRON_COMMON):
             status_set('maintenance', 'Running openstack upgrade')
             do_openstack_upgrade(CONFIGS)
@@ -144,12 +133,11 @@ def config_changed():
         status_set('blocked', message)
         sys.exit(1)
     if config('plugin') == 'n1kv':
-        if not git_install_requested():
-            if config('enable-l3-agent'):
-                status_set('maintenance', 'Installing apt packages')
-                apt_install(filter_installed_packages('neutron-l3-agent'))
-            else:
-                apt_purge('neutron-l3-agent')
+        if config('enable-l3-agent'):
+            status_set('maintenance', 'Installing apt packages')
+            apt_install(filter_installed_packages('neutron-l3-agent'))
+        else:
+            apt_purge('neutron-l3-agent')
 
     # Setup legacy ha configurations
     update_legacy_ha_files()

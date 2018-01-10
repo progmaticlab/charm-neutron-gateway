@@ -1,6 +1,4 @@
 import amulet
-import os
-import yaml
 import time
 import subprocess
 import json
@@ -24,12 +22,11 @@ u = OpenStackAmuletUtils(DEBUG)
 class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     """Amulet tests on a basic neutron-gateway deployment."""
 
-    def __init__(self, series, openstack=None, source=None, git=False,
+    def __init__(self, series, openstack=None, source=None,
                  stable=False):
         """Deploy the entire test environment."""
         super(NeutronGatewayBasicDeployment, self).__init__(series, openstack,
                                                             source, stable)
-        self.git = git
         self._add_services()
         self._add_relations()
         self._configure_services()
@@ -98,58 +95,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
     def _configure_services(self):
         """Configure all of the services."""
         neutron_gateway_config = {'aa-profile-mode': 'enforce'}
-        if self.git:
-            amulet_http_proxy = os.environ.get('AMULET_HTTP_PROXY')
-
-            branch = 'stable/' + self._get_openstack_release_string()
-
-            if self._get_openstack_release() >= self.trusty_kilo:
-                openstack_origin_git = {
-                    'repositories': [
-                        {'name': 'requirements',
-                         'repository': 'git://github.com/openstack/requirements',  # noqa
-                         'branch': branch},
-                        {'name': 'neutron-fwaas',
-                         'repository': 'git://github.com/openstack/neutron-fwaas',  # noqa
-                         'branch': branch},
-                        {'name': 'neutron-lbaas',
-                         'repository': 'git://github.com/openstack/neutron-lbaas',  # noqa
-                         'branch': branch},
-                        {'name': 'neutron-vpnaas',
-                         'repository': 'git://github.com/openstack/neutron-vpnaas',  # noqa
-                         'branch': branch},
-                        {'name': 'neutron',
-                         'repository': 'git://github.com/openstack/neutron',
-                         'branch': branch},
-                    ],
-                    'directory': '/mnt/openstack-git',
-                    'http_proxy': amulet_http_proxy,
-                    'https_proxy': amulet_http_proxy,
-                }
-            else:
-                reqs_repo = 'git://github.com/openstack/requirements'
-                neutron_repo = 'git://github.com/openstack/neutron'
-                if self._get_openstack_release() == self.trusty_icehouse:
-                    reqs_repo = 'git://github.com/coreycb/requirements'
-                    neutron_repo = 'git://github.com/coreycb/neutron'
-
-                openstack_origin_git = {
-                    'repositories': [
-                        {'name': 'requirements',
-                         'repository': reqs_repo,
-                         'branch': branch},
-                        {'name': 'neutron',
-                         'repository': neutron_repo,
-                         'branch': branch},
-                    ],
-                    'directory': '/mnt/openstack-git',
-                    'http_proxy': amulet_http_proxy,
-                    'https_proxy': amulet_http_proxy,
-                }
-
-            neutron_gateway_config['openstack-origin-git'] = \
-                yaml.dump(openstack_origin_git)
-
         keystone_config = {
             'admin-password': 'openstack',
             'admin-token': 'ubuntutesting',
@@ -373,7 +318,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         if self._get_openstack_release() >= self.xenial_ocata:
             # Ocata or later
-            expected['service_username'] = 'placement_nova'
+            expected['service_username'] = 'nova_placement'
         elif self._get_openstack_release() >= self.trusty_kilo:
             # Kilo or later
             expected['service_username'] = 'nova'
