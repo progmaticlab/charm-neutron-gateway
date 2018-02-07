@@ -15,6 +15,9 @@ from charmhelpers.contrib.openstack.amulet.utils import (
     # ERROR
 )
 
+from charmhelpers.contrib.openstack.utils import (
+    CompareOpenStackReleases,
+)
 # Use DEBUG to turn on debug logging
 u = OpenStackAmuletUtils(DEBUG)
 
@@ -597,10 +600,18 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         u.log.debug('Checking neutron gateway dhcp agent config file data...')
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/dhcp_agent.ini'
+
+        cmp_os_release = CompareOpenStackReleases(
+            self._get_openstack_release_string()
+        )
+        if cmp_os_release >= 'mitaka':
+            interface_driver = 'openvswitch'
+        else:
+            interface_driver = ('neutron.agent.linux.interface.'
+                                'OVSInterfaceDriver')
         expected = {
             'state_path': '/var/lib/neutron',
-            'interface_driver': 'neutron.agent.linux.interface.'
-                                'OVSInterfaceDriver',
+            'interface_driver': interface_driver,
             'dhcp_driver': 'neutron.agent.linux.dhcp.Dnsmasq',
             'root_helper': 'sudo /usr/bin/neutron-rootwrap '
                            '/etc/neutron/rootwrap.conf',
@@ -653,9 +664,17 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                                    interface='publicURL')
 
         conf = '/etc/neutron/l3_agent.ini'
+
+        cmp_os_release = CompareOpenStackReleases(
+            self._get_openstack_release_string()
+        )
+        if cmp_os_release >= 'mitaka':
+            interface_driver = 'openvswitch'
+        else:
+            interface_driver = ('neutron.agent.linux.interface.'
+                                'OVSInterfaceDriver')
         expected = {
-            'interface_driver': 'neutron.agent.linux.interface.'
-                                'OVSInterfaceDriver',
+            'interface_driver': interface_driver,
             'auth_url': ep,
             'auth_region': 'RegionOne',
             'admin_tenant_name': 'services',
@@ -679,10 +698,17 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
 
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/lbaas_agent.ini'
+        cmp_os_release = CompareOpenStackReleases(
+            self._get_openstack_release_string()
+        )
+        if cmp_os_release >= 'mitaka':
+            interface_driver = 'openvswitch'
+        else:
+            interface_driver = ('neutron.agent.linux.interface.'
+                                'OVSInterfaceDriver')
         expected = {
             'DEFAULT': {
-                'interface_driver': 'neutron.agent.linux.interface.'
-                                    'OVSInterfaceDriver',
+                'interface_driver': interface_driver,
                 'periodic_interval': '10',
                 'ovs_use_veth': 'False',
             },
@@ -753,13 +779,15 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                     'config file data...')
         unit = self.neutron_gateway_sentry
         conf = '/etc/neutron/metering_agent.ini'
+
+        interface_driver = ('neutron.agent.linux.interface.'
+                            'OVSInterfaceDriver')
         expected = {
             'driver': 'neutron.services.metering.drivers.iptables.'
                       'iptables_driver.IptablesMeteringDriver',
             'measure_interval': '30',
             'report_interval': '300',
-            'interface_driver': 'neutron.agent.linux.interface.'
-                                'OVSInterfaceDriver',
+            'interface_driver': interface_driver,
             'use_namespaces': 'True'
         }
         section = 'DEFAULT'
