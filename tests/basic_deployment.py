@@ -155,19 +155,12 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         self.neutron_api_sentry = self.d.sentry['neutron-api'][0]
 
         # Authenticate admin with keystone
-        self.keystone = u.authenticate_keystone_admin(self.keystone_sentry,
-                                                      user='admin',
-                                                      password='openstack',
-                                                      tenant='admin')
+        self.keystone_session, self.keystone = u.get_default_keystone_session(
+            self.keystone_sentry,
+            openstack_release=self._get_openstack_release())
 
         # Authenticate admin with neutron
-        ep = self.keystone.service_catalog.url_for(service_type='identity',
-                                                   interface='publicURL')
-        self.neutron = neutronclient.Client(auth_url=ep,
-                                            username='admin',
-                                            password='openstack',
-                                            tenant_name='admin',
-                                            region_name='RegionOne')
+        self.neutron = neutronclient.Client(session=self.keystone_session)
 
     def get_private_address(self, unit):
         """Return the private address of the given sentry unit."""
@@ -220,7 +213,10 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         }
         actual = self.keystone.service_catalog.get_endpoints()
 
-        ret = u.validate_svc_catalog_endpoint_data(expected, actual)
+        ret = u.validate_svc_catalog_endpoint_data(
+            expected,
+            actual,
+            openstack_release=self._get_openstack_release())
         if ret:
             amulet.raise_status(amulet.FAIL, msg=ret)
 
@@ -237,8 +233,13 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
             'publicurl': u.valid_url,
             'service_id': u.not_null
         }
-        ret = u.validate_endpoint_data(endpoints, admin_port, internal_port,
-                                       public_port, expected)
+        ret = u.validate_endpoint_data(
+            endpoints,
+            admin_port,
+            internal_port,
+            public_port,
+            expected,
+            openstack_release=self._get_openstack_release())
 
         if ret:
             amulet.raise_status(amulet.FAIL,
@@ -657,11 +658,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         """Verify the data in the l3 agent config file."""
         u.log.debug('Checking neutron gateway l3 agent config file data...')
         unit = self.neutron_gateway_sentry
-        ncc_ng_rel = self.nova_cc_sentry.relation(
-            'quantum-network-service',
-            'neutron-gateway:quantum-network-service')
-        ep = self.keystone.service_catalog.url_for(service_type='identity',
-                                                   interface='publicURL')
 
         conf = '/etc/neutron/l3_agent.ini'
 
@@ -675,11 +671,6 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
                                 'OVSInterfaceDriver')
         expected = {
             'interface_driver': interface_driver,
-            'auth_url': ep,
-            'auth_region': 'RegionOne',
-            'admin_tenant_name': 'services',
-            'admin_password': ncc_ng_rel['service_password'],
-            'admin_user': ncc_ng_rel['service_username'],
             'root_helper': 'sudo /usr/bin/neutron-rootwrap '
                            '/etc/neutron/rootwrap.conf',
             'ovs_use_veth': 'True',
@@ -745,19 +736,9 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         u.log.debug('Checking neutron gateway metadata agent '
                     'config file data...')
         unit = self.neutron_gateway_sentry
-        ep = self.keystone.service_catalog.url_for(service_type='identity',
-                                                   interface='publicURL')
-        nova_cc_relation = self.nova_cc_sentry.relation(
-            'quantum-network-service',
-            'neutron-gateway:quantum-network-service')
 
         conf = '/etc/neutron/metadata_agent.ini'
         expected = {
-            'auth_url': ep,
-            'auth_region': 'RegionOne',
-            'admin_tenant_name': 'services',
-            'admin_password': nova_cc_relation['service_password'],
-            'admin_user': nova_cc_relation['service_username'],
             'root_helper': 'sudo neutron-rootwrap '
                            '/etc/neutron/rootwrap.conf',
             'state_path': '/var/lib/neutron',
