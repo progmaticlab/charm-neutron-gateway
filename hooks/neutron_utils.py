@@ -222,7 +222,8 @@ def get_packages():
     cmp_os_source = CompareOpenStackReleases(os_release('neutron-common'))
     cmp_host_release = CompareHostReleases(lsb_release()['DISTRIB_CODENAME'])
     if plugin == OVS:
-        if cmp_os_source >= 'icehouse' and cmp_host_release < 'utopic':
+        if (cmp_os_source >= 'icehouse' and cmp_os_source < 'mitaka' and
+                cmp_host_release < 'utopic'):
             # NOTE(jamespage) neutron-vpn-agent supercedes l3-agent for
             # icehouse but openswan was removed in utopic.
             packages.remove('neutron-l3-agent')

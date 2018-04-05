@@ -180,6 +180,7 @@ class NeutronGatewayBasicDeployment(OpenStackAmuletDeployment):
         if self._get_openstack_release() <= self.trusty_icehouse:
             neutron_services.append('neutron-vpn-agent')
         if self._get_openstack_release() >= self.trusty_mitaka:
+            neutron_services.append('neutron-l3-agent')
             # neutron-plugin-openvswitch-agent -> neutron-openvswitch-agent
             neutron_services.remove('neutron-plugin-openvswitch-agent')
             neutron_services.append('neutron-openvswitch-agent')
