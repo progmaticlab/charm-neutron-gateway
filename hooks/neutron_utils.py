@@ -30,7 +30,9 @@ from charmhelpers.contrib.network.ovs import (
     add_bridge_port,
     is_linuxbridge_interface,
     add_ovsbridge_linuxbridge,
-    full_restart
+    full_restart,
+    enable_ipfix,
+    disable_ipfix,
 )
 from charmhelpers.contrib.hahelpers.cluster import (
     get_hacluster_config,
@@ -729,6 +731,20 @@ def configure_ovs():
                         add_bridge_port(br, port, promisc=True)
                     else:
                         add_ovsbridge_linuxbridge(br, port)
+
+        target = config('ipfix-target')
+        bridges = [INT_BRIDGE, EXT_BRIDGE]
+        bridges.extend(bridgemaps.values())
+
+        if target:
+            for bridge in bridges:
+                disable_ipfix(bridge)
+                enable_ipfix(bridge, target)
+        else:
+            # NOTE: removing ipfix setting from a bridge is idempotent and
+            #       will pass regardless of the existence of the setting
+            for bridge in bridges:
+                disable_ipfix(bridge)
 
         # Ensure this runs so that mtu is applied to data-port interfaces if
         # provided.

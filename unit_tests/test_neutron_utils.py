@@ -39,6 +39,8 @@ TO_PATCH = [
     'init_is_systemd',
     'os_application_version_set',
     'NeutronAPIContext',
+    'enable_ipfix',
+    'disable_ipfix',
 ]
 
 
@@ -265,6 +267,19 @@ class TestNeutronUtils(CharmTestCase):
         ])
         calls = [call('br-data', 'br-eth0')]
         self.add_ovsbridge_linuxbridge.assert_has_calls(calls)
+
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_configure_ovs_enable_ipfix(self, mock_config):
+        mock_config.side_effect = self.test_config.get
+        self.config.side_effect = self.test_config.get
+        self.test_config.set('plugin', 'ovs')
+        self.test_config.set('ipfix-target', '127.0.0.1:80')
+        neutron_utils.configure_ovs()
+        self.enable_ipfix.assert_has_calls([
+            call('br-int', '127.0.0.1:80'),
+            call('br-ex', '127.0.0.1:80'),
+            call('br-data', '127.0.0.1:80'),
+        ])
 
     @patch.object(neutron_utils, 'register_configs')
     @patch('charmhelpers.contrib.openstack.templating.OSConfigRenderer')
