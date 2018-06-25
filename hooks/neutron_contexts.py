@@ -2,6 +2,7 @@
 import os
 import uuid
 from charmhelpers.core.hookenv import (
+    log, ERROR,
     config,
     unit_get,
     network_get_primary_address,
@@ -11,7 +12,11 @@ from charmhelpers.contrib.openstack.context import (
     NeutronAPIContext,
     config_flags_parser,
 )
-from charmhelpers.contrib.hahelpers.cluster import(
+from charmhelpers.contrib.openstack.utils import (
+    os_release,
+    CompareOpenStackReleases,
+)
+from charmhelpers.contrib.hahelpers.cluster import (
     eligible_leader
 )
 from charmhelpers.contrib.network.ip import (
@@ -141,6 +146,30 @@ class NeutronGatewayContext(NeutronAPIContext):
         if ctxt['plugin'] in ['nvp', 'nsx', 'n1kv']:
             ctxt['enable_metadata_network'] = True
             ctxt['enable_isolated_metadata'] = True
+
+        return ctxt
+
+
+class NovaMetadataContext(OSContextGenerator):
+
+    def __call__(self):
+        ctxt = {}
+        ctxt['vendordata_providers'] = []
+        vdata = config('vendor-data')
+        vdata_url = config('vendor-data-url')
+        cmp_os_release = CompareOpenStackReleases(os_release('neutron-common'))
+
+        if vdata:
+            ctxt['vendor_data'] = True
+            ctxt['vendordata_providers'].append('StaticJSON')
+
+        if vdata_url:
+            if cmp_os_release > 'mitaka':
+                ctxt['vendor_data_url'] = vdata_url
+                ctxt['vendordata_providers'].append('DynamicJSON')
+            else:
+                log('Dynamic vendor data unsupported'
+                    ' for {}.'.format(cmp_os_release), level=ERROR)
 
         return ctxt
 

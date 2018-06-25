@@ -64,6 +64,7 @@ from neutron_utils import (
     assess_status,
     install_systemd_override,
     configure_apparmor,
+    write_vendordata,
 )
 
 hooks = Hooks()
@@ -117,6 +118,9 @@ def config_changed():
     sysctl_dict = config('sysctl')
     if sysctl_dict:
         create_sysctl(sysctl_dict, '/etc/sysctl.d/50-quantum-gateway.conf')
+
+    if config('vendor-data'):
+        write_vendordata(config('vendor-data'))
 
     # Re-run joined hooks as config might have changed
     for r_id in relation_ids('amqp'):

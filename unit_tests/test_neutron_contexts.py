@@ -18,6 +18,7 @@ TO_PATCH = [
     'eligible_leader',
     'unit_get',
     'network_get_primary_address',
+    'os_release',
 ]
 
 
@@ -335,3 +336,54 @@ class TestMisc(CharmTestCase):
         self.config.return_value = 'ovs'
         self.assertEqual(neutron_contexts.core_plugin(),
                          neutron_contexts.NEUTRON_ML2_PLUGIN)
+
+
+class TestNovaMetadataContext(CharmTestCase):
+
+    def setUp(self):
+        super(TestNovaMetadataContext, self).setUp(neutron_contexts,
+                                                   TO_PATCH)
+        self.config.side_effect = self.test_config.get
+
+    def test_vendordata_static(self):
+        _vdata = '{"good": "json"}'
+        self.os_release.return_value = 'pike'
+
+        self.test_config.set('vendor-data', _vdata)
+        ctxt = neutron_contexts.NovaMetadataContext()()
+
+        self.assertTrue(ctxt['vendor_data'])
+        self.assertEqual(ctxt['vendordata_providers'], ['StaticJSON'])
+
+    def test_vendordata_dynamic(self):
+        _vdata_url = 'http://example.org/vdata'
+        self.os_release.return_value = 'pike'
+
+        self.test_config.set('vendor-data-url', _vdata_url)
+        ctxt = neutron_contexts.NovaMetadataContext()()
+
+        self.assertEqual(ctxt['vendor_data_url'], _vdata_url)
+        self.assertEqual(ctxt['vendordata_providers'], ['DynamicJSON'])
+
+    def test_vendordata_static_and_dynamic(self):
+        _vdata = '{"good": "json"}'
+        _vdata_url = 'http://example.org/vdata'
+        self.os_release.return_value = 'pike'
+
+        self.test_config.set('vendor-data', _vdata)
+        self.test_config.set('vendor-data-url', _vdata_url)
+        ctxt = neutron_contexts.NovaMetadataContext()()
+
+        self.assertTrue(ctxt['vendor_data'])
+        self.assertEqual(ctxt['vendor_data_url'], _vdata_url)
+        self.assertEqual(ctxt['vendordata_providers'], ['StaticJSON',
+                                                        'DynamicJSON'])
+
+    def test_vendordata_mitaka(self):
+        _vdata_url = 'http://example.org/vdata'
+        self.os_release.return_value = 'mitaka'
+
+        self.test_config.set('vendor-data-url', _vdata_url)
+        ctxt = neutron_contexts.NovaMetadataContext()()
+
+        self.assertEqual(ctxt, {'vendordata_providers': []})
