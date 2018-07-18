@@ -11,6 +11,10 @@ from test_utils import (
     CharmTestCase
 )
 
+from test_neutron_contexts import (
+    patch_open
+)
+
 TO_PATCH = [
     'config',
     'get_os_codename_install_source',
@@ -716,6 +720,21 @@ class TestNeutronUtils(CharmTestCase):
                       neutron_utils.NEUTRON_LBAAS_AA_PROFILE_PATH]
         for config in EXC_CONFIG:
             self.assertTrue(config not in actual_configs)
+
+    def test_write_valid_json_vendordata(self):
+        _jdata = '{"good": "json"}'
+        _tdata = '{\n  "good": "json"\n}'
+        with patch_open() as (_open, _file):
+            self.assertEqual(neutron_utils.write_vendordata(_jdata), True)
+            _open.assert_called_with(neutron_utils.VENDORDATA_FILE, 'w')
+            _file.write.assert_called_with(_tdata)
+
+    @patch('json.loads')
+    def test_write_invalid_json_vendordata(self, _json_loads):
+        _jdata = '{ bad json }'
+        _json_loads.side_effect = TypeError
+        with patch_open() as (_open, _file):
+            self.assertEqual(neutron_utils.write_vendordata(_jdata), False)
 
 
 network_context = {

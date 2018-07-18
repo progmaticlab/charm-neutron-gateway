@@ -251,3 +251,19 @@ options:
     description: |
       IPFIX target wit the format "IP_Address:Port". This will enable IPFIX
       exporting on all OVS bridges to the target, including br-int and br-ext.
+  vendor-data:
+    type: string
+    default:
+    description: |
+      A JSON-formatted string that will serve as vendor metadata
+      (via "StaticJSON" provider) to all VM's within an OpenStack deployment,
+      regardless of project or domain.
+  vendor-data-url:
+    type: string
+    default:
+    description: |
+      A URL serving JSON-formatted data that will serve as vendor metadata
+      (via "DynamicJSON" provider) to all VM's within an OpenStack deployment,
+      regardless of project or domain.
+      .
+      Only supported in OpenStack Newton and higher.

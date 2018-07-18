@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 import subprocess
 from shutil import copy2
@@ -68,6 +69,7 @@ from neutron_contexts import (
     CORE_PLUGIN, OVS, NSX, N1KV, OVS_ODL,
     NeutronGatewayContext,
     L3AgentContext,
+    NovaMetadataContext,
 )
 from charmhelpers.contrib.openstack.neutron import (
     parse_bridge_mappings,
@@ -78,6 +80,7 @@ from copy import deepcopy
 
 def valid_plugin():
     return config('plugin') in CORE_PLUGIN
+
 
 NEUTRON_COMMON = 'neutron-common'
 VERSION_PACKAGE = NEUTRON_COMMON
@@ -262,6 +265,7 @@ def determine_l3ha_packages():
 def use_l3ha():
     return NeutronAPIContext()()['enable_l3ha']
 
+
 EXT_PORT_CONF = '/etc/init/ext-port.conf'
 PHY_NIC_MTU_CONF = '/etc/init/os-charm-phy-nic-mtu.conf'
 STOPPED_SERVICES = ['os-charm-phy-nic-mtu', 'ext-port']
@@ -293,7 +297,8 @@ NOVA_CONFIG_FILES = {
                           SyslogContext(),
                           context.WorkerConfigContext(),
                           context.ZeroMQContext(),
-                          context.NotificationDriverContext()],
+                          context.NotificationDriverContext(),
+                          NovaMetadataContext()],
         'services': ['nova-api-metadata']
     },
     NOVA_API_METADATA_AA_PROFILE_PATH: {
@@ -968,3 +973,17 @@ def configure_apparmor():
         profiles.append(NEUTRON_LBAASV2_AA_PROFILE)
     for profile in profiles:
         context.AppArmorContext(profile).setup_aa_profile()
+
+
+VENDORDATA_FILE = '/etc/nova/vendor_data.json'
+
+
+def write_vendordata(vdata):
+    try:
+        json_vdata = json.loads(vdata)
+    except (TypeError, json.decoder.JSONDecodeError) as e:
+        log('Error decoding vendor-data. {}'.format(e), level=ERROR)
+        return False
+    with open(VENDORDATA_FILE, 'w') as vdata_file:
+        vdata_file.write(json.dumps(json_vdata, sort_keys=True, indent=2))
+    return True
