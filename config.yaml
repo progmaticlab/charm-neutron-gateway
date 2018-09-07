@@ -31,40 +31,6 @@ options:
       NOTE: updating this setting to a source that is known to provide
       a later version of OpenStack will trigger a software upgrade unless
       action-managed-upgrade is set to True.
-  openstack-origin-git:
-    type: string
-    default:
-    description: |
-      Specifies a default OpenStack release name, or a YAML dictionary
-      listing the git repositories to install from.
-      .
-      The default Openstack release name may be one of the following, where
-      the corresponding OpenStack github branch will be used:
-        * liberty
-        * mitaka
-        * newton
-        * master
-      .
-      The YAML must minimally include requirements, neutron-fwaas,
-      neutron-lbaas, neutron-vpnaas, and neutron repositories, and may
-      also include repositories for other dependencies:
-        repositories:
-        - {name: requirements,
-           repository: 'git://github.com/openstack/requirements',
-           branch: master}
-        - {name: neutron-fwaas,
-           repository: 'git://github.com/openstack/neutron-fwaas',
-           branch: master}
-        - {name: neutron-lbaas,
-           repository: 'git://github.com/openstack/neutron-lbaas',
-           branch: master}
-        - {name: neutron-vpnaas,
-           repository: 'git://github.com/openstack/neutron-vpnaas',
-           branch: master}
-        - {name: neutron,
-           repository: 'git://github.com/openstack/neutron',
-           branch: master}
-        release: master
   action-managed-upgrade:
     type: boolean
     default: False
@@ -279,3 +245,25 @@ options:
     description: |
       A comma-separated list of Nagios service groups.
       If left empty, the nagios_context will be used as the servicegroup
+  ipfix-target:
+    type: string
+    default: 
+    description: |
+      IPFIX target wit the format "IP_Address:Port". This will enable IPFIX
+      exporting on all OVS bridges to the target, including br-int and br-ext.
+  vendor-data:
+    type: string
+    default:
+    description: |
+      A JSON-formatted string that will serve as vendor metadata
+      (via "StaticJSON" provider) to all VM's within an OpenStack deployment,
+      regardless of project or domain.
+  vendor-data-url:
+    type: string
+    default:
+    description: |
+      A URL serving JSON-formatted data that will serve as vendor metadata
+      (via "DynamicJSON" provider) to all VM's within an OpenStack deployment,
+      regardless of project or domain.
+      .
+      Only supported in OpenStack Newton and higher.

@@ -223,6 +223,11 @@ def https():
         return True
     if config_get('ssl_cert') and config_get('ssl_key'):
         return True
+    for r_id in relation_ids('certificates'):
+        for unit in relation_list(r_id):
+            ca = relation_get('ca', rid=r_id, unit=unit)
+            if ca:
+                return True
     for r_id in relation_ids('identity-service'):
         for unit in relation_list(r_id):
             # TODO - needs fixing for new helper as ssl_cert/key suffixes with CN
@@ -371,6 +376,7 @@ def distributed_wait(modulo=None, wait=None, operation_name='operation'):
     ''' Distribute operations by waiting based on modulo_distribution
 
     If modulo and or wait are not set, check config_get for those values.
+    If config values are not set, default to modulo=3 and wait=30.
 
     :param modulo: int The modulo number creates the group distribution
     :param wait: int The constant time wait value
@@ -382,10 +388,17 @@ def distributed_wait(modulo=None, wait=None, operation_name='operation'):
     :side effect: Calls time.sleep()
     '''
     if modulo is None:
-        modulo = config_get('modulo-nodes')
+        modulo = config_get('modulo-nodes') or 3
     if wait is None:
-        wait = config_get('known-wait')
-    calculated_wait = modulo_distribution(modulo=modulo, wait=wait)
+        wait = config_get('known-wait') or 30
+    if juju_is_leader():
+        # The leader should never wait
+        calculated_wait = 0
+    else:
+        # non_zero_wait=True guarantees the non-leader who gets modulo 0
+        # will still wait
+        calculated_wait = modulo_distribution(modulo=modulo, wait=wait,
+                                              non_zero_wait=True)
     msg = "Waiting {} seconds for {} ...".format(calculated_wait,
                                                  operation_name)
     log(msg, DEBUG)
